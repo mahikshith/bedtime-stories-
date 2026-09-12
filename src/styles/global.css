@@ -1,0 +1,505 @@
+@import './tokens.css';
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-ui);
+  color: var(--text-hi);
+  background: var(--ink-900);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior-y: none;
+}
+
+button { font: inherit; color: inherit; cursor: pointer; }
+input, select { font: inherit; color: inherit; }
+
+/* ---------- App shell ---------- */
+
+.app {
+  position: relative;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  isolation: isolate;
+  transition: filter var(--dur-slow) var(--ease-soft);
+}
+
+.app__sky {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  transition: background var(--dur-slow) var(--ease-soft);
+}
+
+.app__specks { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+
+.speck {
+  animation: twinkle 5.5s var(--ease-soft) infinite alternate;
+}
+
+@keyframes twinkle {
+  from { opacity: 0.25; }
+  to   { opacity: 1; }
+}
+
+/* The warm amber veil that deepens as the story settles. */
+.app__veil {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  background: radial-gradient(120% 100% at 50% 100%, rgba(255, 176, 92, 0.5), rgba(10, 6, 20, 0.75));
+  transition: opacity var(--dur-slow) var(--ease-soft);
+}
+
+
+
+.page {
+  flex: 1;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding-block: var(--sp-4) var(--sp-6);
+  padding-inline: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+/* ---------- Liquid glass ---------- */
+
+.glass {
+  position: relative;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-lg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+  box-shadow: var(--clay-shadow);
+  overflow: hidden;
+}
+
+/* The specular sweep that makes glass read as liquid rather than frosted. */
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 52%;
+  background: linear-gradient(180deg, var(--glass-highlight), transparent);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.glass--strong { background: var(--glass-bg-strong); }
+.glass--flat::before { display: none; }
+
+.stack { display: flex; flex-direction: column; gap: var(--sp-3); }
+.row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.row--between { justify-content: space-between; }
+.grow { flex: 1; }
+
+/* ---------- Type ---------- */
+
+.h1 { font-size: clamp(1.6rem, 6vw, 2.1rem); line-height: 1.15; margin: 0; letter-spacing: -0.02em; }
+.h2 { font-size: 1.18rem; margin: 0; letter-spacing: -0.01em; }
+.h3 { font-size: 0.96rem; margin: 0; color: var(--text-mid); font-weight: 600; }
+.muted { color: var(--text-mid); margin: 0; line-height: 1.55; }
+.tiny { font-size: 0.78rem; color: var(--text-low); margin: 0; line-height: 1.5; }
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.68rem;
+  color: var(--amber-400);
+  font-weight: 700;
+}
+
+/* ---------- Clay buttons ---------- */
+
+.btn {
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg-strong);
+  border-radius: var(--r-pill);
+  padding: 13px 22px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  box-shadow: var(--clay-shadow);
+  transition: transform var(--dur-fast) var(--ease-soft), background var(--dur-fast);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  min-height: 46px;
+}
+
+.btn:active { transform: translateY(2px) scale(0.985); }
+.btn:disabled { opacity: 0.42; cursor: not-allowed; }
+.btn:focus-visible { outline: 3px solid var(--amber-400); outline-offset: 3px; }
+
+.btn--primary {
+  background: linear-gradient(165deg, var(--amber-300), var(--amber-500));
+  color: #2a1605;
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.btn--ghost { background: transparent; box-shadow: none; }
+.btn--block { width: 100%; justify-content: center; }
+.btn--sm { padding: 8px 15px; min-height: 38px; font-size: 0.86rem; }
+
+/* ---------- Chips ---------- */
+
+.chip {
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  border-radius: var(--r-pill);
+  padding: 9px 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: transform var(--dur-fast) var(--ease-soft), background var(--dur-fast);
+  min-height: 42px;
+}
+
+.chip[aria-pressed='true'] {
+  background: linear-gradient(165deg, rgba(255, 224, 180, 0.95), rgba(242, 166, 90, 0.9));
+  color: #2a1605;
+  border-color: rgba(255, 255, 255, 0.5);
+  font-weight: 650;
+}
+
+.chip:active { transform: scale(0.96); }
+.chip:focus-visible { outline: 3px solid var(--amber-400); outline-offset: 2px; }
+
+/* ---------- Field ---------- */
+
+.field { display: flex; flex-direction: column; gap: var(--sp-1); }
+
+.field input {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  font-size: 1.05rem;
+  min-height: 50px;
+  width: 100%;
+}
+
+.field input:focus-visible { outline: 3px solid var(--amber-400); outline-offset: 1px; }
+
+.error { color: var(--rose-400); font-size: 0.82rem; margin: 0; }
+
+/* ---------- World map ---------- */
+
+.map__greeting { min-width: 0; }
+
+.map__greeting .h2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map { display: flex; flex-direction: column; gap: var(--sp-2); position: relative; }
+
+.map__node {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  text-align: left;
+  width: 100%;
+  box-shadow: var(--clay-shadow);
+  transition: transform var(--dur-fast) var(--ease-soft);
+}
+
+.map__node:active { transform: scale(0.985); }
+.map__node:focus-visible { outline: 3px solid var(--amber-400); outline-offset: 3px; }
+
+/* The alternating offset is what makes it read as a path rather than a list. */
+.map__node--offset { margin-inline-start: clamp(0px, 7vw, 46px); }
+
+.map__orb {
+  width: 62px;
+  height: 62px;
+  min-width: 62px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: var(--clay-shadow);
+}
+
+.map__link {
+  width: 3px;
+  height: 20px;
+  margin-inline-start: clamp(30px, 10vw, 60px);
+  border-radius: 2px;
+  background: linear-gradient(var(--glass-border), transparent);
+}
+
+.pips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+.pip { width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); }
+.pip--done { background: var(--amber-400); }
+
+/* ---------- Story ---------- */
+
+.story--buddy { padding-bottom: 150px; }
+
+.story {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-3) var(--sp-6);
+  max-width: 720px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.story__text {
+  font-family: var(--font-story);
+  font-size: clamp(1.22rem, 4.6vw, 1.45rem);
+  line-height: 1.75;
+  letter-spacing: 0.004em;
+  margin: 0;
+  transition: opacity var(--dur-slow) var(--ease-soft);
+}
+
+.story__text em { font-style: italic; color: var(--amber-300); }
+
+.story__page {
+  animation: fadeUp var(--dur-slow) var(--ease-soft) both;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.story__header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: nowrap;
+}
+
+.story__header .badge {
+  flex: 1;
+  min-width: 0;
+  justify-content: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.story__header .btn { flex: none; padding-inline: 13px; }
+
+.icon-btn {
+  min-width: 44px;
+  display: grid;
+  place-items: center;
+}
+
+.story__progress { display: flex; gap: 5px; }
+
+.story__tick {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.16);
+  transition: background var(--dur-mid);
+}
+
+.story__tick--on { background: var(--amber-400); }
+
+.realwindow {
+  padding: var(--sp-3);
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* ---------- Mascot: Lumi ---------- */
+
+.lumi {
+  display: block;
+  margin-inline: auto;
+  overflow: visible;
+  filter: drop-shadow(0 14px 30px rgba(255, 180, 94, 0.3));
+}
+
+.lumi__rig {
+  transform-box: fill-box;
+  transform-origin: 50% 92%;
+  animation: lumi-idle 3.6s var(--ease-soft) infinite;
+}
+
+/* Squash and stretch. The anticipation crouch is what sells a hop. */
+.lumi--hop .lumi__rig { animation: lumi-hop 820ms var(--ease-soft); }
+
+@keyframes lumi-idle {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  50%      { transform: translateY(-5px) scale(0.99, 1.01); }
+}
+
+@keyframes lumi-hop {
+  0%   { transform: translateY(0) scale(1, 1); }
+  18%  { transform: translateY(4px) scale(1.12, 0.88); }
+  42%  { transform: translateY(-40px) scale(0.9, 1.14); }
+  62%  { transform: translateY(-46px) scale(0.95, 1.06); }
+  84%  { transform: translateY(3px) scale(1.14, 0.86); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+
+.lumi__eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.lumi__eyes--blink { animation: lumi-blink 5.2s var(--ease-soft) infinite; }
+
+@keyframes lumi-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95%           { transform: scaleY(0.08); }
+}
+
+.lumi__halo { animation: lumi-pulse 4.4s var(--ease-soft) infinite alternate; }
+.lumi__glow { animation: lumi-pulse 2.9s var(--ease-soft) infinite alternate; }
+
+@keyframes lumi-pulse {
+  from { opacity: 0.45; }
+  to   { opacity: 1; }
+}
+
+.lumi__antenna {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.lumi__antenna--l { animation: lumi-sway-l 4.2s var(--ease-soft) infinite alternate; }
+.lumi__antenna--r { animation: lumi-sway-r 4.6s var(--ease-soft) infinite alternate; }
+
+@keyframes lumi-sway-l { from { transform: rotate(-4deg); } to { transform: rotate(5deg); } }
+@keyframes lumi-sway-r { from { transform: rotate(4deg); } to { transform: rotate(-5deg); } }
+
+.lumi__arm {
+  transform-box: fill-box;
+  /* Pivot at the shoulder, not the middle of the arm. */
+  transform-origin: 50% 8%;
+}
+
+.lumi--hop .lumi__arm--l { animation: lumi-wave-l 820ms var(--ease-soft); }
+.lumi--hop .lumi__arm--r { animation: lumi-wave-r 820ms var(--ease-soft); }
+
+@keyframes lumi-wave-l {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(-26deg); }
+}
+
+@keyframes lumi-wave-r {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(26deg); }
+}
+
+.lumi__zzz { animation: lumi-zzz 3.4s var(--ease-soft) infinite; }
+
+@keyframes lumi-zzz {
+  0%   { opacity: 0; transform: translate(0, 6px); }
+  35%  { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(8px, -14px); }
+}
+
+/* Lumi settles with the story: by the wind-down there is no motion left. */
+.lumi--asleep .lumi__rig { animation-duration: 6.5s; }
+.lumi--asleep .lumi__antenna--l,
+.lumi--asleep .lumi__antenna--r { animation-duration: 8s; }
+
+/* ---------- Mascot buddy (the hopping layer) ---------- */
+
+.buddy-stage {
+  position: relative;
+  height: 156px;
+  margin-block: calc(var(--sp-2) * -1) var(--sp-2);
+}
+
+.buddy {
+  position: absolute;
+  bottom: 0;
+  z-index: 3;
+  background: none;
+  border: 0;
+  padding: 0;
+  transition: left 820ms var(--ease-soft);
+  will-change: left;
+  touch-action: manipulation;
+}
+
+.buddy:focus-visible { outline: 3px solid var(--amber-400); outline-offset: 6px; border-radius: 50%; }
+
+.buddy__bubble {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translate(-50%, -6px);
+  white-space: nowrap;
+  max-width: 62vw;
+  padding: 8px 14px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 246, 226, 0.94);
+  color: #3a2410;
+  font-size: 0.82rem;
+  font-weight: 650;
+  box-shadow: 0 10px 24px -12px rgba(0, 0, 0, 0.8);
+  animation: fadeUp var(--dur-mid) var(--ease-soft) both;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lumi__rig,
+  .lumi__eyes--blink,
+  .lumi__halo,
+  .lumi__glow,
+  .lumi__antenna--l,
+  .lumi__antenna--r,
+  .lumi__zzz { animation: none; }
+  .buddy { transition: none; }
+}
+
+/* ---------- Misc ---------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: var(--r-pill);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--glass-border);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.divider { height: 1px; background: var(--glass-border); border: 0; margin: 0; }
+
+.ledger { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.ledger td { padding: 7px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.ledger td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.ledger tr:last-child td { border-bottom: 0; font-weight: 700; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}

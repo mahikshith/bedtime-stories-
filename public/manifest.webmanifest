@@ -1,0 +1,14 @@
+{
+  "name": "Lumi & the Sleepy Worlds",
+  "short_name": "Lumi",
+  "description": "Offline-first personalised bedtime stories for children.",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#070a16",
+  "theme_color": "#070a16",
+  "categories": ["education", "kids", "books"],
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

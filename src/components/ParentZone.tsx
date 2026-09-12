@@ -1,0 +1,332 @@
+import { useEffect, useRef, useState } from 'react';
+import { WORLDS } from '../content/worlds';
+import { SPARK_COST, SPARK_COST_TOTAL } from '../engine/providers';
+import {
+  STARLIGHT_PRICE,
+  activeProfile,
+  addSparks,
+  checkParentPin,
+  updateProfile,
+  updateSettings,
+  useAppState,
+} from '../state/store';
+import type { AgeBand } from '../engine/types';
+import {
+  Narrator,
+  PACES,
+  PERSONAS,
+  isNarrationSupported,
+  pickVoice,
+  rateFor,
+} from '../engine/narration';
+
+const AGE_BANDS: AgeBand[] = ['3-5', '6-8', '9-11'];
+
+export function ParentZone({ onExit }: { onExit: () => void }) {
+  const state = useAppState();
+  const [unlocked, setUnlocked] = useState(state.parentPinHash === null);
+
+  if (!unlocked) return <PinGate onPass={() => setUnlocked(true)} onExit={onExit} />;
+
+  const profile = activeProfile(state);
+  const heard = Object.values(state.progress).reduce((n, l) => n + l.length, 0);
+  const totalEpisodes = WORLDS.reduce((n, w) => n + w.episodeCount, 0);
+
+  return (
+    <div className="page">
+      <header className="row row--between">
+        <h1 className="h1">Parents</h1>
+        <button className="btn btn--sm btn--ghost" onClick={onExit}>Done</button>
+      </header>
+
+      <section className="glass stack" style={{ padding: 'var(--sp-4)' }}>
+        <p className="eyebrow">The only number we care about</p>
+        <h2 className="h1">{state.nightsSettled} {state.nightsSettled === 1 ? 'night' : 'nights'} settled</h2>
+        <p className="muted">
+          We do not count streaks, screen time or daily actives. A good night here is one where the
+          app closed early and nobody asked for another.
+        </p>
+        <p className="tiny">
+          {heard} of {totalEpisodes} library episodes heard.
+        </p>
+      </section>
+
+      <section className="glass stack" style={{ padding: 'var(--sp-4)' }}>
+        <p className="eyebrow">Wish Sparks</p>
+        <h2 className="h2">{state.sparks} remaining</h2>
+        <p className="muted">
+          A Spark makes a brand-new story to order. The 216 library stories do not use Sparks and
+          never will &mdash; they cost us nothing to tell, so they cost you nothing to hear.
+        </p>
+        <table className="ledger">
+          <tbody>
+            <tr><td>Writing</td><td>${SPARK_COST.text.toFixed(3)}</td></tr>
+            <tr><td>Four illustrations</td><td>${SPARK_COST.images.toFixed(3)}</td></tr>
+            <tr><td>Narration</td><td>${SPARK_COST.narration.toFixed(3)}</td></tr>
+            <tr><td>Delivery</td><td>${SPARK_COST.infra.toFixed(3)}</td></tr>
+            <tr><td>What one Spark costs us</td><td>${SPARK_COST_TOTAL.toFixed(3)}</td></tr>
+          </tbody>
+        </table>
+        <p className="tiny">
+          Published because you deserve to know why this one thing is metered when the rest of a
+          {' '}{STARLIGHT_PRICE} app is not.
+        </p>
+        <button className="btn btn--block" onClick={() => addSparks(20)}>
+          Add 20 Sparks &mdash; $2.99
+        </button>
+        <p className="tiny">Demo build: no payment is taken and no card is requested.</p>
+      </section>
+
+      <VoiceSettings />
+
+      <section className="glass stack" style={{ padding: 'var(--sp-4)' }}>
+        <p className="eyebrow">Bedtime settings</p>
+        <Toggle
+          label="Read stories aloud"
+          hint="Uses your device's own voice. No audio is sent anywhere."
+          on={state.settings.narration}
+          onToggle={() => updateSettings({ narration: !state.settings.narration })}
+        />
+        <Toggle
+          label="Dim the screen as the story settles"
+          hint="The page warms and darkens across the last third."
+          on={state.settings.dimming}
+          onToggle={() => updateSettings({ dimming: !state.settings.dimming })}
+        />
+        <Toggle
+          label="Default to two-minute stories"
+          hint="For the nights that got away from you."
+          on={state.settings.twoMinute}
+          onToggle={() => updateSettings({ twoMinute: !state.settings.twoMinute })}
+        />
+      </section>
+
+      {profile && (
+        <section className="glass stack" style={{ padding: 'var(--sp-4)' }}>
+          <p className="eyebrow">{profile.name}</p>
+          <div className="row">
+            {AGE_BANDS.map((band) => (
+              <button
+                key={band}
+                className="chip"
+                aria-pressed={profile.ageBand === band}
+                onClick={() => updateProfile(profile.id, { ageBand: band })}
+              >
+                Ages {band}
+              </button>
+            ))}
+          </div>
+          <p className="tiny">
+            Changing the age band changes sentence length and story length immediately.
+          </p>
+        </section>
+      )}
+
+      <section className="glass stack" style={{ padding: 'var(--sp-4)' }}>
+        <p className="eyebrow">Safety &amp; privacy</p>
+        <ul className="stack" style={{ margin: 0, paddingLeft: '1.1rem', gap: 'var(--sp-2)' }}>
+          <li className="muted">
+            <strong>Your child&rsquo;s name never leaves this device.</strong> Stories are written with a
+            placeholder and the name is filled in here, on your phone.
+          </li>
+          <li className="muted">
+            <strong>Children never type into a story.</strong> Every choice comes from a fixed list
+            we wrote, so there is no open-ended conversation with a machine.
+          </li>
+          <li className="muted">
+            <strong>Every story is checked before it is shown.</strong> Anything that fails is thrown
+            away and replaced, never edited.
+          </li>
+          <li className="muted">
+            <strong>No adverts, no tracking, no account, no analytics.</strong>
+          </li>
+        </ul>
+        <hr className="divider" />
+        <p className="tiny">
+          <strong>AI disclosure:</strong> the 216 library stories were written by people and are
+          assembled and personalised on your device. Wish Sparks are generated by an AI model at the
+          moment you request one, and are labelled &ldquo;Made just now&rdquo; when you read them.
+        </p>
+      </section>
+
+      {state.history.length > 0 && (
+        <section className="glass stack" style={{ padding: 'var(--sp-4)' }}>
+          <p className="eyebrow">Recently read</p>
+          {state.history.slice(0, 10).map((h) => (
+            <div key={`${h.id}-${h.at}`} className="row row--between">
+              <span className="muted">{h.title}</span>
+              <span className="tiny">{new Date(h.at).toLocaleDateString()}</span>
+            </div>
+          ))}
+        </section>
+      )}
+    </div>
+  );
+}
+
+const PREVIEW_LINE =
+  'The lamp was off, but the day was not quite finished with itself. Somewhere, a small bell rang.';
+
+/**
+ * Read-aloud controls.
+ *
+ * Personas are a voice-selection heuristic plus a pitch and rate treatment over
+ * whatever voices the device actually has — which is the only approach that
+ * still works on a plane with no signal.
+ */
+function VoiceSettings() {
+  const state = useAppState();
+  const narrator = useRef(new Narrator());
+  const [speaking, setSpeaking] = useState(false);
+  const [voiceName, setVoiceName] = useState<string | null>(null);
+
+  const settings = {
+    persona: state.settings.voicePersona,
+    pace: state.settings.voicePace,
+  };
+
+  useEffect(() => {
+    const n = narrator.current;
+    return () => n.stop();
+  }, []);
+
+  // Voice lists populate asynchronously on most browsers, so re-read on the event.
+  useEffect(() => {
+    if (!isNarrationSupported()) return;
+    const update = () => {
+      const chosen = pickVoice(narrator.current.voices, settings.persona);
+      setVoiceName(chosen ? `${chosen.name}${chosen.localService ? ' (offline)' : ''}` : null);
+    };
+    update();
+    window.speechSynthesis.addEventListener('voiceschanged', update);
+    return () => window.speechSynthesis.removeEventListener('voiceschanged', update);
+  }, [settings.persona]);
+
+  function preview() {
+    const n = narrator.current;
+    if (speaking) {
+      n.stop();
+      setSpeaking(false);
+      return;
+    }
+    setSpeaking(true);
+    n.speak(PREVIEW_LINE, { ...settings, calm: 0, onEnd: () => setSpeaking(false) });
+  }
+
+  const supported = isNarrationSupported();
+
+  return (
+    <section className="glass stack" style={{ padding: 'var(--sp-4)' }}>
+      <p className="eyebrow">The reading voice</p>
+
+      <div className="stack" style={{ gap: 'var(--sp-1)' }}>
+        <p className="h3">Who is reading?</p>
+        <div className="row">
+          {PERSONAS.map((p) => (
+            <button
+              key={p.id}
+              className="chip"
+              aria-pressed={settings.persona === p.id}
+              onClick={() => updateSettings({ voicePersona: p.id })}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <p className="tiny">
+          {PERSONAS.find((p) => p.id === settings.persona)?.hint}
+        </p>
+      </div>
+
+      <div className="stack" style={{ gap: 'var(--sp-1)' }}>
+        <p className="h3">How fast?</p>
+        <div className="row">
+          {PACES.map((p) => (
+            <button
+              key={p.id}
+              className="chip"
+              aria-pressed={settings.pace === p.id}
+              onClick={() => updateSettings({ voicePace: p.id })}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <p className="tiny">
+          Whatever you pick, the voice still slows by about a sixth across the story. A story that
+          starts lively always ends calmer than it began.
+        </p>
+      </div>
+
+      {supported ? (
+        <>
+          <button className="btn btn--block" onClick={preview}>
+            {speaking ? '\u23F9\uFE0F Stop' : '\u25B6\uFE0F Hear it'}
+          </button>
+          <table className="ledger">
+            <tbody>
+              <tr><td>Opening page</td><td>{rateFor(settings, 0).toFixed(2)}&times;</td></tr>
+              <tr><td>Final page</td><td>{rateFor(settings, 1).toFixed(2)}&times;</td></tr>
+              {voiceName && <tr><td>Device voice</td><td>{voiceName}</td></tr>}
+            </tbody>
+          </table>
+        </>
+      ) : (
+        <p className="tiny">
+          This device has no speech voices installed, so stories will be shown as text only.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function Toggle({
+  label, hint, on, onToggle,
+}: { label: string; hint: string; on: boolean; onToggle: () => void }) {
+  return (
+    <div className="row row--between" style={{ gap: 'var(--sp-3)' }}>
+      <span className="grow" style={{ minWidth: '55%' }}>
+        <span className="h3" style={{ display: 'block', color: 'var(--text-hi)' }}>{label}</span>
+        <span className="tiny">{hint}</span>
+      </span>
+      <button className="chip" aria-pressed={on} onClick={onToggle}>
+        {on ? 'On' : 'Off'}
+      </button>
+    </div>
+  );
+}
+
+function PinGate({ onPass, onExit }: { onPass: () => void; onExit: () => void }) {
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState('');
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (checkParentPin(pin)) return onPass();
+    setError('That is not the PIN.');
+    setPin('');
+  }
+
+  return (
+    <div className="page">
+      <form className="glass stack" style={{ padding: 'var(--sp-4)' }} onSubmit={submit}>
+        <p className="eyebrow">Parent PIN</p>
+        <div className="field">
+          <label className="sr-only" htmlFor="parentpin">PIN</label>
+          <input
+            id="parentpin"
+            inputMode="numeric"
+            maxLength={4}
+            value={pin}
+            onChange={(e) => { setPin(e.target.value.replace(/\D/g, '')); setError(''); }}
+          />
+          {error && <p className="error">{error}</p>}
+        </div>
+        <button className="btn btn--primary btn--block" type="submit">Unlock</button>
+        <button className="btn btn--ghost btn--block" type="button" onClick={onExit}>
+          Back to the map
+        </button>
+      </form>
+    </div>
+  );
+}

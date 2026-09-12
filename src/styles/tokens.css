@@ -1,0 +1,73 @@
+/*
+ * Lumi design tokens.
+ *
+ * Night-first by default. A bedtime app that renders bright white at 8pm is
+ * fighting its own purpose, so there is no light theme — there is a dusk theme
+ * and a deeper one, and the app moves between them as the story winds down.
+ */
+:root {
+  /* Ground */
+  --ink-900: #070a16;
+  --ink-800: #0d1226;
+  --ink-700: #151c38;
+  --ink-600: #1e2749;
+
+  /* Warm accents — amber reads as "lamp", not "screen" */
+  --amber-400: #ffcf8f;
+  --amber-300: #ffe0b4;
+  --amber-500: #f2a65a;
+  --rose-400: #ffb4c4;
+  --violet-400: #b9a6ff;
+  --mint-400: #9ff0d4;
+
+  /* Text */
+  --text-hi: #fdf6ec;
+  --text-mid: rgba(253, 246, 236, 0.76);
+  --text-low: rgba(253, 246, 236, 0.5);
+
+  /* Liquid glass */
+  --glass-bg: rgba(255, 255, 255, 0.07);
+  --glass-bg-strong: rgba(255, 255, 255, 0.12);
+  --glass-border: rgba(255, 255, 255, 0.16);
+  --glass-highlight: rgba(255, 255, 255, 0.34);
+  --glass-blur: 22px;
+
+  /* Clay */
+  --clay-shadow:
+    0 18px 40px -18px rgba(3, 6, 18, 0.9),
+    0 2px 0 0 rgba(255, 255, 255, 0.08) inset,
+    0 -10px 22px -18px rgba(255, 255, 255, 0.4) inset;
+
+  /* Geometry — generous radii read as "soft toy", not "enterprise dashboard" */
+  --r-sm: 14px;
+  --r-md: 22px;
+  --r-lg: 30px;
+  --r-xl: 40px;
+  --r-pill: 999px;
+
+  /* Rhythm */
+  --sp-1: 6px;
+  --sp-2: 10px;
+  --sp-3: 16px;
+  --sp-4: 24px;
+  --sp-5: 36px;
+  --sp-6: 52px;
+
+  /* Motion — slow. Everything in this app should feel like it is already tired. */
+  --ease-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dur-fast: 180ms;
+  --dur-mid: 340ms;
+  --dur-slow: 700ms;
+
+  --font-story: ui-serif, Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+  --font-ui: ui-rounded, 'SF Pro Rounded', 'Segoe UI Variable', system-ui, -apple-system,
+    'Segoe UI', Roboto, sans-serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur-mid: 1ms;
+    --dur-slow: 1ms;
+  }
+}
