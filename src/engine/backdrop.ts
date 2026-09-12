@@ -23,6 +23,13 @@ export interface PublicDomainSource {
 }
 
 /**
+ * Reference only — these endpoints are deliberately NEVER called at runtime.
+ *
+ * Imagery is curated by hand, licence-checked, and shipped in the bundle, so the
+ * app stays offline-first and the runtime cost stays at zero (see D12 in
+ * docs/DECISIONS.md). Wiring these up would add egress cost and break offline
+ * use for no benefit.
+ *
  * NASA imagery is public domain, but three conditions apply and are encoded here:
  * credit NASA, never imply endorsement, and never use the insignia, logotype or seal.
  */

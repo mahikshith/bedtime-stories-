@@ -3,6 +3,10 @@
 One offline-first app for a household of children under 11: **rhymes, stories,
 colouring and letters**, personalised per child and read aloud by the device.
 
+> **Working on this with Claude Code?** Start at [`CLAUDE.md`](CLAUDE.md), then
+> [`docs/HANDOVER.md`](docs/HANDOVER.md). See
+> [`docs/SESSION-START.md`](docs/SESSION-START.md) for keeping context costs down.
+
 > **Read the research first.**
 > - [`docs/RESEARCH.md`](docs/RESEARCH.md) — competitor teardown and the unit
 >   economics that killed the original business model (one-time price against
@@ -12,6 +16,18 @@ colouring and letters**, personalised per child and read aloud by the device.
 >   makes "learning" a supporting pillar rather than the headline, and how the
 >   day arc resolves the contradiction between "keep them engaged" and "the app
 >   that ends the session".
+
+## Documentation map
+
+| File | What it holds |
+|---|---|
+| [`CLAUDE.md`](CLAUDE.md) | Working notes, the three inviolable rules, doc routing |
+| [`docs/HANDOVER.md`](docs/HANDOVER.md) | Current state, next actions, gotchas that bit us |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | Settled decisions, with pointers to the reasoning |
+| [`docs/TODO.md`](docs/TODO.md) | Prioritised backlog |
+| [`docs/RESEARCH.md`](docs/RESEARCH.md) | Unit economics, competitors, COPPA / Play policy |
+| [`docs/RESEARCH-PLATFORM.md`](docs/RESEARCH-PLATFORM.md) | Four-pillar platform, day arc, rhyme theory |
+| [`docs/SESSION-START.md`](docs/SESSION-START.md) | Keeping a new session's context cost low |
 
 ## The spine: one app that knows what time it is
 
