@@ -1,16 +1,60 @@
 # Lumi & the Sleepy Worlds
 
-Offline-first, personalised bedtime stories for children under 11.
+One offline-first app for a household of children under 11: **rhymes, stories,
+colouring and letters**, personalised per child and read aloud by the device.
 
-Eighteen hand-authored worlds, personalised with the child's name at render time,
-read aloud by the device, and built to **end** the evening rather than extend it.
+> **Read the research first.**
+> - [`docs/RESEARCH.md`](docs/RESEARCH.md) — competitor teardown and the unit
+>   economics that killed the original business model (one-time price against
+>   per-night AI generation loses money in proportion to how well the app works).
+> - [`docs/RESEARCH-PLATFORM.md`](docs/RESEARCH-PLATFORM.md) — why "CoComelon in
+>   the app space" copies the wrong half of that model, why Khan Academy Kids
+>   makes "learning" a supporting pillar rather than the headline, and how the
+>   day arc resolves the contradiction between "keep them engaged" and "the app
+>   that ends the session".
 
-> **Read [`docs/RESEARCH.md`](docs/RESEARCH.md) first.** It contains the competitor
-> teardown, the unit economics, and the reason the original business model
-> (one-time price + per-night AI generation) would have lost money in proportion
-> to how well the app worked.
+## The spine: one app that knows what time it is
+
+| Mode | When | What it offers | Engagement posture |
+|---|---|---|---|
+| **Wake** | 5am–11am | Rhymes, movement, counting | Loud and active. Engagement is *good* here. |
+| **Play** | 11am–6pm | Colouring, letters, rhyme games | Interactive and co-played, never passive. |
+| **Wind-down** | 6pm–5am | The bedtime story, the sleep gradient | Engagement is the **enemy**. The app dims and ends. |
+
+Nothing is ever locked — a locked app at 7pm starts an argument — but wind-down
+stops *offering* the lively pillars and says why. The tracked metric is **nights
+settled**, not DAU.
+
+## The four pillars
+
+- **Rhymes** — 22 rhymes: 10 traditional (pre-1928 lyrics, public domain) and 12
+  originals written for Lumi. Word-by-word karaoke highlighting, a dropped final
+  word for the child to supply, two-voice call-and-response, and actions to tap
+  the beat. Ends in a rhyme-matching game. Nursery-rhyme knowledge is one of the
+  strongest predictors of later reading, so this is the best-evidenced pillar in
+  the app.
+- **Stories** — 18 worlds × 12 episodes, composed on-device, with the sleep gradient.
+- **Colour** — **print-first**. The page is generated from the world of last
+  night's story and carries the child's name; the primary button sends it to a
+  printer, because crayon-on-paper builds the pincer grasp that tapping a screen
+  does not. On-screen colouring stays for the car.
+- **Letters** — a science-of-reading scope and sequence (s, a, t, p first; short
+  vowels a, i, o, e, u so /i/ and /e/ never sit adjacent), so the child reads a
+  real word in the first set.
 
 ---
+
+## Pricing: one household, one price
+
+| | Price | Children |
+|---|---|---|
+| **Starlight Family** | $12.99 once | up to 4, each with their own name, companion, age and progress |
+| Starlight | $6.99 once | 1 |
+| Wish Sparks | $2.99 / 20 | pooled across the family |
+
+Multi-child is a **feature of the purchase, not a multiplier on it**. ABCmouse
+includes three profiles in its base subscription; per-child billing is what
+parental-control apps do, and parents resent it.
 
 ## The one idea that makes this work
 
@@ -34,10 +78,13 @@ matters, because bedtime happens on planes, in cars and at grandma's house.
 
 ```
 src/
-  content/     worlds.ts (18 worlds) · arcs.ts (3 narrative skeletons) · companions.ts
-  engine/      generator · personalize · safety · narration · providers · backdrop · rng
-  state/       store.ts — on-device only, no server, no account
-  components/  Onboarding · WorldMap · StoryPlayer · ParentZone · Mascot · MascotBuddy · Sky
+  content/     worlds.ts (18) · arcs.ts (3 skeletons) · rhymes.ts (22) ·
+               phonics.ts (5 sets) · colouring.ts (4 scenes) · companions.ts
+  engine/      generator · personalize · safety · narration · rhyme · dayArc ·
+               providers · backdrop · rng
+  state/       store.ts — on-device only, no server, no account, per-child progress
+  components/  Today · RhymeList · RhymePlayer · WorldMap · StoryPlayer ·
+               ColourStudio · LettersLab · ParentZone · Mascot · MascotBuddy · Sky
 ```
 
 **Story generation.** Three 7-stage arc skeletons (call → threshold → wonder →
@@ -82,7 +129,7 @@ map to.
 ```bash
 npm install
 npm run dev       # http://localhost:5173
-npm test          # 55 tests
+npm test          # 110 tests
 npm run build     # typecheck + production build
 ```
 
@@ -133,6 +180,14 @@ USGS, Smithsonian Open Access, Library of Congress) and credited in-app. NASA
 imagery carries three conditions, encoded in `src/engine/backdrop.ts`: credit
 NASA, never imply endorsement, and never use the insignia, logotype or seal.
 
+**Rhymes.** Traditional lyrics published before 1928 are public domain in the US
+and every one in the corpus records its date and source. Only the *words* are
+free — specific recordings and arrangements carry their own copyright — so no
+existing arrangement is reproduced and all audio is generated on-device. A test
+asserts that anything marked `traditional` predates 1928. The 12 originals are
+the ownable asset: they carry `{child}` and `{companion}` slots and tie to the
+eighteen worlds.
+
 Lumi is an original character. The mascot was designed from the principles that
 make a mascot readable — one big silhouette, oversized eyes, a single strong
 colour, one signature feature that survives a 24px icon — and not from any
@@ -140,6 +195,18 @@ existing character.
 
 ## Status
 
-A working prototype of the full loop: onboarding → parental gate → paywall →
-child setup → world map → story with narration and sleep gradient → Real Window
-→ parent zone. Payments are stubbed; no card is requested and no payment is taken.
+A working prototype of the whole day: onboarding → parental gate → paywall →
+child setup → **Today** (day arc) → any of the four pillars → parent zone.
+
+Working end to end: rhymes with karaoke, cloze and the rhyme game; stories with
+narration and the sleep gradient; print-first colouring with on-screen fallback;
+letters with the phonics sequence; multi-child family profiles with per-child
+progress.
+
+Stubbed: payments (no card is requested and no payment is taken) and Wish Spark
+generation (the provider abstraction and cost model are real; there is no API
+key wired up, and the library serves every story).
+
+Not built yet: crafts beyond colouring, music and cartoons. Those are v3 — see
+`docs/RESEARCH-PLATFORM.md` §8 on why the bottleneck moves from code to content,
+and why four pillars done well beats six done thinly.

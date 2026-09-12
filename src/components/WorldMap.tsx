@@ -3,14 +3,21 @@ import { MascotBuddy } from './MascotBuddy';
 import { WORLDS } from '../content/worlds';
 import { getCompanion } from '../content/companions';
 import type { World } from '../engine/types';
-import { nextEpisodeFor, useAppState, activeProfile, updateSettings } from '../state/store';
+import {
+  activeProfile,
+  nextEpisodeFor,
+  progressFor,
+  updateSettings,
+  useAppState,
+} from '../state/store';
 
 interface WorldMapProps {
   onPick: (world: World, episode: number, short: boolean) => void;
   onOpenParent: () => void;
+  onExit: () => void;
 }
 
-export function WorldMap({ onPick, onOpenParent }: WorldMapProps) {
+export function WorldMap({ onPick, onOpenParent, onExit }: WorldMapProps) {
   const state = useAppState();
   const profile = activeProfile(state);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -18,17 +25,18 @@ export function WorldMap({ onPick, onOpenParent }: WorldMapProps) {
   if (!profile) return null;
   const companion = getCompanion(profile.companionId);
 
-  const totalHeard = Object.values(state.progress).reduce((n, list) => n + list.length, 0);
+  const mine = progressFor(state, profile.id);
+  const totalHeard = Object.values(mine.stories).reduce((n, list) => n + list.length, 0);
   const lastWorldId = state.history[0]?.worldId;
   const tonight = WORLDS.find((w) => w.id === lastWorldId) ?? WORLDS[0];
-  const tonightEpisode = nextEpisodeFor(state, tonight.id, tonight.episodeCount);
+  const tonightEpisode = nextEpisodeFor(state, profile.id, tonight.id, tonight.episodeCount);
 
   return (
     <div className="page">
       <header className="row row--between">
+        <button className="btn btn--sm btn--ghost" onClick={onExit}>&larr; Today</button>
         <div className="row map__greeting" style={{ gap: 'var(--sp-2)', flexWrap: 'nowrap', minWidth: 0 }}>
           <div style={{ minWidth: 0 }}>
-            <p className="eyebrow" style={{ margin: 0 }}>Good evening</p>
             <h1 className="h2">{profile.name} &amp; {companion.name}</h1>
           </div>
         </div>
@@ -69,8 +77,8 @@ export function WorldMap({ onPick, onOpenParent }: WorldMapProps) {
 
       <section className="map" aria-label="Worlds">
         {WORLDS.map((world, i) => {
-          const heard = state.progress[world.id] ?? [];
-          const next = nextEpisodeFor(state, world.id, world.episodeCount);
+          const heard = mine.stories[world.id] ?? [];
+          const next = nextEpisodeFor(state, profile.id, world.id, world.episodeCount);
           const isOpen = expanded === world.id;
           return (
             <div key={world.id}>

@@ -22,23 +22,47 @@ export interface Settings {
   twoMinute: boolean;
 }
 
+/** Per-child, because a family buys one app for several children. */
+export interface ChildProgress {
+  /** worldId -> episode indices already heard. */
+  stories: Record<string, number[]>;
+  /** rhyme ids recited. */
+  rhymes: string[];
+  /** Letters whose sound the child has met. */
+  letters: string[];
+  /** The only metric that matters, tracked per child. */
+  nightsSettled: number;
+}
+
+export const EMPTY_PROGRESS: ChildProgress = {
+  stories: {},
+  rhymes: [],
+  letters: [],
+  nightsSettled: 0,
+};
+
+export type Entitlement = 'none' | 'solo' | 'family';
+
+/**
+ * Multi-child is a feature of the purchase, not a multiplier on it. The market
+ * has settled on household-flat pricing and parents resent per-child billing.
+ */
+export const SEATS: Record<Entitlement, number> = { none: 0, solo: 1, family: 4 };
+
 export interface AppState {
   onboarded: boolean;
-  entitlement: 'none' | 'starlight';
+  entitlement: Entitlement;
   profiles: ChildProfile[];
   activeProfileId: string | null;
-  /** worldId -> episode indices already heard. */
-  progress: Record<string, number[]>;
+  progress: Record<string, ChildProgress>;
   sparks: number;
   /** Local parental gate. Not security — it keeps a seven-year-old out, which is its job. */
   parentPinHash: number | null;
   settings: Settings;
-  /** The success metric. Deliberately not DAU. */
-  nightsSettled: number;
-  history: { id: string; title: string; worldId: string; at: number }[];
+  history: { id: string; title: string; worldId: string; profileId: string; at: number }[];
 }
 
-const STORAGE_KEY = 'lumi.state.v1';
+const STORAGE_KEY = 'lumi.state.v2';
 
 export const INITIAL_STATE: AppState = {
   onboarded: false,
@@ -55,13 +79,14 @@ export const INITIAL_STATE: AppState = {
     dimming: true,
     twoMinute: false,
   },
-  nightsSettled: 0,
   history: [],
 };
 
-/** Sparks included with the one-time Starlight purchase. */
+/** Sparks included with a one-time purchase. Pooled across the whole family. */
 export const STARLIGHT_SPARKS = 30;
+export const FAMILY_SPARKS = 60;
 export const STARLIGHT_PRICE = '$6.99';
+export const FAMILY_PRICE = '$12.99';
 
 function load(): AppState {
   if (typeof localStorage === 'undefined') return INITIAL_STATE;
@@ -116,15 +141,56 @@ export function useAppState(): AppState {
 
 /* ---------- actions ---------- */
 
-export function purchaseStarlight(): void {
-  setState((s) => ({ ...s, entitlement: 'starlight', sparks: s.sparks + STARLIGHT_SPARKS }));
+export function purchase(tier: 'solo' | 'family'): void {
+  setState((s) => ({
+    ...s,
+    entitlement: tier,
+    sparks: s.sparks + (tier === 'family' ? FAMILY_SPARKS : STARLIGHT_SPARKS),
+  }));
 }
 
-export function addProfile(profile: ChildProfile): void {
+export function seatsLeft(s: AppState): number {
+  return Math.max(0, SEATS[s.entitlement] - s.profiles.length);
+}
+
+/** Refuses to exceed the purchased seat count. */
+export function addProfile(profile: ChildProfile): boolean {
+  if (seatsLeft(state) <= 0) return false;
   setState((s) => ({
     ...s,
     profiles: [...s.profiles, profile],
     activeProfileId: profile.id,
+    progress: { ...s.progress, [profile.id]: { ...EMPTY_PROGRESS } },
+  }));
+  return true;
+}
+
+export function removeProfile(id: string): void {
+  setState((s) => {
+    const progress = { ...s.progress };
+    delete progress[id];
+    const profiles = s.profiles.filter((p) => p.id !== id);
+    return {
+      ...s,
+      profiles,
+      progress,
+      activeProfileId: s.activeProfileId === id ? (profiles[0]?.id ?? null) : s.activeProfileId,
+    };
+  });
+}
+
+export function progressFor(s: AppState, profileId: string | null): ChildProgress {
+  if (!profileId) return EMPTY_PROGRESS;
+  return s.progress[profileId] ?? EMPTY_PROGRESS;
+}
+
+function patchProgress(profileId: string, patch: (p: ChildProgress) => ChildProgress): void {
+  setState((s) => ({
+    ...s,
+    progress: {
+      ...s.progress,
+      [profileId]: patch(s.progress[profileId] ?? { ...EMPTY_PROGRESS }),
+    },
   }));
 }
 
@@ -151,15 +217,32 @@ export function activeProfile(s: AppState): ChildProfile | null {
   return s.profiles.find((p) => p.id === s.activeProfileId) ?? s.profiles[0] ?? null;
 }
 
-export function markHeard(worldId: string, episode: number): void {
-  setState((s) => {
-    const heard = s.progress[worldId] ?? [];
-    if (heard.includes(episode)) return s;
-    return { ...s, progress: { ...s.progress, [worldId]: [...heard, episode] } };
+export function markHeard(profileId: string, worldId: string, episode: number): void {
+  patchProgress(profileId, (p) => {
+    const heard = p.stories[worldId] ?? [];
+    if (heard.includes(episode)) return p;
+    return { ...p, stories: { ...p.stories, [worldId]: [...heard, episode] } };
   });
 }
 
-export function recordStory(entry: { id: string; title: string; worldId: string }): void {
+export function markRhymeRecited(profileId: string, rhymeId: string): void {
+  patchProgress(profileId, (p) =>
+    p.rhymes.includes(rhymeId) ? p : { ...p, rhymes: [...p.rhymes, rhymeId] },
+  );
+}
+
+export function markLetterMet(profileId: string, letter: string): void {
+  patchProgress(profileId, (p) =>
+    p.letters.includes(letter) ? p : { ...p, letters: [...p.letters, letter] },
+  );
+}
+
+export function recordStory(entry: {
+  id: string;
+  title: string;
+  worldId: string;
+  profileId: string;
+}): void {
   setState((s) => ({
     ...s,
     history: [{ ...entry, at: Date.now() }, ...s.history].slice(0, 60),
@@ -167,8 +250,12 @@ export function recordStory(entry: { id: string; title: string; worldId: string 
 }
 
 /** The only metric that matters: the child settled and the session ended. */
-export function recordSettledNight(): void {
-  setState((s) => ({ ...s, nightsSettled: s.nightsSettled + 1 }));
+export function recordSettledNight(profileId: string): void {
+  patchProgress(profileId, (p) => ({ ...p, nightsSettled: p.nightsSettled + 1 }));
+}
+
+export function totalNightsSettled(s: AppState): number {
+  return Object.values(s.progress).reduce((n, p) => n + p.nightsSettled, 0);
 }
 
 export function spendSpark(): boolean {
@@ -193,8 +280,13 @@ export function checkParentPin(pin: string): boolean {
   return state.parentPinHash === hashString(`lumi:${pin}`);
 }
 
-export function nextEpisodeFor(s: AppState, worldId: string, episodeCount: number): number {
-  const heard = s.progress[worldId] ?? [];
+export function nextEpisodeFor(
+  s: AppState,
+  profileId: string | null,
+  worldId: string,
+  episodeCount: number,
+): number {
+  const heard = progressFor(s, profileId).stories[worldId] ?? [];
   for (let i = 0; i < episodeCount; i++) if (!heard.includes(i)) return i;
   return 0;
 }

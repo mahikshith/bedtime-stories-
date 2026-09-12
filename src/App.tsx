@@ -1,62 +1,79 @@
 import { useCallback, useState } from 'react';
 import { Sky } from './components/Sky';
 import { Onboarding } from './components/Onboarding';
+import { Today } from './components/Today';
 import { WorldMap } from './components/WorldMap';
 import { StoryPlayer } from './components/StoryPlayer';
+import { RhymeList } from './components/RhymeList';
+import { RhymePlayer } from './components/RhymePlayer';
+import { ColourStudio } from './components/ColourStudio';
+import { LettersLab } from './components/LettersLab';
 import { ParentZone } from './components/ParentZone';
 import { getCompanion } from './content/companions';
 import { LibraryProvider, tellStory } from './engine/providers';
-import type { Story, World } from './engine/types';
+import { MODES, currentMode, type Pillar } from './engine/dayArc';
+import type { Rhyme, Story, World } from './engine/types';
 import {
   activeProfile,
   markHeard,
   recordSettledNight,
   recordStory,
   useAppState,
-  type Screen,
 } from './state/store';
+
+type Screen = 'today' | 'worlds' | 'story' | 'rhymes' | 'rhyme' | 'colour' | 'letters' | 'parent';
 
 export default function App() {
   const state = useAppState();
-  const [screen, setScreen] = useState<Screen>('map');
+  const [screen, setScreen] = useState<Screen>('today');
   const [story, setStory] = useState<Story | null>(null);
   const [world, setWorld] = useState<World | null>(null);
-  const [calm, setCalm] = useState(0);
+  const [rhyme, setRhyme] = useState<Rhyme | null>(null);
+  const [storyCalm, setStoryCalm] = useState(0);
   const [note, setNote] = useState<string | null>(null);
 
-  const handleCalm = useCallback((next: number) => setCalm(next), []);
-
+  const handleCalm = useCallback((next: number) => setStoryCalm(next), []);
   const profile = activeProfile(state);
 
-  async function pick(chosen: World, episode: number, short: boolean) {
+  async function pickStory(chosen: World, episode: number, short: boolean) {
     if (!profile) return;
-    const request = {
-      world: chosen,
-      episode,
-      profile,
-      companion: getCompanion(profile.companionId),
-      short,
-    };
-    // The library is the default path: instant, offline, zero marginal cost.
-    const result = await tellStory(request, { useSpark: false, spark: new LibraryProvider() });
+    const result = await tellStory(
+      { world: chosen, episode, profile, companion: getCompanion(profile.companionId), short },
+      { useSpark: false, spark: new LibraryProvider() },
+    );
     setNote(result.note ?? null);
     setStory(result.story);
     setWorld(chosen);
-    setCalm(0);
+    setStoryCalm(0);
     setScreen('story');
-    recordStory({ id: result.story.id, title: result.story.title, worldId: chosen.id });
+    recordStory({
+      id: result.story.id,
+      title: result.story.title,
+      worldId: chosen.id,
+      profileId: profile.id,
+    });
   }
 
   function leaveStory() {
-    setScreen('map');
-    setCalm(0);
+    setScreen('worlds');
+    setStoryCalm(0);
     setStory(null);
   }
 
   function settled() {
-    if (story && world) markHeard(world.id, story.episode);
-    recordSettledNight();
-    leaveStory();
+    if (!profile) return;
+    if (story && world) markHeard(profile.id, world.id, story.episode);
+    recordSettledNight(profile.id);
+    setScreen('today');
+    setStoryCalm(0);
+    setStory(null);
+  }
+
+  function openPillar(pillar: Pillar) {
+    if (pillar === 'stories') return setScreen('worlds');
+    if (pillar === 'rhymes') return setScreen('rhymes');
+    if (pillar === 'create') return setScreen('colour');
+    setScreen('letters');
   }
 
   if (!state.onboarded || !profile) {
@@ -68,11 +85,16 @@ export default function App() {
     );
   }
 
+  // Outside a story, the ambient calm comes from the time of day rather than
+  // from the page — the app dims itself as the evening arrives.
+  const ambientCalm = MODES[currentMode()].calm;
+  const calm = screen === 'story' ? storyCalm : ambientCalm;
+
   return (
     <div className="app">
       <Sky
         world={screen === 'story' ? world ?? undefined : undefined}
-        calm={screen === 'story' ? calm : 0}
+        calm={calm}
         dimming={state.settings.dimming}
       />
 
@@ -80,7 +102,13 @@ export default function App() {
         <p className="tiny" style={{ textAlign: 'center', paddingTop: 'var(--sp-2)' }}>{note}</p>
       )}
 
-      {screen === 'map' && <WorldMap onPick={pick} onOpenParent={() => setScreen('parent')} />}
+      {screen === 'today' && (
+        <Today onOpenPillar={openPillar} onOpenParent={() => setScreen('parent')} />
+      )}
+
+      {screen === 'worlds' && (
+        <WorldMap onPick={pickStory} onOpenParent={() => setScreen('parent')} onExit={() => setScreen('today')} />
+      )}
 
       {screen === 'story' && story && world && (
         <StoryPlayer
@@ -92,7 +120,27 @@ export default function App() {
         />
       )}
 
-      {screen === 'parent' && <ParentZone onExit={() => setScreen('map')} />}
+      {screen === 'rhymes' && (
+        <RhymeList
+          profile={profile}
+          onPick={(r) => { setRhyme(r); setScreen('rhyme'); }}
+          onExit={() => setScreen('today')}
+        />
+      )}
+
+      {screen === 'rhyme' && rhyme && (
+        <RhymePlayer rhyme={rhyme} profile={profile} onExit={() => setScreen('rhymes')} />
+      )}
+
+      {screen === 'colour' && (
+        <ColourStudio profile={profile} onExit={() => setScreen('today')} />
+      )}
+
+      {screen === 'letters' && (
+        <LettersLab profile={profile} onExit={() => setScreen('today')} />
+      )}
+
+      {screen === 'parent' && <ParentZone onExit={() => setScreen('today')} />}
     </div>
   );
 }

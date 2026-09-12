@@ -6,6 +6,7 @@ import {
   activeProfile,
   addSparks,
   checkParentPin,
+  totalNightsSettled,
   updateProfile,
   updateSettings,
   useAppState,
@@ -29,8 +30,11 @@ export function ParentZone({ onExit }: { onExit: () => void }) {
   if (!unlocked) return <PinGate onPass={() => setUnlocked(true)} onExit={onExit} />;
 
   const profile = activeProfile(state);
-  const heard = Object.values(state.progress).reduce((n, l) => n + l.length, 0);
+  const heard = Object.values(state.progress)
+    .flatMap((p) => Object.values(p.stories))
+    .reduce((n, l) => n + l.length, 0);
   const totalEpisodes = WORLDS.reduce((n, w) => n + w.episodeCount, 0);
+  const nights = totalNightsSettled(state);
 
   return (
     <div className="page">
@@ -41,7 +45,7 @@ export function ParentZone({ onExit }: { onExit: () => void }) {
 
       <section className="glass stack" style={{ padding: 'var(--sp-4)' }}>
         <p className="eyebrow">The only number we care about</p>
-        <h2 className="h1">{state.nightsSettled} {state.nightsSettled === 1 ? 'night' : 'nights'} settled</h2>
+        <h2 className="h1">{nights} {nights === 1 ? 'night' : 'nights'} settled</h2>
         <p className="muted">
           We do not count streaks, screen time or daily actives. A good night here is one where the
           app closed early and nobody asked for another.

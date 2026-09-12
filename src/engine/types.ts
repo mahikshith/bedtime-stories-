@@ -123,3 +123,56 @@ export interface StoryProvider {
   readonly costPerStoryUsd: number;
   generate(request: StoryRequest): Promise<Story>;
 }
+
+/* ---------- Rhymes ---------- */
+
+export type RhymeKind = 'traditional' | 'original';
+
+/**
+ * The devices that make a rhyme recitable. Each is evidence-backed — see
+ * docs/RESEARCH-PLATFORM.md §5.
+ */
+export type RhymeDevice =
+  | 'refrain'
+  | 'cloze'
+  | 'actions'
+  | 'counting'
+  | 'cumulative'
+  | 'call-response'
+  | 'nonsense';
+
+export interface RhymeLine {
+  /** Full line, including the cloze word. May carry {child} / {companion} slots. */
+  text: string;
+  /**
+   * The final word, dropped so the child supplies it. The strongest
+   * participation mechanic available, so most stanzas end on one.
+   */
+  cloze?: string;
+  /** Two-voice reading: the grown-up calls, the companion answers. */
+  voice?: 'grownup' | 'companion' | 'both';
+  /** A motion to do on this line. Tapping the beat aids memorisation. */
+  action?: string;
+  /** Part of the repeating refrain the child can join before learning the rest. */
+  refrain?: boolean;
+  /** Scheme letter, e.g. 'A'. Lines sharing a letter must rhyme. */
+  rhyme?: string;
+}
+
+export interface Rhyme {
+  id: string;
+  title: string;
+  kind: RhymeKind;
+  /** Provenance: public-domain date, or original authorship. */
+  provenance: string;
+  /** Ties the rhyme to a story world, where one applies. */
+  worldId?: string;
+  emoji: string;
+  ageBands: AgeBand[];
+  devices: RhymeDevice[];
+  /** Trochaic reads most naturally to young children. */
+  meter: 'trochaic' | 'iambic' | 'mixed';
+  lines: RhymeLine[];
+  /** Words that rhyme, grouped. Powers the rhyme-matching game. */
+  rhymeGroups: string[][];
+}
