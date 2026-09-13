@@ -4,7 +4,7 @@ One offline-first app for a household of children under 11: **rhymes, stories,
 colouring, letters**. Vite + React 18 + TypeScript PWA, Capacitor-wrappable for
 Play Store. No backend, no accounts, no analytics.
 
-**Branch:** `claude/bedtime-stories-app-6vk9be` · **Tests:** `npm test` (110)
+**Branch:** `claude/bedtime-stories-app-6vk9be` · **Tests:** `npm test` (121)
 
 ---
 
@@ -66,12 +66,16 @@ src/
 
 ```bash
 npm install && npm run dev      # localhost:5173
-npm test                        # 110 tests, must stay green
+npm run typecheck               # tsc --noEmit
+npm test                        # 121 tests, must stay green
 npm run build                   # tsc -b && vite build
-node scripts/walkthrough.cjs    # browser walkthrough + screenshots
-                                # needs: npm i --no-save playwright, and
-                                # npx vite preview --port 4173 running
+npm run smoke                   # browser walk + screenshots; needs a preview
+                                # server: (setsid npx vite preview --port 4173 &)
 ```
+
+CI runs typecheck, test, build and the browser smoke on every push and PR
+(`.github/workflows/ci.yml`). The smoke scripts exit non-zero on any page or
+console error, so a green CI run means the app actually loaded and worked.
 
 ## Conventions
 
@@ -83,3 +87,5 @@ node scripts/walkthrough.cjs    # browser walkthrough + screenshots
   theme by design. Must work at 390px.
 - No new runtime dependencies without a reason. Currently only `react` +
   `react-dom`.
+- Speech goes through `engine/ttsEngine.ts`. Any engine must be `local: true` —
+  `registerEngine` throws otherwise, because cloud TTS breaks rule 1.

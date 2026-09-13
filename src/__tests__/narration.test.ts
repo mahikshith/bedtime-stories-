@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   DEFAULT_VOICE,
   PACES,
@@ -9,8 +9,17 @@ import {
   rateFor,
   scoreVoice,
   speakableText,
+  platformEngine,
   type VoiceSettings,
 } from '../engine/narration';
+import {
+  __clearEngines,
+  availableEngines,
+  listEngines,
+  registerEngine,
+  resolveEngine,
+  type TtsEngine,
+} from '../engine/ttsEngine';
 
 function voice(over: Partial<SpeechSynthesisVoice>): SpeechSynthesisVoice {
   return {
@@ -138,5 +147,66 @@ describe('speakable text', () => {
 describe('defaults', () => {
   it('defaults to a warm, slow parent voice', () => {
     expect(DEFAULT_VOICE).toEqual({ persona: 'parent', pace: 'gentle' });
+  });
+});
+
+describe('pluggable speech back end', () => {
+  beforeEach(() => __clearEngines());
+  afterEach(() => {
+    __clearEngines();
+    registerEngine(platformEngine);
+  });
+
+  function engine(over: Partial<TtsEngine> & { id: string }): TtsEngine {
+    return {
+      label: over.id, local: true, bytes: 0, isAvailable: () => true,
+      speak: () => {}, stop: () => {},
+      ...over,
+    } as TtsEngine;
+  }
+
+  it('refuses a back end that is not on-device', () => {
+    // D11: cloud speech reintroduces a per-night recurring cost behind a
+    // one-time price. The type says `local: true`; this stops it at runtime too.
+    expect(() =>
+      registerEngine(engine({ id: 'cloud', local: false as unknown as true })),
+    ).toThrow(/not local/i);
+    expect(listEngines()).toHaveLength(0);
+  });
+
+  it('registers and lists local engines', () => {
+    registerEngine(engine({ id: 'a' }));
+    registerEngine(engine({ id: 'b' }));
+    expect(listEngines().map((e) => e.id)).toEqual(['a', 'b']);
+  });
+
+  it('hides an engine whose voice has not downloaded yet', () => {
+    registerEngine(engine({ id: 'ready' }));
+    registerEngine(engine({ id: 'pending', isAvailable: () => false }));
+    expect(availableEngines().map((e) => e.id)).toEqual(['ready']);
+  });
+
+  it('prefers the requested engine when it is ready', () => {
+    registerEngine(engine({ id: 'platform' }));
+    registerEngine(engine({ id: 'lumi' }));
+    expect(resolveEngine('lumi')?.id).toBe('lumi');
+  });
+
+  it('falls back rather than leaving a child in silence', () => {
+    registerEngine(engine({ id: 'platform' }));
+    registerEngine(engine({ id: 'lumi', isAvailable: () => false }));
+    expect(resolveEngine('lumi')?.id).toBe('platform');
+    expect(resolveEngine('nonexistent')?.id).toBe('platform');
+  });
+
+  it('returns nothing when no engine can speak', () => {
+    registerEngine(engine({ id: 'only', isAvailable: () => false }));
+    expect(resolveEngine()).toBeUndefined();
+  });
+
+  it('ships the platform engine by default, at zero bytes', () => {
+    registerEngine(platformEngine);
+    expect(platformEngine.local).toBe(true);
+    expect(platformEngine.bytes).toBe(0);
   });
 });

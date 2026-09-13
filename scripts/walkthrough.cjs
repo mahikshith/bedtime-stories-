@@ -1,10 +1,11 @@
 const { chromium } = require('playwright');
-const OUT = process.env.OUT || '/tmp/claude-0/-home-user-bedtime-stories-/07bd3299-9573-56a2-9e37-91ebfc711a8a/scratchpad/shots';
+const { launchOptions, outDir } = require('./lib/browser.cjs');
+const OUT = outDir();
+
+require('fs').mkdirSync(OUT, { recursive: true });
 
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-  });
+  const browser = await chromium.launch(launchOptions());
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
   const errors = [];
   page.on('pageerror', (e) => errors.push('PAGEERROR ' + e.message));
@@ -77,4 +78,6 @@ const OUT = process.env.OUT || '/tmp/claude-0/-home-user-bedtime-stories-/07bd32
   console.log('GAME_HEADING', gameHeading);
   console.log('ERRORS', errors.length ? errors.join('\n') : 'none');
   await browser.close();
+  // Fail the CI job on any page or console error, not just report it.
+  if (errors.length) process.exitCode = 1;
 })();

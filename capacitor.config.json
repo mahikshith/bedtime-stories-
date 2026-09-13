@@ -1,0 +1,18 @@
+{
+  "appId": "com.lumisleepyworlds.app",
+  "appName": "Lumi",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "backgroundColor": "#070a16",
+      "showSpinner": false
+    }
+  }
+}

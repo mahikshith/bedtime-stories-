@@ -1,9 +1,12 @@
 # Handover — read this first
 
-**Last updated:** end of session 1 (2026-09-12)
-**Branch:** `claude/bedtime-stories-app-6vk9be` (2 commits, pushed, no PR opened)
-**State:** green — 110 tests pass, `npm run build` clean, no console errors in
-the browser walkthrough.
+**Last updated:** end of session 2 (2026-09-13)
+**Branch:** `claude/bedtime-stories-app-6vk9be`
+**State:** green — 121 tests pass, `npm run build` clean, both browser smoke
+scripts exit 0 with no console errors.
+
+> **Session 2 work is committed but NOT pushed.** The user asked to hold the
+> push until they say so. Do not push without being asked.
 
 ---
 
@@ -19,7 +22,8 @@ child setup → **Today** (day arc) → any of four pillars → parent zone.
 | **Colour** | Done. Print-first, 4 scenes, scene chosen from last story's world, child's name as outline text, on-screen fallback with crayons. |
 | **Letters** | Done. 5 phonics sets on a science-of-reading sequence, separate display/spoken forms per letter. |
 | **Family** | Done. Up to 4 children on one household price, per-child progress, profile switcher. |
-| **Parent zone** | Done. PIN gate, nights-settled metric, published Spark cost table, voice settings, safety/AI disclosure. |
+| **Parent zone** | Done. PIN gate, nights-settled metric, published Spark cost table, voice settings, safety/AI disclosure, **household management** (add/remove/switch child, seat counter). |
+| **CI/CD** | Done. GitHub Actions: quality gate + browser smoke, plus a Pages deploy workflow. |
 
 **Stubbed on purpose:** payments (no card requested, no payment taken) and Wish
 Spark generation (provider abstraction and cost model are real; no API key is
@@ -38,18 +42,33 @@ wired, the library serves every story).
 
 Full reasoning in `DECISIONS.md`.
 
+## Done in session 2
+
+- **CI/CD.** `.github/workflows/ci.yml` (typecheck → test → build → upload the
+  built app; then a browser smoke job that walks onboarding → rhyme → cloze →
+  rhyme game → colour → letters → household, and uploads screenshots).
+  `.github/workflows/pages.yml` deploys the build to GitHub Pages.
+  **Pages needs enabling once**: Settings → Pages → Source: "GitHub Actions".
+- **Smoke scripts made portable.** They hard-coded this sandbox's Chromium path
+  and always exited 0. Now `scripts/lib/browser.cjs` resolves a browser and both
+  scripts set a non-zero exit code on any page or console error, so CI can fail.
+- **TODO §6 cleared**: household management in the parent zone, per-pillar
+  progress on Today, undo in ColourStudio, reprint list.
+- **TTS made pluggable** (`engine/ttsEngine.ts`) so the §2 spike does not have
+  to touch callers. `registerEngine` throws on a non-local engine, so cloud TTS
+  cannot be added by accident.
+- **Capacitor config scaffolded** (`capacitor.config.json`, `android:sync` /
+  `android:open` scripts). **Unverified** — there is no Android SDK in this
+  environment, and the `@capacitor/*` packages are deliberately not installed.
+
 ## What to do next
 
 Ordered. Full detail in `TODO.md`.
 
-1. **Bundled image library** (user asked for this) — curate public-domain
-   images into `public/img/`, with a manifest and a credits file. Replaces the
-   never-called archive endpoints in `engine/backdrop.ts`.
-2. **On-device TTS research spike** — decide between platform `speechSynthesis`
-   (what we ship now: on-device, free, 0 bytes) and bundling a neural voice
-   (Piper/Kokoro via ONNX + WASM: better and brand-consistent, but tens of MB
-   and slow on low-end Android). Recommendation is in `TODO.md` §2.
-3. Wire Play Billing + the Capacitor Android shell.
+1. **Images — PAUSED by the user.** Do not start this without being asked.
+2. **On-device TTS spike** — the interface is ready; what remains is measuring a
+   real Piper/Kokoro voice on a low-end Android profile. `TODO.md` §2.
+3. Play Billing + the Capacitor Android shell (config scaffolded, not wired).
 4. Wish Spark provider behind a real key, still metered.
 
 ## Gotchas that already bit us
@@ -74,18 +93,27 @@ Each of these cost real time. They are all now covered by tests.
   blank). Use `click({ force: true })` in `scripts/walkthrough.cjs`.
 - **Storage key is versioned** (`lumi.state.v2`). Bump it whenever the persisted
   shape changes, or old state deserialises into the new type and breaks.
+  Additive fields no longer need a bump: `progressFor` and `patchProgress` merge
+  over `EMPTY_PROGRESS`, so older saved progress cannot return an undefined array.
+- **Two controls must never share an accessible name.** The profile editor and
+  the add-a-child form both rendered "Ages 3-5", which is ambiguous to a screen
+  reader and a strict-mode violation in Playwright. Both now carry a name saying
+  which child they affect.
+- **Don't hardcode a price in copy.** The Spark card quoted "$6.99" to Family
+  buyers who paid $12.99. Use `pricePaid(state)`.
+- **`pkill -f "vite preview"` kills this shell's own process group** (exit 144).
+  Start the preview with `setsid` and leave it running instead.
 
 ## How to verify quickly
 
 ```bash
-npm test && npm run build     # must both be clean
+npm run typecheck && npm test && npm run build   # all three must be clean
 ```
 
 For a visual check:
 ```bash
-npm i --no-save playwright
-npx vite preview --port 4173 &
-node scripts/walkthrough.cjs          # onboarding → rhyme → game
-node scripts/pillars-shot.cjs         # colour + letters
+(setsid npx vite preview --port 4173 --strictPort &) ; sleep 5
+SHOT_DIR=/tmp/shots npm run smoke     # both scripts; exits non-zero on any error
 ```
-Screenshots land in the scratchpad directory named at the top of each script.
+`playwright` is a devDependency now, so `npm install` is enough. Screenshots go
+to `$SHOT_DIR`, defaulting to the scratchpad path in `scripts/lib/browser.cjs`.

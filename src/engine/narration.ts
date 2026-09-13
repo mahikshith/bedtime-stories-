@@ -11,6 +11,8 @@
  * has, which is the only approach that works offline on every Android handset.
  */
 
+import { registerEngine, type TtsEngine } from './ttsEngine';
+
 export type VoicePersona = 'parent' | 'storyteller' | 'kid' | 'device';
 export type Pace = 'slow' | 'gentle' | 'medium' | 'lively';
 
@@ -159,6 +161,22 @@ export interface SpeakOptions extends VoiceSettings {
   onBoundary?: (charIndex: number) => void;
 }
 
+/**
+ * The platform synthesiser, expressed as a TtsEngine.
+ *
+ * On-device, free, zero bytes shipped. This is the default and the fallback;
+ * see engine/ttsEngine.ts for why speech is routed through an interface.
+ */
+export const platformEngine: TtsEngine = {
+  id: 'platform',
+  label: 'Device voice',
+  local: true,
+  bytes: 0,
+  isAvailable: () => isNarrationSupported(),
+  speak: (text, options) => sharedNarrator.speak(text, options),
+  stop: () => sharedNarrator.stop(),
+};
+
 export class Narrator {
   private current: SpeechSynthesisUtterance | null = null;
 
@@ -207,3 +225,8 @@ export class Narrator {
     return this.current !== null;
   }
 }
+
+/** One shared utterance queue; two Narrators talking over each other is chaos. */
+const sharedNarrator = new Narrator();
+
+registerEngine(platformEngine);

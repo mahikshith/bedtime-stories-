@@ -14,9 +14,11 @@ import {
   getState,
   markHeard,
   markLetterMet,
+  markPrinted,
   markRhymeRecited,
   nextEpisodeFor,
   progressFor,
+  pricePaid,
   purchase,
   recordSettledNight,
   recordStory,
@@ -79,6 +81,15 @@ describe('entitlement and seats', () => {
     __resetState({ ...INITIAL_STATE, progress: {}, history: [] });
     purchase('family');
     expect(getState().sparks).toBe(FAMILY_SPARKS);
+  });
+
+  it('reports the price actually paid, not a hardcoded tier', () => {
+    // The parent zone quotes this back; quoting $6.99 to a Family buyer is wrong.
+    purchase('family');
+    expect(pricePaid(getState())).toBe('$12.99');
+    __resetState({ ...INITIAL_STATE, progress: {}, history: [] });
+    purchase('solo');
+    expect(pricePaid(getState())).toBe('$6.99');
   });
 
   it('refuses a profile beyond the purchased seats', () => {
@@ -162,6 +173,34 @@ describe('per-child progress', () => {
     recordSettledNight(KWAME.id);
     expect(progressFor(getState(), ADA.id).nightsSettled).toBe(2);
     expect(totalNightsSettled(getState())).toBe(3);
+  });
+
+  it('records prints newest-first, without duplicating a scene', () => {
+    markPrinted(ADA.id, 'rocket');
+    markPrinted(ADA.id, 'whale');
+    markPrinted(ADA.id, 'rocket');
+    const printed = progressFor(getState(), ADA.id).printed;
+    expect(printed.map((e) => e.sceneId)).toEqual(['rocket', 'whale']);
+  });
+
+  it('caps the print history', () => {
+    for (let i = 0; i < 20; i++) markPrinted(ADA.id, `scene-${i}`);
+    expect(progressFor(getState(), ADA.id).printed).toHaveLength(12);
+  });
+
+  it('backfills fields missing from older saved progress', () => {
+    // State persisted before a field existed must not hand back undefined.
+    __resetState({
+      ...INITIAL_STATE,
+      entitlement: 'family',
+      profiles: [ADA],
+      activeProfileId: ADA.id,
+      progress: { [ADA.id]: { stories: {}, rhymes: [], letters: [], nightsSettled: 0 } as never },
+      history: [],
+    });
+    expect(progressFor(getState(), ADA.id).printed).toEqual([]);
+    expect(() => markPrinted(ADA.id, 'rocket')).not.toThrow();
+    expect(progressFor(getState(), ADA.id).printed).toHaveLength(1);
   });
 
   it('returns empty progress for an unknown child', () => {

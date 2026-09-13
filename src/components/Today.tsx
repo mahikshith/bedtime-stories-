@@ -1,6 +1,10 @@
 import { MODES, PILLARS, currentMode, isEncouraged, type Pillar } from '../engine/dayArc';
 import { MascotBuddy } from './MascotBuddy';
 import { getCompanion } from '../content/companions';
+import { RHYMES } from '../content/rhymes';
+import { SCENES } from '../content/colouring';
+import { ALL_LETTERS } from '../content/phonics';
+import { WORLDS } from '../content/worlds';
 import {
   activeProfile,
   progressFor,
@@ -31,6 +35,21 @@ export function Today({ onOpenPillar, onOpenParent, now }: TodayProps) {
   const companion = getCompanion(profile.companionId);
   const mine = progressFor(state, profile.id);
   const storiesHeard = Object.values(mine.stories).reduce((n, l) => n + l.length, 0);
+
+  // Progress is shown as "3 of 22", never as a streak or a score. It tells a
+  // parent what is left to explore; it is not there to pull anyone back in.
+  const done: Record<Pillar, number> = {
+    rhymes: mine.rhymes.length,
+    stories: storiesHeard,
+    learn: mine.letters.length,
+    create: mine.printed.length,
+  };
+  const total: Record<Pillar, number> = {
+    rhymes: RHYMES.length,
+    stories: WORLDS.reduce((n, w) => n + w.episodeCount, 0),
+    learn: ALL_LETTERS.length,
+    create: SCENES.length,
+  };
 
   return (
     <div className="page">
@@ -91,6 +110,11 @@ export function Today({ onOpenPillar, onOpenParent, now }: TodayProps) {
               <span className="grow">
                 <span className="h2" style={{ display: 'block' }}>{pillar.label}</span>
                 <span className="tiny">{pillar.blurb}</span>
+                {done[id] > 0 && (
+                  <span className="tiny" style={{ display: 'block', marginTop: 4 }}>
+                    {done[id]} of {total[id]}
+                  </span>
+                )}
               </span>
             </button>
           );

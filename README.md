@@ -145,7 +145,7 @@ map to.
 ```bash
 npm install
 npm run dev       # http://localhost:5173
-npm test          # 110 tests
+npm test          # 121 tests
 npm run build     # typecheck + production build
 ```
 

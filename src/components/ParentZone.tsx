@@ -1,17 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
 import { WORLDS } from '../content/worlds';
+import { COMPANIONS, getCompanion } from '../content/companions';
+import { sanitizeName } from '../engine/safety';
 import { SPARK_COST, SPARK_COST_TOTAL } from '../engine/providers';
 import {
-  STARLIGHT_PRICE,
+  SEATS,
   activeProfile,
+  addProfile,
   addSparks,
   checkParentPin,
+  pricePaid,
+  progressFor,
+  removeProfile,
+  seatsLeft,
+  setActiveProfile,
   totalNightsSettled,
   updateProfile,
   updateSettings,
   useAppState,
 } from '../state/store';
-import type { AgeBand } from '../engine/types';
+import type { AgeBand, ChildProfile, PronounSet } from '../engine/types';
 import {
   Narrator,
   PACES,
@@ -73,13 +81,15 @@ export function ParentZone({ onExit }: { onExit: () => void }) {
         </table>
         <p className="tiny">
           Published because you deserve to know why this one thing is metered when the rest of a
-          {' '}{STARLIGHT_PRICE} app is not.
+          {' '}{pricePaid(state)} app is not.
         </p>
         <button className="btn btn--block" onClick={() => addSparks(20)}>
           Add 20 Sparks &mdash; $2.99
         </button>
         <p className="tiny">Demo build: no payment is taken and no card is requested.</p>
       </section>
+
+      <Household />
 
       <VoiceSettings />
 
@@ -108,12 +118,13 @@ export function ParentZone({ onExit }: { onExit: () => void }) {
       {profile && (
         <section className="glass stack" style={{ padding: 'var(--sp-4)' }}>
           <p className="eyebrow">{profile.name}</p>
-          <div className="row">
+          <div className="row" role="group" aria-label={`Age band for ${profile.name}`}>
             {AGE_BANDS.map((band) => (
               <button
                 key={band}
                 className="chip"
                 aria-pressed={profile.ageBand === band}
+                aria-label={`${profile.name}, ages ${band}`}
                 onClick={() => updateProfile(profile.id, { ageBand: band })}
               >
                 Ages {band}
@@ -165,6 +176,182 @@ export function ParentZone({ onExit }: { onExit: () => void }) {
         </section>
       )}
     </div>
+  );
+}
+
+const PRONOUN_OPTIONS: { id: PronounSet; label: string }[] = [
+  { id: 'she', label: 'she / her' },
+  { id: 'he', label: 'he / him' },
+  { id: 'they', label: 'they / them' },
+];
+
+/**
+ * The household: who is in it, who is active, and adding or removing a child.
+ *
+ * Seats come from the purchase, so the limit is enforced in `addProfile` rather
+ * than here; this screen only has to explain it.
+ */
+function Household() {
+  const state = useAppState();
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState('');
+  const [ageBand, setAgeBand] = useState<AgeBand>('6-8');
+  const [pronouns, setPronouns] = useState<PronounSet>('they');
+  const [companionId, setCompanionId] = useState(COMPANIONS[0].id);
+  const [error, setError] = useState('');
+  const [confirming, setConfirming] = useState<string | null>(null);
+
+  const left = seatsLeft(state);
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const clean = sanitizeName(name);
+    if (!clean.ok) return setError(clean.reason ?? 'Please check the name.');
+    const profile: ChildProfile = {
+      id: `c_${Date.now().toString(36)}`,
+      name: clean.name,
+      ageBand,
+      pronouns,
+      companionId,
+      interests: ['space'],
+      createdAt: Date.now(),
+    };
+    if (!addProfile(profile)) return setError('No seats left on this purchase.');
+    setName('');
+    setAdding(false);
+    setError('');
+  }
+
+  return (
+    <section className="glass stack" style={{ padding: 'var(--sp-4)' }}>
+      <p className="eyebrow">The household</p>
+
+      {state.profiles.map((p) => {
+        const mine = progressFor(state, p.id);
+        const heard = Object.values(mine.stories).reduce((n, l) => n + l.length, 0);
+        return (
+          <div key={p.id} className="row row--between" style={{ gap: 'var(--sp-2)' }}>
+            <span className="grow" style={{ minWidth: '50%' }}>
+              <span className="h3" style={{ display: 'block', color: 'var(--text-hi)' }}>
+                <span aria-hidden="true">{getCompanion(p.companionId).emoji}</span> {p.name}
+              </span>
+              <span className="tiny">
+                Ages {p.ageBand} &middot; {heard} {heard === 1 ? 'story' : 'stories'} &middot;{' '}
+                {mine.rhymes.length} {mine.rhymes.length === 1 ? 'rhyme' : 'rhymes'}
+              </span>
+            </span>
+            {p.id !== state.activeProfileId && (
+              <button className="chip chip--sm" onClick={() => setActiveProfile(p.id)}>
+                Switch
+              </button>
+            )}
+            {state.profiles.length > 1 && (
+              confirming === p.id ? (
+                <button
+                  className="chip chip--sm"
+                  onClick={() => { removeProfile(p.id); setConfirming(null); }}
+                >
+                  Sure?
+                </button>
+              ) : (
+                <button
+                  className="chip chip--sm"
+                  aria-label={`Remove ${p.name}`}
+                  onClick={() => setConfirming(p.id)}
+                >
+                  Remove
+                </button>
+              )
+            )}
+          </div>
+        );
+      })}
+
+      <hr className="divider" />
+
+      {left === 0 ? (
+        <p className="tiny">
+          All {SEATS[state.entitlement]} {SEATS[state.entitlement] === 1 ? 'seat' : 'seats'} on this
+          purchase are used. Remove a child to free one up.
+        </p>
+      ) : !adding ? (
+        <>
+          <button className="btn btn--block" onClick={() => setAdding(true)}>
+            Add a child &mdash; {left} {left === 1 ? 'seat' : 'seats'} left
+          </button>
+          <p className="tiny">
+            Each child gets their own name, companion, age and progress. No extra charge &mdash;
+            the seats came with the purchase.
+          </p>
+        </>
+      ) : (
+        <form className="stack" onSubmit={submit}>
+          <div className="field">
+            <label className="h3" htmlFor="newchild">Their name</label>
+            <input
+              id="newchild"
+              value={name}
+              autoComplete="off"
+              placeholder="Kwame"
+              onChange={(e) => { setName(e.target.value); setError(''); }}
+            />
+            {error && <p className="error">{error}</p>}
+          </div>
+
+          <div className="row" role="group" aria-label="Age of the new child">
+            {AGE_BANDS.map((b) => (
+              <button
+                type="button"
+                key={b}
+                className="chip"
+                aria-pressed={ageBand === b}
+                aria-label={`New child, ages ${b}`}
+                onClick={() => setAgeBand(b)}
+              >
+                Ages {b}
+              </button>
+            ))}
+          </div>
+
+          <div className="row">
+            {PRONOUN_OPTIONS.map((o) => (
+              <button
+                type="button"
+                key={o.id}
+                className="chip"
+                aria-pressed={pronouns === o.id}
+                onClick={() => setPronouns(o.id)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="row">
+            {COMPANIONS.map((c) => (
+              <button
+                type="button"
+                key={c.id}
+                className="chip"
+                aria-pressed={companionId === c.id}
+                onClick={() => setCompanionId(c.id)}
+              >
+                <span aria-hidden="true">{c.emoji}</span> {c.name}
+              </button>
+            ))}
+          </div>
+
+          <button className="btn btn--primary btn--block" type="submit">Add them</button>
+          <button
+            className="btn btn--ghost btn--block"
+            type="button"
+            onClick={() => { setAdding(false); setError(''); }}
+          >
+            Cancel
+          </button>
+        </form>
+      )}
+    </section>
   );
 }
 

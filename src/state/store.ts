@@ -32,6 +32,8 @@ export interface ChildProgress {
   letters: string[];
   /** The only metric that matters, tracked per child. */
   nightsSettled: number;
+  /** Colouring pages sent to a printer, so a parent can reprint one. */
+  printed: { sceneId: string; at: number }[];
 }
 
 export const EMPTY_PROGRESS: ChildProgress = {
@@ -39,6 +41,7 @@ export const EMPTY_PROGRESS: ChildProgress = {
   rhymes: [],
   letters: [],
   nightsSettled: 0,
+  printed: [],
 };
 
 export type Entitlement = 'none' | 'solo' | 'family';
@@ -149,6 +152,13 @@ export function purchase(tier: 'solo' | 'family'): void {
   }));
 }
 
+/** What this household actually paid, for copy that should not hardcode a tier. */
+export function pricePaid(s: AppState): string {
+  if (s.entitlement === 'family') return FAMILY_PRICE;
+  if (s.entitlement === 'solo') return STARLIGHT_PRICE;
+  return STARLIGHT_PRICE;
+}
+
 export function seatsLeft(s: AppState): number {
   return Math.max(0, SEATS[s.entitlement] - s.profiles.length);
 }
@@ -181,7 +191,11 @@ export function removeProfile(id: string): void {
 
 export function progressFor(s: AppState, profileId: string | null): ChildProgress {
   if (!profileId) return EMPTY_PROGRESS;
-  return s.progress[profileId] ?? EMPTY_PROGRESS;
+  const stored = s.progress[profileId];
+  if (!stored) return EMPTY_PROGRESS;
+  // Older saved state predates fields added since; merge so callers never get
+  // an undefined array back.
+  return { ...EMPTY_PROGRESS, ...stored };
 }
 
 function patchProgress(profileId: string, patch: (p: ChildProgress) => ChildProgress): void {
@@ -189,7 +203,7 @@ function patchProgress(profileId: string, patch: (p: ChildProgress) => ChildProg
     ...s,
     progress: {
       ...s.progress,
-      [profileId]: patch(s.progress[profileId] ?? { ...EMPTY_PROGRESS }),
+      [profileId]: patch({ ...EMPTY_PROGRESS, ...s.progress[profileId] }),
     },
   }));
 }
@@ -229,6 +243,15 @@ export function markRhymeRecited(profileId: string, rhymeId: string): void {
   patchProgress(profileId, (p) =>
     p.rhymes.includes(rhymeId) ? p : { ...p, rhymes: [...p.rhymes, rhymeId] },
   );
+}
+
+/** Keeps the most recent prints so a parent can run one off again. */
+export function markPrinted(profileId: string, sceneId: string): void {
+  patchProgress(profileId, (p) => ({
+    ...p,
+    printed: [{ sceneId, at: Date.now() }, ...p.printed.filter((x) => x.sceneId !== sceneId)]
+      .slice(0, 12),
+  }));
 }
 
 export function markLetterMet(profileId: string, letter: string): void {

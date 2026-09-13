@@ -77,3 +77,22 @@ image *generation* is deferred, not rejected.
 `validateRhyme`, phonics decodability, closed colouring paths. These have caught
 real authoring errors (a hyphenated end-word, a near-rhyme claimed as true, a
 mis-scanned line). Any new corpus gets one.
+
+### D14 — Speech goes through a pluggable engine interface *(session 2)*
+`engine/ttsEngine.ts` owns the back-end contract; `platformEngine` is the
+default. This keeps the D11 spike cheap: a bundled Piper/Kokoro voice is a new
+implementation plus a `registerEngine` call, with no caller changes.
+`registerEngine` throws on any engine that is not `local`, so cloud TTS cannot
+be added by accident rather than merely being discouraged in prose.
+
+### D15 — CI is a gate, not a notification *(session 2)*
+GitHub Actions runs typecheck, tests, build, and a browser smoke walk on every
+push and PR. The smoke scripts set a non-zero exit code on any page or console
+error — before this they printed errors and exited 0, which is worse than no
+test because it looks like a pass. A separate workflow deploys the build to
+GitHub Pages so the app can be opened, not just downloaded.
+
+### D16 — Additive state fields do not bump the storage key *(session 2)*
+`progressFor` and `patchProgress` merge over `EMPTY_PROGRESS`, so progress saved
+before a field existed cannot hand back an undefined array. Bumping the key
+wipes real user data; reserve it for genuinely incompatible shape changes.

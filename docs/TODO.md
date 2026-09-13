@@ -4,7 +4,10 @@ Ordered by value. Items marked **[user]** were asked for explicitly.
 
 ---
 
-## 1. Bundled image library **[user]**
+## 1. Bundled image library **[user — PAUSED]**
+
+> **Paused by the user in session 2.** Do not start this without being asked.
+> The plan below is kept intact for when it resumes.
 
 Replace the never-called archive endpoints with a curated, licence-checked
 folder shipped in the bundle. Keeps the app offline and runtime cost at zero.
@@ -47,6 +50,12 @@ The open question is only whether to *also* bundle a neural voice.
 an **optional download** after install, not in the base APK. That gets brand
 consistency without a 60MB install or a slow first run on cheap hardware.
 
+**Groundwork is done.** `engine/ttsEngine.ts` defines the back-end interface and
+a registry; `platformEngine` in `engine/narration.ts` is the default
+implementation. Adding a neural voice is a new implementation plus a
+`registerEngine` call — no caller changes. `registerEngine` throws on any engine
+that is not `local`, so cloud TTS cannot slip in.
+
 Candidates to evaluate (all permissively licensed, all actively maintained):
 - **Piper** (`rhasspy/piper`) — small VITS voices, ONNX, built for edge devices.
   Most likely fit.
@@ -71,7 +80,14 @@ beats a well-curated bundled folder at all (it may not).
 
 ## 4. Play Billing + Capacitor Android shell
 
-- `@capacitor/cli @capacitor/core @capacitor/android`, then the README's steps.
+`capacitor.config.json` and the `android:sync` / `android:open` scripts are
+scaffolded but **unverified** — this environment has Java and Gradle but no
+Android SDK, and the `@capacitor/*` packages are deliberately not installed so
+the dependency tree stays honest. First step is to install them and confirm the
+config actually produces a shell.
+
+- `npm i @capacitor/core @capacitor/android && npm i -D @capacitor/cli`
+- `npx cap add android && npm run android:sync`, then the README's steps.
 - Wire the two one-time SKUs and the Spark consumable to the stubbed
   `purchase()` / `addSparks()` in `state/store.ts`.
 - Play Console: Families programme, content rating, **AI-generated content
@@ -87,10 +103,20 @@ parents in the parent zone — keep that table honest if the numbers move.
 
 ## 6. Smaller things
 
-- Onboarding cannot add a second child yet; only the parent zone should gain an
-  "add a child" flow (seat limit is already enforced by `addProfile`).
-- Rhyme progress is tracked but never surfaced on `Today`.
-- `ColourStudio` has no undo — only "start again".
-- Consider a "recently printed" list so parents can reprint last week's page.
-- `docs/RESEARCH.md` §5 recommends listing **free-to-install with a hard paywall
-  on first run** rather than paid-upfront. Still unresolved with the user.
+All cleared in session 2 except the last, which is a decision for the user:
+
+- ~~Add-a-child flow~~ — done, in the parent zone's Household section.
+- ~~Rhyme progress surfaced on `Today`~~ — done, per-pillar "3 of 22" counters.
+- ~~`ColourStudio` undo~~ — done, with a bounded history stack.
+- ~~Reprint list~~ — done, last 12 prints per child.
+- **Open:** `docs/RESEARCH.md` §5 recommends listing **free-to-install with a
+  hard paywall on first run** rather than paid-upfront. Still unresolved.
+
+## 7. New since session 2
+
+- The Pages workflow needs **Settings → Pages → Source: "GitHub Actions"**
+  enabling once, or its deploy step fails.
+- Onboarding still creates only the first child; a second is added from the
+  parent zone. That is probably right, but worth confirming with a parent.
+- `ColourStudio` history is in component state, so it resets on navigation.
+  Fine for now; persist only if someone asks.

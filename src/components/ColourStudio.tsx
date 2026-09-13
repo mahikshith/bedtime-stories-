@@ -3,7 +3,7 @@ import { CRAYONS, SCENES, sceneForWorld, type Scene } from '../content/colouring
 import { getCompanion } from '../content/companions';
 import { getWorld } from '../content/worlds';
 import type { ChildProfile } from '../engine/types';
-import { useAppState } from '../state/store';
+import { markPrinted, progressFor, useAppState } from '../state/store';
 
 interface ColourStudioProps {
   profile: ChildProfile;
@@ -28,7 +28,11 @@ export function ColourStudio({ profile, onExit }: ColourStudioProps) {
   const [scene, setScene] = useState<Scene>(() => sceneForWorld(lastWorldId));
   const [crayon, setCrayon] = useState<string>(CRAYONS[0].value);
   const [fills, setFills] = useState<Record<string, string>>({});
+  // Each entry is the fill map as it was BEFORE a stroke, so undo is a pop.
+  const [history, setHistory] = useState<Record<string, string>[]>([]);
   const [onScreen, setOnScreen] = useState(false);
+
+  const printed = progressFor(state, profile.id).printed;
 
   const worldName = useMemo(
     () => (lastWorldId ? getWorld(lastWorldId).name : null),
@@ -37,7 +41,35 @@ export function ColourStudio({ profile, onExit }: ColourStudioProps) {
 
   function paint(regionId: string) {
     if (!onScreen) return;
+    // Colouring the same region the same colour twice is not a step to undo.
+    if (fills[regionId] === crayon) return;
+    setHistory((h) => [...h.slice(-24), fills]);
     setFills((prev) => ({ ...prev, [regionId]: crayon }));
+  }
+
+  function undo() {
+    setHistory((h) => {
+      if (h.length === 0) return h;
+      setFills(h[h.length - 1]);
+      return h.slice(0, -1);
+    });
+  }
+
+  function reset() {
+    if (Object.keys(fills).length === 0) return;
+    setHistory((h) => [...h.slice(-24), fills]);
+    setFills({});
+  }
+
+  function print() {
+    markPrinted(profile.id, scene.id);
+    window.print();
+  }
+
+  function openScene(next: Scene) {
+    setScene(next);
+    setFills({});
+    setHistory([]);
   }
 
   return (
@@ -90,7 +122,7 @@ export function ColourStudio({ profile, onExit }: ColourStudioProps) {
         </svg>
       </div>
 
-      <button className="btn btn--primary btn--block no-print" onClick={() => window.print()}>
+      <button className="btn btn--primary btn--block no-print" onClick={print}>
         &#128424;&#65039; Print this page
       </button>
 
@@ -102,8 +134,11 @@ export function ColourStudio({ profile, onExit }: ColourStudioProps) {
         >
           {onScreen ? 'Colouring on screen' : 'Colour on screen instead'}
         </button>
+        {history.length > 0 && (
+          <button className="chip" onClick={undo}>&#8630; Undo</button>
+        )}
         {Object.keys(fills).length > 0 && (
-          <button className="chip" onClick={() => setFills({})}>Start again</button>
+          <button className="chip" onClick={reset}>Start again</button>
         )}
       </div>
 
@@ -122,6 +157,24 @@ export function ColourStudio({ profile, onExit }: ColourStudioProps) {
         </div>
       )}
 
+      {printed.length > 0 && (
+        <section className="glass stack no-print" style={{ padding: 'var(--sp-3)' }}>
+          <p className="h3">Printed before</p>
+          <div className="row">
+            {printed.map((entry) => {
+              const previous = SCENES.find((s) => s.id === entry.sceneId);
+              if (!previous) return null;
+              return (
+                <button key={entry.sceneId} className="chip" onClick={() => openScene(previous)}>
+                  <span aria-hidden="true">{previous.emoji}</span> {previous.title}
+                </button>
+              );
+            })}
+          </div>
+          <p className="tiny">Tap one to open it again and run off another copy.</p>
+        </section>
+      )}
+
       <section className="glass stack no-print" style={{ padding: 'var(--sp-3)' }}>
         <p className="h3">Another picture</p>
         <div className="row">
@@ -130,7 +183,7 @@ export function ColourStudio({ profile, onExit }: ColourStudioProps) {
               key={s.id}
               className="chip"
               aria-pressed={s.id === scene.id}
-              onClick={() => { setScene(s); setFills({}); }}
+              onClick={() => openScene(s)}
             >
               <span aria-hidden="true">{s.emoji}</span> {s.title}
             </button>

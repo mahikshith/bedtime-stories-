@@ -1,7 +1,10 @@
 const { chromium } = require('playwright');
-const OUT = '/tmp/claude-0/-home-user-bedtime-stories-/07bd3299-9573-56a2-9e37-91ebfc711a8a/scratchpad/shots';
+const { launchOptions, outDir } = require('./lib/browser.cjs');
+const OUT = outDir();
+require('fs').mkdirSync(OUT, { recursive: true });
+
 (async () => {
-  const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+  const browser = await chromium.launch(launchOptions());
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
   const errors = [];
   page.on('pageerror', (e) => errors.push('PAGEERROR ' + e.message));
@@ -44,6 +47,28 @@ const OUT = '/tmp/claude-0/-home-user-bedtime-stories-/07bd3299-9573-56a2-9e37-9
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${OUT}/19-letters.png`, fullPage: true });
 
+  // Parent zone: the household section is where a second child is added.
+  await page.getByRole('button', { name: /Today/ }).first().click();
+  await page.waitForTimeout(400);
+  await page.getByRole('button', { name: /Parents/ }).first().click();
+  await page.waitForTimeout(300);
+  await page.locator('#parentpin').fill('1234');
+  await page.getByRole('button', { name: 'Unlock' }).click();
+  await page.waitForTimeout(500);
+  await page.getByRole('button', { name: /Add a child/ }).click();
+  await page.waitForTimeout(300);
+  await page.locator('#newchild').fill('Kwame');
+  await page.getByRole('button', { name: 'New child, ages 3-5' }).click();
+  await page.getByRole('button', { name: /Add them/ }).click();
+  await page.waitForTimeout(500);
+  await page.locator('text=The household').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: `${OUT}/20-household.png` });
+  const names = await page.locator('.glass', { hasText: 'The household' }).first().innerText();
+  console.log('HOUSEHOLD', names.replace(/\n+/g, ' | ').slice(0, 200));
+
   console.log('ERRORS', errors.length ? errors.join('\n') : 'none');
   await browser.close();
+  // Fail the CI job on any page or console error, not just report it.
+  if (errors.length) process.exitCode = 1;
 })();

@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**']
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch makes the in-flight run redundant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Typecheck, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # The built PWA, downloadable from the run summary — this is the
+      # "see the app build" artifact.
+      - name: Upload built app
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumi-dist-${{ github.sha }}
+          path: dist
+          retention-days: 14
+
+  smoke:
+    name: Browser smoke test
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - run: npm run build
+
+      - name: Serve the build
+        run: npx vite preview --port 4173 --strictPort &
+
+      - name: Wait for the server
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/ >/dev/null; then
+              echo "up after ${i}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "preview server never came up"; exit 1
+
+      # Drives onboarding -> rhyme -> cloze -> rhyme game, and the colour and
+      # letters pillars. Both scripts fail the job on any page or console error.
+      - name: Walk the app
+        env:
+          SHOT_DIR: ${{ github.workspace }}/screenshots
+        run: |
+          node scripts/walkthrough.cjs
+          node scripts/pillars-shot.cjs
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-${{ github.sha }}
+          path: screenshots
+          retention-days: 14
