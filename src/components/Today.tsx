@@ -4,6 +4,7 @@ import { getCompanion } from '../content/companions';
 import { RHYMES } from '../content/rhymes';
 import { SCENES } from '../content/colouring';
 import { ALL_LETTERS } from '../content/phonics';
+import { GAMES } from '../content/games';
 import { WORLDS } from '../content/worlds';
 import {
   activeProfile,
@@ -43,12 +44,14 @@ export function Today({ onOpenPillar, onOpenParent, now }: TodayProps) {
     stories: storiesHeard,
     learn: mine.letters.length,
     create: mine.printed.length,
+    games: mine.games.length,
   };
   const total: Record<Pillar, number> = {
     rhymes: RHYMES.length,
     stories: WORLDS.reduce((n, w) => n + w.episodeCount, 0),
     learn: ALL_LETTERS.length,
     create: SCENES.length,
+    games: GAMES.filter((g) => g.status === 'playable').length,
   };
 
   return (

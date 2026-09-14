@@ -669,3 +669,120 @@ input, select { font: inherit; color: inherit; }
 }
 
 .letters__card--on .letters__met { color: #2a1605; }
+
+/* ---------- Games ---------- */
+
+.leap {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: stretch;
+  min-height: 46vh;
+}
+
+/* The voice level column, mirroring the reference screenshot's meter. */
+.leap__meter {
+  position: relative;
+  width: 34px;
+  min-width: 34px;
+  border-radius: var(--r-pill);
+  background: rgba(0, 0, 0, 0.38);
+  border: 1px solid var(--glass-border);
+  overflow: hidden;
+}
+
+.leap__meter--wide { width: 56px; min-width: 56px; height: 180px; margin-inline: auto; }
+
+.leap__fill {
+  position: absolute;
+  inset: auto 0 0 0;
+  background: linear-gradient(0deg, var(--amber-500), var(--amber-300));
+  border-radius: var(--r-pill);
+  /* Fast enough to feel like the voice itself, not a progress bar. */
+  transition: height 70ms linear;
+}
+
+/* Where the voice needs to reach for this word. */
+.leap__target {
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  height: 3px;
+  background: var(--mint-400);
+  box-shadow: 0 0 10px var(--mint-400);
+  z-index: 2;
+}
+
+.leap__stage {
+  position: relative;
+  flex: 1;
+  border-radius: var(--r-lg);
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--glass-border);
+  overflow: hidden;
+}
+
+.leap__hero {
+  position: absolute;
+  left: 12%;
+  bottom: 74px;
+  transition: transform 90ms linear;
+  z-index: 2;
+}
+
+.leap__hero--landed {
+  left: 62%;
+  transition: left var(--dur-mid) var(--ease-soft), transform 90ms linear;
+}
+
+.leap__platform {
+  position: absolute;
+  bottom: 30px;
+  height: 44px;
+  border-radius: 10px 10px 4px 4px;
+  background: linear-gradient(180deg, #5cc98a 0 14px, #b97a3a 14px);
+}
+
+.leap__platform--from { left: 4%; width: 34%; }
+.leap__platform--to { right: 4%; width: 34%; }
+
+.leap__word {
+  font-family: var(--font-story);
+  font-size: clamp(2rem, 9vw, 3rem);
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.01em;
+  background: none;
+  border: 0;
+  color: inherit;
+}
+
+.leap__beat {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin-inline-end: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--glass-border);
+}
+
+.leap__beat--on { background: var(--amber-400); border-color: var(--amber-300); }
+
+.wake { display: flex; flex-direction: column; gap: var(--sp-4); align-items: center; }
+
+.wake__animal {
+  font-size: 7rem;
+  line-height: 1;
+  filter: grayscale(0.55);
+  transform: scale(0.9) rotate(-8deg);
+  transition: transform var(--dur-mid) var(--ease-soft), filter var(--dur-mid);
+}
+
+.wake__animal--awake {
+  filter: none;
+  transform: scale(1.18) rotate(0deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leap__hero, .leap__fill, .wake__animal { transition: none; }
+}

@@ -1,12 +1,14 @@
 # Handover — read this first
 
-**Last updated:** end of session 2 (2026-09-13)
+**Last updated:** session 3 (2026-09-14)
 **Branch:** `claude/bedtime-stories-app-6vk9be`
-**State:** green — 121 tests pass, `npm run build` clean, both browser smoke
-scripts exit 0 with no console errors.
+**State:** green — 154 tests pass, `npm run build` clean.
 
-> **Session 2 work is committed but NOT pushed.** The user asked to hold the
+> **Sessions 2 and 3 are committed but NOT pushed.** The user asked to hold the
 > push until they say so. Do not push without being asked.
+
+> **Unverified:** the games browser smoke (`scripts/games-shot.cjs`) was written
+> but the user paused before it ran. Run it before trusting the voice games.
 
 ---
 
@@ -23,6 +25,7 @@ child setup → **Today** (day arc) → any of four pillars → parent zone.
 | **Letters** | Done. 5 phonics sets on a science-of-reading sequence, separate display/spoken forms per letter. |
 | **Family** | Done. Up to 4 children on one household price, per-child progress, profile switcher. |
 | **Parent zone** | Done. PIN gate, nights-settled metric, published Spark cost table, voice settings, safety/AI disclosure, **household management** (add/remove/switch child, seat counter). |
+| **Games** | Built, browser-unverified. Arcade + 3 playable games (Wake the Animal, Lumi's Leap, Syllable Hop via the same component, Rhyme Race); 3 catalogued as planned. |
 | **CI/CD** | Done. GitHub Actions: quality gate + browser smoke, plus a Pages deploy workflow. |
 
 **Stubbed on purpose:** payments (no card requested, no payment taken) and Wish
@@ -61,6 +64,21 @@ Full reasoning in `DECISIONS.md`.
   `android:open` scripts). **Unverified** — there is no Android SDK in this
   environment, and the `@capacitor/*` packages are deliberately not installed.
 
+## Done in session 3
+
+- **Games, a fifth pillar.** `engine/voiceMeter.ts` reads microphone amplitude
+  and discards every frame: no recording, no upload, and never
+  `SpeechRecognition` (it is cloud on Android). `content/games.ts` grades games
+  by their own age range. `GameArcade` plus `games/LumisLeap`, `games/RhymeRace`,
+  `games/WakeTheAnimal`.
+- **Syllable mode**, because volume alone lets a child shout "aaah" and win
+  without saying the word. One burst per syllable; a test asserts a long shout
+  counts as one.
+- **Room calibration** from the median of ~900ms of ambient noise, so a child
+  never has to out-shout a television.
+- `docs/RESEARCH-GAMES.md` — competitor scan, the COPPA architecture, and why
+  the youngest band starts at 2 and is co-play only.
+
 ## What to do next
 
 Ordered. Full detail in `TODO.md`.
@@ -68,8 +86,12 @@ Ordered. Full detail in `TODO.md`.
 1. **Images — PAUSED by the user.** Do not start this without being asked.
 2. **On-device TTS spike** — the interface is ready; what remains is measuring a
    real Piper/Kokoro voice on a low-end Android profile. `TODO.md` §2.
-3. Play Billing + the Capacitor Android shell (config scaffolded, not wired).
-4. Wish Spark provider behind a real key, still metered.
+3. **Run `scripts/games-shot.cjs`** (needs a preview server) — the voice games
+   have never been opened in a browser.
+4. **Wire `RECORD_AUDIO`** into the Capacitor Android manifest, or the voice
+   games will fail silently on device while passing every test here.
+5. Play Billing + the Capacitor Android shell (config scaffolded, not wired).
+6. Wish Spark provider behind a real key, still metered.
 
 ## Gotchas that already bit us
 

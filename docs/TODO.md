@@ -112,7 +112,23 @@ All cleared in session 2 except the last, which is a decision for the user:
 - **Open:** `docs/RESEARCH.md` §5 recommends listing **free-to-install with a
   hard paywall on first run** rather than paid-upfront. Still unresolved.
 
-## 7. New since session 2
+## 7. Games follow-ups **[new in session 3]**
+
+- **Run `scripts/games-shot.cjs`.** Written, never executed — the user paused
+  before it ran. It uses Chromium's fake mic
+  (`--use-fake-device-for-media-capture`) so the voice path can be driven
+  headlessly.
+- **`RECORD_AUDIO` in the Capacitor Android manifest**, plus the runtime
+  permission prompt. Without it the voice games fail silently on device while
+  passing every test here.
+- **`AudioContext` resume after a user gesture** — Android WebView is stricter
+  than desktop Chromium about autoplay.
+- Word Builder, Tongue Twister Tower and What Comes Next? are catalogued as
+  `planned` and render disabled. Build or drop them; do not leave them forever.
+- Consider a session cap on the shouting games (vocal strain), and a visible
+  "quiet game" filter for cars and waiting rooms.
+
+## 8. New since session 2
 
 - The Pages workflow needs **Settings → Pages → Source: "GitHub Actions"**
   enabling once, or its deploy step fails.

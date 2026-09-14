@@ -7,21 +7,52 @@ import { StoryPlayer } from './components/StoryPlayer';
 import { RhymeList } from './components/RhymeList';
 import { RhymePlayer } from './components/RhymePlayer';
 import { ColourStudio } from './components/ColourStudio';
+import { GameArcade } from './components/GameArcade';
+import { LumisLeap } from './components/games/LumisLeap';
+import { RhymeRace } from './components/games/RhymeRace';
+import { WakeTheAnimal } from './components/games/WakeTheAnimal';
 import { LettersLab } from './components/LettersLab';
 import { ParentZone } from './components/ParentZone';
 import { getCompanion } from './content/companions';
 import { LibraryProvider, tellStory } from './engine/providers';
 import { MODES, currentMode, type Pillar } from './engine/dayArc';
 import type { Rhyme, Story, World } from './engine/types';
+import type { Game } from './content/games';
 import {
   activeProfile,
+  markGamePlayed,
   markHeard,
   recordSettledNight,
   recordStory,
   useAppState,
 } from './state/store';
 
-type Screen = 'today' | 'worlds' | 'story' | 'rhymes' | 'rhyme' | 'colour' | 'letters' | 'parent';
+type Screen =
+  | 'today'
+  | 'worlds'
+  | 'story'
+  | 'rhymes'
+  | 'rhyme'
+  | 'colour'
+  | 'letters'
+  | 'games'
+  | 'game'
+  | 'parent';
+
+/** Routes a catalogue entry to its implementation. */
+function PlayGame({
+  game, profile, onExit,
+}: { game: Game; profile: ReturnType<typeof activeProfile> & object; onExit: () => void }) {
+  if (game.id === 'rhyme-race') return <RhymeRace onExit={onExit} />;
+  if (game.id === 'wake-the-animal') return <WakeTheAnimal onExit={onExit} />;
+  return (
+    <LumisLeap
+      profile={profile}
+      mode={game.id === 'syllable-hop' ? 'syllable' : 'leap'}
+      onExit={onExit}
+    />
+  );
+}
 
 export default function App() {
   const state = useAppState();
@@ -29,6 +60,7 @@ export default function App() {
   const [story, setStory] = useState<Story | null>(null);
   const [world, setWorld] = useState<World | null>(null);
   const [rhyme, setRhyme] = useState<Rhyme | null>(null);
+  const [game, setGame] = useState<Game | null>(null);
   const [storyCalm, setStoryCalm] = useState(0);
   const [note, setNote] = useState<string | null>(null);
 
@@ -73,6 +105,7 @@ export default function App() {
     if (pillar === 'stories') return setScreen('worlds');
     if (pillar === 'rhymes') return setScreen('rhymes');
     if (pillar === 'create') return setScreen('colour');
+    if (pillar === 'games') return setScreen('games');
     setScreen('letters');
   }
 
@@ -138,6 +171,22 @@ export default function App() {
 
       {screen === 'letters' && (
         <LettersLab profile={profile} onExit={() => setScreen('today')} />
+      )}
+
+      {screen === 'games' && (
+        <GameArcade
+          profile={profile}
+          onPick={(picked) => {
+            setGame(picked);
+            markGamePlayed(profile.id, picked.id);
+            setScreen('game');
+          }}
+          onExit={() => setScreen('today')}
+        />
+      )}
+
+      {screen === 'game' && game && (
+        <PlayGame game={game} profile={profile} onExit={() => setScreen('games')} />
       )}
 
       {screen === 'parent' && <ParentZone onExit={() => setScreen('today')} />}

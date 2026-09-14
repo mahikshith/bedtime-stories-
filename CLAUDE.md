@@ -4,7 +4,7 @@ One offline-first app for a household of children under 11: **rhymes, stories,
 colouring, letters**. Vite + React 18 + TypeScript PWA, Capacitor-wrappable for
 Play Store. No backend, no accounts, no analytics.
 
-**Branch:** `claude/bedtime-stories-app-6vk9be` · **Tests:** `npm test` (121)
+**Branch:** `claude/bedtime-stories-app-6vk9be` · **Tests:** `npm test` (154)
 
 ---
 
@@ -21,6 +21,7 @@ tokens and usually tells you nothing you need.
 | Choosing what to build next | `docs/TODO.md` |
 | Asked about business model, pricing, competitors, COPPA/Play policy | `docs/RESEARCH.md` |
 | Asked about the four-pillar platform, day arc, rhyme theory, CoComelon | `docs/RESEARCH-PLATFORM.md` |
+| Touching games, the microphone, or voice input | `docs/RESEARCH-GAMES.md` |
 | Onboarding a human | `README.md` |
 
 Don't re-derive research already in those files, and don't re-litigate a
@@ -38,24 +39,36 @@ decision in `DECISIONS.md` unless the user asks.
 3. **The child never free-types into a model.** All inputs come from fixed,
    parent-approved vocabularies. Every generated story passes `checkStoryText()`
    before render; failures are discarded and recomposed, never patched.
+4. **The microphone measures loudness and nothing else.** No `MediaRecorder`, no
+   retained buffer, no upload, and never `SpeechRecognition` — on Android it
+   ships audio to Google. A voice *recording* is personal information under
+   COPPA; an amplitude reading discarded every frame is not.
+   (`RESEARCH-GAMES.md` §1)
 
 ## Architecture in one screen
 
 ```
 src/
   content/   worlds.ts (18×12 stories) · arcs.ts (3 skeletons) · rhymes.ts (22)
-             phonics.ts (5 sets) · colouring.ts (4 scenes) · companions.ts
+             phonics.ts (5 sets) · colouring.ts (4 scenes) · games.ts · companions.ts
   engine/    generator · personalize · safety · rhyme · narration · dayArc
-             providers · backdrop · rng · types.ts
+             voiceMeter · ttsEngine · providers · backdrop · rng · types.ts
+  hooks/     useVoiceMeter.ts — owns the mic only while a game is mounted
   state/     store.ts  — localStorage only, per-child progress, seat limits
   components/ Today · RhymeList · RhymePlayer · WorldMap · StoryPlayer
-              ColourStudio · LettersLab · ParentZone · Mascot · MascotBuddy · Sky
+              ColourStudio · LettersLab · GameArcade · ParentZone
+              games/ LumisLeap · RhymeRace · WakeTheAnimal
+              Mascot · MascotBuddy · Sky
 ```
 
 - **Stories** compose from arc skeletons + per-world lexicons via a seeded RNG
   (`makeRng`), so `(child, world, episode)` is deterministic.
 - **Day arc** (`engine/dayArc.ts`) is the spine: wake 5–11, play 11–18,
   wind-down 18–5. Wind-down stops *offering* lively pillars; it never locks them.
+  Five pillars: rhymes, games, create, learn, stories.
+- **Games** grade by their own `minAge`/`maxAge`, not profile bands. Voice games
+  reward hitting a target level, not maximum volume, and syllable mode requires
+  one vocal burst per beat so a shout cannot fake a long word.
 - **Sleep gradient**: `calm` 0→1 across a story drives palette, dimming,
   narration rate, and the mascot's eyes.
 - **Rhymes**: declared `rhymeGroups` are the authority on what rhymes;
@@ -67,7 +80,7 @@ src/
 ```bash
 npm install && npm run dev      # localhost:5173
 npm run typecheck               # tsc --noEmit
-npm test                        # 121 tests, must stay green
+npm test                        # 154 tests, must stay green
 npm run build                   # tsc -b && vite build
 npm run smoke                   # browser walk + screenshots; needs a preview
                                 # server: (setsid npx vite preview --port 4173 &)

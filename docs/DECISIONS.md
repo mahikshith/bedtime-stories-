@@ -96,3 +96,23 @@ GitHub Pages so the app can be opened, not just downloaded.
 `progressFor` and `patchProgress` merge over `EMPTY_PROGRESS`, so progress saved
 before a field existed cannot hand back an undefined array. Bumping the key
 wipes real user data; reserve it for genuinely incompatible shape changes.
+
+### D17 — The microphone measures loudness, never words *(session 3)*
+Amplitude is read per frame and discarded: no `MediaRecorder`, no retained
+buffer, no upload, and never `SpeechRecognition`, which is cloud-backed on
+Android. A voice recording is personal information under COPPA and needs
+verifiable parental consent; a discarded amplitude reading is not a recording.
+The genre precedent does the same for latency reasons. If word recognition is
+ever wanted it needs an on-device model, as a spike. (`RESEARCH-GAMES.md` §1)
+
+### D18 — Games grade by their own age range *(session 3)*
+Profiles stay 3-5 / 6-8 / 9-11; each game carries `minAge`/`maxAge`. The right
+granularity for sentence complexity is not the right granularity for a syllable
+task, and separating them means adding a game never churns the profile model.
+The youngest band starts at 2, not 1, and is co-play only.
+
+### D19 — No fail state in the voice games *(session 3)*
+A missed platform costs another go. A four-year-old practising a new word should
+never be punished for trying, and a fail state turns a confidence exercise into
+a test. Reward is for hitting a target band, not for maximum volume — better for
+vocal health, and better for the child who is always told to be quiet.

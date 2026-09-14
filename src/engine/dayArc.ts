@@ -23,7 +23,7 @@ export interface ModeSpec {
   calm: number;
 }
 
-export type Pillar = 'rhymes' | 'create' | 'learn' | 'stories';
+export type Pillar = 'rhymes' | 'games' | 'create' | 'learn' | 'stories';
 
 export const MODES: Record<DayMode, ModeSpec> = {
   wake: {
@@ -31,7 +31,7 @@ export const MODES: Record<DayMode, ModeSpec> = {
     label: 'Morning',
     greeting: 'Good morning',
     intent: 'Loud, silly and awake. Rhymes to move to.',
-    order: ['rhymes', 'learn', 'create', 'stories'],
+    order: ['rhymes', 'games', 'learn', 'create', 'stories'],
     calm: 0,
   },
   play: {
@@ -39,7 +39,7 @@ export const MODES: Record<DayMode, ModeSpec> = {
     label: 'Daytime',
     greeting: 'Hello',
     intent: 'Making things and learning letters. Best done together.',
-    order: ['create', 'learn', 'rhymes', 'stories'],
+    order: ['games', 'create', 'learn', 'rhymes', 'stories'],
     calm: 0.15,
   },
   winddown: {
@@ -47,7 +47,7 @@ export const MODES: Record<DayMode, ModeSpec> = {
     label: 'Wind-down',
     greeting: 'Good evening',
     intent: 'Quiet now. One story, then the app gets out of the way.',
-    order: ['stories', 'rhymes', 'create', 'learn'],
+    order: ['stories', 'rhymes', 'create', 'learn', 'games'],
     calm: 0.55,
   },
 };
@@ -96,6 +96,12 @@ export const PILLARS: Record<Pillar, PillarSpec> = {
     blurb: 'Eighteen worlds, and a sleep gradient.',
     emoji: '🌙',
   },
+  games: {
+    id: 'games',
+    label: 'Games',
+    blurb: 'Say the word out loud and make Lumi hop.',
+    emoji: '🎤',
+  },
 };
 
 /**
@@ -105,5 +111,6 @@ export const PILLARS: Record<Pillar, PillarSpec> = {
  */
 export function isEncouraged(mode: DayMode, pillar: Pillar): boolean {
   if (mode !== 'winddown') return true;
+  // Games are the loudest thing in the app. Still reachable, never suggested.
   return pillar === 'stories' || pillar === 'rhymes';
 }

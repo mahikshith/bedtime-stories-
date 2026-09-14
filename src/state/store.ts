@@ -34,6 +34,8 @@ export interface ChildProgress {
   nightsSettled: number;
   /** Colouring pages sent to a printer, so a parent can reprint one. */
   printed: { sceneId: string; at: number }[];
+  /** Game ids played at least once. */
+  games: string[];
 }
 
 export const EMPTY_PROGRESS: ChildProgress = {
@@ -42,6 +44,7 @@ export const EMPTY_PROGRESS: ChildProgress = {
   letters: [],
   nightsSettled: 0,
   printed: [],
+  games: [],
 };
 
 export type Entitlement = 'none' | 'solo' | 'family';
@@ -252,6 +255,12 @@ export function markPrinted(profileId: string, sceneId: string): void {
     printed: [{ sceneId, at: Date.now() }, ...p.printed.filter((x) => x.sceneId !== sceneId)]
       .slice(0, 12),
   }));
+}
+
+export function markGamePlayed(profileId: string, gameId: string): void {
+  patchProgress(profileId, (p) =>
+    p.games.includes(gameId) ? p : { ...p, games: [...p.games, gameId] },
+  );
 }
 
 export function markLetterMet(profileId: string, letter: string): void {
