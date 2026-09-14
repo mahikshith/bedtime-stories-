@@ -786,3 +786,65 @@ input, select { font: inherit; color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .leap__hero, .leap__fill, .wake__animal { transition: none; }
 }
+
+/* ---------- Lantern Breath ---------- */
+
+/*
+ * The screen darkens as lanterns go out, so the game ends somewhere close to
+ * dark rather than handing back a bright phone at bedtime.
+ */
+.breath {
+  position: relative;
+  transition: filter var(--dur-slow) var(--ease-soft);
+  filter: brightness(calc(1 - var(--dark, 0) * 0.55));
+}
+
+.breath__lanterns {
+  display: flex;
+  justify-content: center;
+  gap: var(--sp-3);
+  font-size: 2.6rem;
+  min-height: 3.6rem;
+  align-items: center;
+}
+
+.breath__lantern {
+  opacity: 0.18;
+  filter: grayscale(1);
+  transition: opacity var(--dur-slow) var(--ease-soft), filter var(--dur-slow), transform var(--dur-slow);
+}
+
+.breath__lantern--lit {
+  opacity: 1;
+  filter: none;
+  text-shadow: 0 0 22px rgba(255, 190, 120, 0.75);
+}
+
+/* Swells across the in-breath, so the child paces to the light rather than a number. */
+.breath__lantern--swelling { animation: breath-swell 4s var(--ease-soft); }
+
+@keyframes breath-swell {
+  from { transform: scale(0.9); }
+  to   { transform: scale(1.35); }
+}
+
+.breath__count { font-variant-numeric: tabular-nums; }
+
+.breath__bar {
+  height: 10px;
+  border-radius: var(--r-pill);
+  background: rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.breath__bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--amber-500), var(--amber-300));
+  border-radius: var(--r-pill);
+  transition: width 90ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .breath__lantern--swelling { animation: none; }
+  .breath, .breath__bar-fill { transition: none; }
+}

@@ -82,7 +82,23 @@ ATT prompt (no tracking).
 - Assets: 512×512 icon, 1024×500 feature graphic, at least two phone
   screenshots.
 
-## 5. The pricing decision that is still open
+## 5. Pricing — decided
+
+**Free to install, seven free nights, then a one-time purchase.** Implemented;
+see D22. The store listings are free, the paywall appears after the seventh
+counted night, and nothing is time-bombed server-side because there is no server.
+
+Apple note: a hard paywall with nothing playable can attract "minimum
+functionality" scrutiny. Seven full nights of the complete app answers that
+comfortably — there is no locked content during the trial at all.
+
+One consequence to accept: the trial lives in `localStorage`, so reinstalling
+resets it. That is deliberate. Enforcing it would need an account, which would
+mean collecting data from children, which would cost far more than the handful
+of parents who reinstall to dodge $12.99.
+
+<details>
+<summary>Previous analysis (retained)</summary>
 
 `RESEARCH.md` §5 recommends **free-to-install with a hard paywall on first run**
 rather than a paid-upfront listing. The monetisation is identical — you still
@@ -98,10 +114,11 @@ Apple note: the Kids Category permits IAP, but a hard paywall on first run with
 no usable free content sometimes draws a reviewer's attention under "minimum
 functionality". A short, genuinely playable preview for the **parent** — not
 locked content for the child — is the safer framing.
+</details>
 
 ## 6. Suggested order of work
 
-1. Decide pricing (§5). Everything else is reversible; this is not.
+1. ~~Decide pricing~~ — done (§5).
 2. Install `@capacitor/*`, generate both shells, apply `PLATFORM-CONFIG.md`.
 3. **Test the voice games on a real handset** — the one path no test here can
    cover.

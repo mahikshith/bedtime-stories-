@@ -2,7 +2,7 @@
 
 **Last updated:** session 3 (2026-09-14)
 **Branch:** `claude/bedtime-stories-app-6vk9be`
-**State:** green — 172 tests pass, `npm run build` clean.
+**State:** green — 192 tests pass, `npm run build` clean, all three smoke scripts exit 0.
 **End goal:** ship to the **App Store and Google Play** — `STORE-READINESS.md`
 is the gap list.
 
@@ -31,6 +31,7 @@ child setup → **Today** (day arc) → any of four pillars → parent zone.
 | **Family** | Done. Up to 4 children on one household price, per-child progress, profile switcher. |
 | **Parent zone** | Done. PIN gate, nights-settled metric, published Spark cost table, voice settings, safety/AI disclosure, **household management** (add/remove/switch child, seat counter). |
 | **Games** | Arcade + 4 playable (Wake the Animal, Lumi's Leap, Syllable Hop, Rhyme Race); 3 catalogued as planned. Rendering and the no-mic fallback verified in a browser; the live meter is not. |
+| **Monetisation** | Free to install, 7 free nights, then a hard paywall. Counted per calendar day. |
 | **Privacy** | In-app policy screen + `dist/privacy.html` generated from one JSON source. Tests pin the policy's claims to the code. |
 | **CI/CD** | Done. GitHub Actions: quality gate + browser smoke, plus a Pages deploy workflow. |
 
@@ -103,12 +104,26 @@ Full reasoning in `DECISIONS.md`.
   a network call, analytics dependency, recorder, speech recognition, or a
   second persistence layer.
 
+## Done in session 3, part two
+
+- **Free-to-install with a 7-night trial**, replacing the paid-upfront model.
+  Seven, not "a couple", because trials of four days or fewer convert at 25.5%
+  against 42.5% for long ones — and a bedtime app gets one session a night, so
+  three sessions is a three-day trial. A night counts once per calendar day.
+- **Lantern Breath**, a new genre: an interactive that actively calms. Every
+  calming kids' app is passive and every interactive one is arousing; nothing
+  sat in between. Blow out five lanterns, the screen darkens each time.
+  `detectBreath()` separates breath from voice by steadiness, so shouting loses.
+- **`docs/IDEAS.md`** — the ranked idea book, including what was deliberately
+  rejected and why, so good ideas are not re-litigated and bad ones are not
+  re-proposed.
+
 ## What to do next
 
 Ordered. Full detail in `TODO.md`.
 
-0. **Decide pricing before the first submission** (`RESEARCH.md` §5,
-   `STORE-READINESS.md` §5). Paid-upfront → free is one-way on both stores.
+0. ~~Decide pricing~~ — **settled**: free to install, 7 free nights, then buy.
+   Implemented. `STORE-READINESS.md` §5 updated.
 1. **Images — PAUSED by the user.** Do not start this without being asked.
 2. **On-device TTS spike** — the interface is ready; what remains is measuring a
    real Piper/Kokoro voice on a low-end Android profile. `TODO.md` §2.

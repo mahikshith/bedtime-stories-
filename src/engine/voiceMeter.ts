@@ -135,6 +135,69 @@ export function countBursts(levels: Level[], options: BurstOptions = {}): number
 /** Syllables in a word, reused from the rhyme engine's estimator. */
 export { countSyllables } from './rhyme';
 
+/* ---------- breath ---------- */
+
+export interface BreathOptions {
+  /** Below this is room noise, not a breath. */
+  minLevel?: number;
+  /** Above this is a shout. A breath is gentle by definition. */
+  maxLevel?: number;
+  /** Frames it must be sustained for. */
+  minFrames?: number;
+  /** Coefficient of variation above which the sound is too bumpy to be a breath. */
+  maxVariation?: number;
+}
+
+export interface BreathResult {
+  isBreath: boolean;
+  /** Longest run of frames that stayed in the breath band. */
+  frames: number;
+  /** Spread of that run, relative to its own mean. Lower is smoother. */
+  variation: number;
+}
+
+/**
+ * Tells an out-breath from a voice.
+ *
+ * The distinguishing feature is not loudness, it is *steadiness*. Speech is
+ * syllabic — it bumps up and down several times a second — while a breath is a
+ * flat sustained hiss. So the test is a run of frames inside a gentle band with
+ * a low coefficient of variation.
+ *
+ * This matters for the wind-down game specifically: if shouting worked, the one
+ * calm thing in the app would become another loud thing, and a child who
+ * shrieks at the screen at bedtime is the opposite of the point.
+ */
+export function detectBreath(levels: Level[], options: BreathOptions = {}): BreathResult {
+  const minLevel = options.minLevel ?? 0.08;
+  const maxLevel = options.maxLevel ?? 0.55;
+  const minFrames = options.minFrames ?? 12;
+  const maxVariation = options.maxVariation ?? 0.38;
+
+  let best: Level[] = [];
+  let run: Level[] = [];
+  for (const level of levels) {
+    if (level >= minLevel && level <= maxLevel) {
+      run.push(level);
+      if (run.length > best.length) best = run;
+    } else {
+      run = [];
+    }
+  }
+
+  if (best.length === 0) return { isBreath: false, frames: 0, variation: 1 };
+
+  const mean = best.reduce((a, b) => a + b, 0) / best.length;
+  const variance = best.reduce((a, b) => a + (b - mean) ** 2, 0) / best.length;
+  const variation = mean > 0 ? Math.sqrt(variance) / mean : 1;
+
+  return {
+    isBreath: best.length >= minFrames && variation <= maxVariation,
+    frames: best.length,
+    variation: Number(variation.toFixed(4)),
+  };
+}
+
 /* ---------- scoring an attempt ---------- */
 
 export interface Attempt {

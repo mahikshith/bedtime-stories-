@@ -47,13 +47,33 @@ export const EMPTY_PROGRESS: ChildProgress = {
   games: [],
 };
 
-export type Entitlement = 'none' | 'solo' | 'family';
+export type Entitlement = 'none' | 'trial' | 'solo' | 'family';
+
+/**
+ * Nights in the free trial.
+ *
+ * Seven, not two or three, and the reason is in the data: trials of four days
+ * or fewer convert at 25.5% while 17-32 day trials convert at 42.5%. A bedtime
+ * app is used once a night, so "a couple of sessions" is a two-day trial — the
+ * worst-converting shape there is.
+ *
+ * Seven nights is also the shortest window in which the thing being sold can
+ * actually appear. What a parent buys is a ritual, and a ritual is not visible
+ * on night two. A week crosses a weekend and survives one bad night.
+ */
+export const TRIAL_SESSIONS = 7;
 
 /**
  * Multi-child is a feature of the purchase, not a multiplier on it. The market
  * has settled on household-flat pricing and parents resent per-child billing.
  */
-export const SEATS: Record<Entitlement, number> = { none: 0, solo: 1, family: 4 };
+export const SEATS: Record<Entitlement, number> = {
+  none: 0,
+  // The trial is the whole app for one child, not a crippled version of it.
+  trial: 1,
+  solo: 1,
+  family: 4,
+};
 
 export interface AppState {
   onboarded: boolean;
@@ -64,6 +84,10 @@ export interface AppState {
   sparks: number;
   /** Local parental gate. Not security — it keeps a seven-year-old out, which is its job. */
   parentPinHash: number | null;
+  /** Trial sessions consumed. One per calendar day, not per app open. */
+  trialSessions: number;
+  /** ISO date of the last counted session, so one evening counts once. */
+  lastSessionDay: string | null;
   settings: Settings;
   history: { id: string; title: string; worldId: string; profileId: string; at: number }[];
 }
@@ -77,6 +101,8 @@ export const INITIAL_STATE: AppState = {
   activeProfileId: null,
   progress: {},
   sparks: 0,
+  trialSessions: 0,
+  lastSessionDay: null,
   parentPinHash: null,
   settings: {
     narration: true,
@@ -146,6 +172,42 @@ export function useAppState(): AppState {
 }
 
 /* ---------- actions ---------- */
+
+/** Starts the free trial. Free to install, so nothing is charged yet. */
+export function startTrial(): void {
+  setState((s) => (s.entitlement === 'none' ? { ...s, entitlement: 'trial' } : s));
+}
+
+/**
+ * Counts one trial night.
+ *
+ * Deliberately per calendar day: a child who opens the app three times in one
+ * evening has had one bedtime, and burning three of seven nights for that would
+ * be a cheat the parent would rightly resent.
+ */
+export function countSession(today = new Date()): void {
+  const day = today.toISOString().slice(0, 10);
+  setState((s) => {
+    if (s.entitlement !== 'trial' || s.lastSessionDay === day) return s;
+    return { ...s, trialSessions: s.trialSessions + 1, lastSessionDay: day };
+  });
+}
+
+export function trialNightsLeft(s: AppState): number {
+  if (s.entitlement !== 'trial') return 0;
+  return Math.max(0, TRIAL_SESSIONS - s.trialSessions);
+}
+
+/** True once the trial is spent and nothing has been bought. */
+export function needsPurchase(s: AppState): boolean {
+  return s.entitlement === 'trial' && trialNightsLeft(s) <= 0;
+}
+
+/** Everything is open during the trial; only exhaustion closes it. */
+export function hasAccess(s: AppState): boolean {
+  if (s.entitlement === 'solo' || s.entitlement === 'family') return true;
+  return s.entitlement === 'trial' && !needsPurchase(s);
+}
 
 export function purchase(tier: 'solo' | 'family'): void {
   setState((s) => ({

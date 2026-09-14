@@ -24,7 +24,7 @@ require('fs').mkdirSync(OUT, { recursive: true });
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${OUT}/03-paywall.png`, fullPage: true });
 
-  await page.getByRole('button', { name: /Buy Family/ }).click();
+  await page.getByRole('button', { name: /Start .* free nights/ }).click();
   await page.waitForTimeout(400);
   await page.locator('#childname').fill('Ada');
   await page.getByRole('button', { name: '6 to 8' }).click();

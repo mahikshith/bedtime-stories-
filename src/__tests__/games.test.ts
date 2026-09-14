@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   GAMES,
   WORD_CARDS,
+  isGameEncouraged,
+  getGame as game,
   gamesForBand,
   getGame,
   highestAge,
@@ -14,6 +16,7 @@ import {
   calibrateFrom,
   countBursts,
   countSyllables,
+  detectBreath,
   rms,
   rmsToLevel,
   scoreAttempt,
@@ -140,6 +143,78 @@ describe('syllable bursts', () => {
     expect(countBursts([...quiet, ...shout, ...quiet])).toBeLessThan(
       countSyllables('butterfly'),
     );
+  });
+});
+
+describe('telling a breath from a voice', () => {
+  const steady = (n: number, level = 0.22) =>
+    Array.from({ length: n }, (_, i) => level + (i % 2 ? 0.004 : -0.004));
+
+  it('accepts a long steady out-breath', () => {
+    const r = detectBreath(steady(40));
+    expect(r.isBreath).toBe(true);
+    expect(r.frames).toBe(40);
+  });
+
+  it('rejects speech, which bumps up and down', () => {
+    // Syllabic modulation: the defining difference from a breath.
+    const speech = Array.from({ length: 40 }, (_, i) => (i % 4 < 2 ? 0.5 : 0.1));
+    expect(detectBreath(speech).isBreath).toBe(false);
+  });
+
+  it('rejects a shout, however sustained', () => {
+    // If shouting worked, the one calm thing in the app would become loud.
+    expect(detectBreath(steady(40, 0.95)).isBreath).toBe(false);
+  });
+
+  it('rejects silence and a room hum', () => {
+    expect(detectBreath(Array.from({ length: 40 }, () => 0)).isBreath).toBe(false);
+    expect(detectBreath(steady(40, 0.02)).isBreath).toBe(false);
+  });
+
+  it('rejects a breath that was too short', () => {
+    expect(detectBreath(steady(5)).isBreath).toBe(false);
+    expect(detectBreath(steady(5)).frames).toBe(5);
+  });
+
+  it('measures the longest qualifying run, not the whole take', () => {
+    const r = detectBreath([...steady(6), 0.95, 0.95, ...steady(30)]);
+    expect(r.frames).toBe(30);
+    expect(r.isBreath).toBe(true);
+  });
+
+  it('handles an empty take without dividing by zero', () => {
+    expect(detectBreath([])).toEqual({ isBreath: false, frames: 0, variation: 1 });
+  });
+
+  it('reports steadier sounds as lower variation', () => {
+    const smooth = detectBreath(steady(40)).variation;
+    const bumpy = detectBreath(
+      Array.from({ length: 40 }, (_, i) => (i % 2 ? 0.45 : 0.12)),
+    ).variation;
+    expect(smooth).toBeLessThan(bumpy);
+  });
+});
+
+describe('the wind-down game', () => {
+  it('is the only game offered at bedtime', () => {
+    const encouraged = GAMES.filter((g) => isGameEncouraged(true, g)).map((g) => g.id);
+    expect(encouraged).toEqual(['lantern-breath']);
+  });
+
+  it('is quiet, and every other voice game is not', () => {
+    expect(game('lantern-breath').loud).toBe(false);
+    expect(game('lumis-leap').loud).toBe(true);
+  });
+
+  it('leaves every game reachable outside wind-down', () => {
+    for (const g of GAMES) expect(isGameEncouraged(false, g)).toBe(true);
+  });
+
+  it('spans the whole age range, because breathing is not age-graded', () => {
+    const breath = game('lantern-breath');
+    expect(breath.minAge).toBeLessThanOrEqual(3);
+    expect(breath.maxAge).toBeGreaterThanOrEqual(10);
   });
 });
 

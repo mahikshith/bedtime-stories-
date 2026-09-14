@@ -4,7 +4,7 @@ One offline-first app for a household of children under 11: **rhymes, stories,
 colouring, letters**. Vite + React 18 + TypeScript PWA, Capacitor-wrappable for
 Play Store. No backend, no accounts, no analytics.
 
-**Branch:** `claude/bedtime-stories-app-6vk9be` · **Tests:** `npm test` (172)
+**Branch:** `claude/bedtime-stories-app-6vk9be` · **Tests:** `npm test` (192)
 **End goal:** ship to the **App Store and Google Play**. See `docs/STORE-READINESS.md`.
 
 ---
@@ -24,6 +24,7 @@ tokens and usually tells you nothing you need.
 | Asked about the four-pillar platform, day arc, rhyme theory, CoComelon | `docs/RESEARCH-PLATFORM.md` |
 | Touching games, the microphone, or voice input | `docs/RESEARCH-GAMES.md` |
 | Preparing a store submission, or asked what blocks launch | `docs/STORE-READINESS.md` |
+| Asked for a new game, rhyme or feature idea | `docs/IDEAS.md` ← ranked, with reasoning |
 | Touching the native shells, permissions or Info.plist | `docs/PLATFORM-CONFIG.md` |
 | Onboarding a human | `README.md` |
 
@@ -69,6 +70,8 @@ src/
 - **Day arc** (`engine/dayArc.ts`) is the spine: wake 5–11, play 11–18,
   wind-down 18–5. Wind-down stops *offering* lively pillars; it never locks them.
   Five pillars: rhymes, games, create, learn, stories.
+- **Monetisation**: free to install, `TRIAL_SESSIONS` nights free, then a hard
+  paywall. A night is one calendar day, not one app open.
 - **Games** grade by their own `minAge`/`maxAge`, not profile bands. Voice games
   reward hitting a target level, not maximum volume, and syllable mode requires
   one vocal burst per beat so a shout cannot fake a long word.
@@ -83,7 +86,7 @@ src/
 ```bash
 npm install && npm run dev      # localhost:5173
 npm run typecheck               # tsc --noEmit
-npm test                        # 172 tests, must stay green
+npm test                        # 192 tests, must stay green
 npm run build                   # tsc -b && vite build
 npm run smoke                   # browser walk + screenshots; needs a preview
                                 # server: (setsid npx vite preview --port 4173 &)

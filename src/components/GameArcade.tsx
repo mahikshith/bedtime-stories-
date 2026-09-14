@@ -1,4 +1,4 @@
-import { GAMES, gamesForBand, type Game } from '../content/games';
+import { GAMES, gamesForBand, isGameEncouraged, type Game } from '../content/games';
 import { MascotBuddy } from './MascotBuddy';
 import { currentMode } from '../engine/dayArc';
 import type { ChildProfile } from '../engine/types';
@@ -41,8 +41,9 @@ export function GameArcade({ profile, onPick, onExit }: GameArcadeProps) {
         <section className="glass glass--flat stack" style={{ padding: 'var(--sp-3)' }}>
           <p className="h3">It&rsquo;s getting late</p>
           <p className="tiny">
-            The shouting games are still here if you want them, but they wake everybody up. A story
-            might land better right now.
+            The shouting games are still here if you want them, but they wake everybody up.
+            <strong> Lantern Breath</strong> is the one built for now &mdash; five slow breaths and
+            the screen goes dark.
           </p>
         </section>
       )}
@@ -53,7 +54,12 @@ export function GameArcade({ profile, onPick, onExit }: GameArcadeProps) {
 
       <section className="stack" aria-label={`Games for ages ${profile.ageBand}`}>
         {fitted.map((game) => (
-          <GameRow key={game.id} game={game} onPick={onPick} />
+          <GameRow
+            key={game.id}
+            game={game}
+            onPick={onPick}
+            dimmed={!isGameEncouraged(winddown, game)}
+          />
         ))}
       </section>
 

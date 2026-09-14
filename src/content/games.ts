@@ -39,6 +39,11 @@ export interface Game {
   /** Loud games must never be offered at bedtime. */
   loud: boolean;
   /**
+   * True for the rare game that actively calms rather than merely failing to
+   * excite. Only these are offered during wind-down.
+   */
+  calm?: boolean;
+  /**
    * True when the game is designed to be played WITH a grown-up rather than
    * handed over. The AAP's 2026 guidance weighs co-viewing heavily, and the
    * youngest band is co-play or nothing.
@@ -49,6 +54,20 @@ export interface Game {
 }
 
 export const GAMES: Game[] = [
+  {
+    id: 'lantern-breath',
+    title: 'Lantern Breath',
+    blurb: 'Blow out five lanterns, slowly. The room gets darker each time.',
+    emoji: '🏮',
+    minAge: 3,
+    maxAge: 11,
+    skills: ['confidence', 'listening'],
+    input: 'voice',
+    loud: false,
+    calm: true,
+    together: false,
+    status: 'playable',
+  },
   {
     id: 'wake-the-animal',
     title: 'Wake the Animal',
@@ -200,6 +219,17 @@ export function gamesForBand(band: AgeBand): Game[] {
 export function wordsForAge(age: number, max = 12): WordCard[] {
   const fit = WORD_CARDS.filter((w) => w.minAge <= age);
   return (fit.length ? fit : WORD_CARDS.slice(0, 4)).slice(0, max);
+}
+
+/**
+ * Wind-down offers only the calm games.
+ *
+ * The loud ones stay reachable — a locked app at 7pm starts an argument — but
+ * a shouting game is the opposite of what the evening needs, and until Lantern
+ * Breath existed there was nothing here worth suggesting at all.
+ */
+export function isGameEncouraged(winddown: boolean, game: Game): boolean {
+  return winddown ? game.calm === true : true;
 }
 
 export function getGame(id: string): Game {

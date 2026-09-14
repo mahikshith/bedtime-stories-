@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Sky } from './components/Sky';
 import { Onboarding } from './components/Onboarding';
 import { Today } from './components/Today';
@@ -8,11 +8,13 @@ import { RhymeList } from './components/RhymeList';
 import { RhymePlayer } from './components/RhymePlayer';
 import { ColourStudio } from './components/ColourStudio';
 import { GameArcade } from './components/GameArcade';
+import { LanternBreath } from './components/games/LanternBreath';
 import { LumisLeap } from './components/games/LumisLeap';
 import { RhymeRace } from './components/games/RhymeRace';
 import { WakeTheAnimal } from './components/games/WakeTheAnimal';
 import { LettersLab } from './components/LettersLab';
 import { ParentZone } from './components/ParentZone';
+import { Paywall } from './components/Paywall';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { getCompanion } from './content/companions';
 import { LibraryProvider, tellStory } from './engine/providers';
@@ -21,8 +23,10 @@ import type { Rhyme, Story, World } from './engine/types';
 import type { Game } from './content/games';
 import {
   activeProfile,
+  countSession,
   markGamePlayed,
   markHeard,
+  needsPurchase,
   recordSettledNight,
   recordStory,
   useAppState,
@@ -45,6 +49,7 @@ type Screen =
 function PlayGame({
   game, profile, onExit,
 }: { game: Game; profile: ReturnType<typeof activeProfile> & object; onExit: () => void }) {
+  if (game.id === 'lantern-breath') return <LanternBreath profile={profile} onExit={onExit} />;
   if (game.id === 'rhyme-race') return <RhymeRace onExit={onExit} />;
   if (game.id === 'wake-the-animal') return <WakeTheAnimal onExit={onExit} />;
   return (
@@ -68,6 +73,11 @@ export default function App() {
 
   const handleCalm = useCallback((next: number) => setStoryCalm(next), []);
   const profile = activeProfile(state);
+
+  // One bedtime counts as one trial night, however many times the app is opened.
+  useEffect(() => {
+    if (state.onboarded) countSession();
+  }, [state.onboarded]);
 
   async function pickStory(chosen: World, episode: number, short: boolean) {
     if (!profile) return;
@@ -124,6 +134,15 @@ export default function App() {
   // from the page — the app dims itself as the evening arrives.
   const ambientCalm = MODES[currentMode()].calm;
   const calm = screen === 'story' ? storyCalm : ambientCalm;
+
+  if (needsPurchase(state)) {
+    return (
+      <div className="app">
+        <Sky calm={0} dimming={false} />
+        <Paywall variant="expired" />
+      </div>
+    );
+  }
 
   return (
     <div className="app">

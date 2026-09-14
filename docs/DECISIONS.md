@@ -133,3 +133,25 @@ claim to the code — no network calls, no analytics dependency, no
 `MediaRecorder`, no `SpeechRecognition`, one persistence layer. A Data safety
 form or Nutrition Label that contradicts the app is a store removal rather than
 a warning, so those assertions are load-bearing: if one fails, change the code.
+
+### D22 — Free to install, seven free nights, then a hard paywall *(session 3)*
+Supersedes the paid-upfront listing in D1's original framing; the economics
+(library-first, Sparks metered) are unchanged. A price on the store listing
+suppresses install velocity, ranking and review volume at once, and paid-upfront
+is ~3% of Play installs.
+
+Seven nights, not two or three. Trials of four days or fewer convert at 25.5%
+against 42.5% for 17-32 day trials, and a bedtime app is used once a night — so
+"a couple of sessions" is a two-day trial, the worst-converting shape available.
+Seven crosses a weekend, survives one bad night, and is the shortest window in
+which the thing being sold (a ritual) can appear at all.
+
+A night is one calendar day, not one app open: a child who opens the app three
+times in an evening has had one bedtime.
+
+### D23 — Wind-down gets its own genre, not a quieter version of a loud one *(session 3)*
+Calming apps for children are passive; interactive ones are arousing. Lantern
+Breath is interactive and calming, which is a category with nothing else in it.
+`isGameEncouraged` offers only `calm` games during wind-down, and `detectBreath`
+keys on steadiness rather than loudness specifically so that shouting cannot win
+— otherwise the one calm thing in the app becomes another loud thing.

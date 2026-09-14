@@ -3,16 +3,8 @@ import { Mascot } from './Mascot';
 import { COMPANIONS, INTERESTS } from '../content/companions';
 import { sanitizeName } from '../engine/safety';
 import type { AgeBand, ChildProfile, PronounSet } from '../engine/types';
-import {
-  FAMILY_PRICE,
-  FAMILY_SPARKS,
-  STARLIGHT_PRICE,
-  STARLIGHT_SPARKS,
-  addProfile,
-  completeOnboarding,
-  purchase,
-  setParentPin,
-} from '../state/store';
+import { Paywall } from './Paywall';
+import { addProfile, completeOnboarding, setParentPin, startTrial } from '../state/store';
 
 type Step = 'welcome' | 'gate' | 'paywall' | 'child' | 'pin';
 
@@ -37,10 +29,9 @@ export function Onboarding() {
       {step === 'gate' && <ParentGate onPass={() => setStep('paywall')} />}
       {step === 'paywall' && (
         <Paywall
-          onBuy={(tier) => {
-            purchase(tier);
-            setStep('child');
-          }}
+          variant="offer"
+          onStartTrial={() => { startTrial(); setStep('child'); }}
+          onBought={() => setStep('child')}
         />
       )}
       {step === 'child' && <ChildSetup onDone={() => setStep('pin')} />}
@@ -115,56 +106,6 @@ function ParentGate({ onPass }: { onPass: () => void }) {
  * The hard paywall. Everything is bought once; nothing is rented, and there is
  * no ad tier. The only metered thing is the one thing with a real marginal cost.
  */
-function Paywall({ onBuy }: { onBuy: (tier: 'solo' | 'family') => void }) {
-  return (
-    <div className="stack">
-      <div className="glass stack" style={{ padding: 'var(--sp-4)' }}>
-        <p className="eyebrow">Buy it once</p>
-        <h2 className="h1">Four things, one price.</h2>
-        <p className="muted">
-          Rhymes, stories, colouring and letters. No subscription, no adverts, no account, and
-          nothing about your children leaves this device.
-        </p>
-        <hr className="divider" />
-        <ul className="stack" style={{ margin: 0, paddingLeft: '1.1rem', gap: 'var(--sp-2)' }}>
-          <li className="muted"><strong>22 rhymes</strong> to clap, chant and fill in — half of them written for Lumi.</li>
-          <li className="muted"><strong>216 stories</strong> across 18 worlds, personalised with your child&rsquo;s name.</li>
-          <li className="muted"><strong>Colouring pages</strong> made from last night&rsquo;s story, built to be printed.</li>
-          <li className="muted"><strong>Letters and sounds</strong>, in the order the reading research says.</li>
-          <li className="muted">All of it read aloud, and <strong>all of it works with no signal</strong>.</li>
-        </ul>
-      </div>
-
-      <div className="glass glass--strong stack" style={{ padding: 'var(--sp-4)' }}>
-        <p className="eyebrow">Recommended</p>
-        <h3 className="h2">Family &mdash; {FAMILY_PRICE} once</h3>
-        <p className="muted">
-          Up to <strong>four children</strong>, each with their own name, companion, age and
-          progress. One price for the household, not one per child.
-        </p>
-        <p className="tiny">Includes {FAMILY_SPARKS} Wish Sparks, shared across everyone.</p>
-        <button className="btn btn--primary btn--block" onClick={() => onBuy('family')}>
-          Buy Family &mdash; {FAMILY_PRICE}
-        </button>
-      </div>
-
-      <div className="glass stack" style={{ padding: 'var(--sp-4)' }}>
-        <h3 className="h2">One child &mdash; {STARLIGHT_PRICE} once</h3>
-        <p className="tiny">Everything above, one profile, {STARLIGHT_SPARKS} Wish Sparks.</p>
-        <button className="btn btn--block" onClick={() => onBuy('solo')}>
-          Buy for one &mdash; {STARLIGHT_PRICE}
-        </button>
-      </div>
-
-      <p className="tiny" style={{ textAlign: 'center' }}>
-        Wish Sparks are the only thing that ever costs more, because each one genuinely costs us
-        money to make. Everything else is yours forever.
-        <br />Demo build &mdash; no payment is taken and no card is requested.
-      </p>
-    </div>
-  );
-}
-
 function ChildSetup({ onDone }: { onDone: () => void }) {
   const [name, setName] = useState('');
   const [ageBand, setAgeBand] = useState<AgeBand>('6-8');

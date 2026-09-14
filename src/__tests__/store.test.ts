@@ -19,11 +19,17 @@ import {
   nextEpisodeFor,
   progressFor,
   pricePaid,
+  needsPurchase,
+  hasAccess,
   purchase,
   recordSettledNight,
   recordStory,
   removeProfile,
   seatsLeft,
+  startTrial,
+  countSession,
+  trialNightsLeft,
+  TRIAL_SESSIONS,
   setParentPin,
   spendSpark,
   totalNightsSettled,
@@ -116,6 +122,70 @@ describe('entitlement and seats', () => {
     expect(spendSpark()).toBe(true);
     expect(spendSpark()).toBe(false);
     expect(getState().sparks).toBe(0);
+  });
+});
+
+describe('the free trial', () => {
+  it('opens the whole app, not a crippled version', () => {
+    startTrial();
+    expect(getState().entitlement).toBe('trial');
+    expect(hasAccess(getState())).toBe(true);
+    expect(seatsLeft(getState())).toBe(1);
+  });
+
+  it('runs for a week, not a couple of nights', () => {
+    // Trials of four days or fewer convert at 25.5%; longer ones far better.
+    expect(TRIAL_SESSIONS).toBeGreaterThanOrEqual(7);
+  });
+
+  it('counts one night per calendar day, however often the app is opened', () => {
+    startTrial();
+    const evening = new Date('2026-09-14T19:00:00Z');
+    countSession(evening);
+    countSession(new Date('2026-09-14T20:30:00Z'));
+    countSession(new Date('2026-09-14T21:15:00Z'));
+    expect(getState().trialSessions).toBe(1);
+    expect(trialNightsLeft(getState())).toBe(TRIAL_SESSIONS - 1);
+  });
+
+  it('counts the next day separately', () => {
+    startTrial();
+    countSession(new Date('2026-09-14T19:00:00Z'));
+    countSession(new Date('2026-09-15T19:00:00Z'));
+    expect(getState().trialSessions).toBe(2);
+  });
+
+  it('closes the app once the nights are spent', () => {
+    startTrial();
+    for (let d = 0; d < TRIAL_SESSIONS; d++) {
+      countSession(new Date(Date.UTC(2026, 8, 14 + d, 19)));
+    }
+    expect(trialNightsLeft(getState())).toBe(0);
+    expect(needsPurchase(getState())).toBe(true);
+    expect(hasAccess(getState())).toBe(false);
+  });
+
+  it('buying reopens it permanently', () => {
+    startTrial();
+    for (let d = 0; d < TRIAL_SESSIONS; d++) {
+      countSession(new Date(Date.UTC(2026, 8, 14 + d, 19)));
+    }
+    purchase('family');
+    expect(needsPurchase(getState())).toBe(false);
+    expect(hasAccess(getState())).toBe(true);
+    expect(seatsLeft(getState())).toBe(4);
+  });
+
+  it('never counts a session for someone who has paid', () => {
+    purchase('solo');
+    countSession(new Date('2026-09-14T19:00:00Z'));
+    expect(getState().trialSessions).toBe(0);
+    expect(needsPurchase(getState())).toBe(false);
+  });
+
+  it('gives no access before the trial starts', () => {
+    expect(hasAccess(getState())).toBe(false);
+    expect(needsPurchase(getState())).toBe(false);
   });
 });
 
