@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Mascot } from '../Mascot';
 import { useVoiceMeter } from '../../hooks/useVoiceMeter';
-import { countBursts, countSyllables } from '../../engine/voiceMeter';
+import { countSyllables, scoreAttempt, targetForWord } from '../../engine/voiceMeter';
 import { wordsForAge, type WordCard } from '../../content/games';
 import { makeRng, pick } from '../../engine/rng';
 import type { ChildProfile } from '../../engine/types';
@@ -50,8 +50,7 @@ export function LumisLeap({ profile, mode, onExit }: LumisLeapProps) {
   const [card, setCard] = useState<WordCard>(() => words[0]);
 
   const syllables = countSyllables(card.word);
-  // A longer word needs a longer voice, not a louder one; that is the point.
-  const targetLevel = mode === 'syllable' ? 0.42 : Math.min(0.75, 0.4 + syllables * 0.08);
+  const targetLevel = targetForWord(syllables, mode);
 
   const nextCard = useCallback(() => {
     setCard(pick(rng.current, words));
@@ -60,19 +59,16 @@ export function LumisLeap({ profile, mode, onExit }: LumisLeapProps) {
   const listenTimer = useRef<number | undefined>(undefined);
 
   const evaluate = useCallback(() => {
-    const levels = meter.drain();
-    const highest = levels.reduce((m, l) => Math.max(m, l), 0);
-    const counted = countBursts(levels);
-    setPeak(highest);
-    setBursts(counted);
-
-    const ok =
-      mode === 'syllable'
-        ? counted >= syllables && highest >= 0.3
-        : highest >= targetLevel;
-
-    setSuccess(ok);
-    if (ok) setLanded((n) => n + 1);
+    const result = scoreAttempt({
+      levels: meter.drain(),
+      mode,
+      syllables,
+      target: targetLevel,
+    });
+    setPeak(result.peak);
+    setBursts(result.bursts);
+    setSuccess(result.landed);
+    if (result.landed) setLanded((n) => n + 1);
     setPhase('result');
   }, [meter, mode, syllables, targetLevel]);
 
@@ -130,7 +126,7 @@ export function LumisLeap({ profile, mode, onExit }: LumisLeapProps) {
     );
   }
 
-  if (meter.state === 'unsupported' || meter.state === 'denied') {
+  if (meter.state === 'unsupported' || meter.state === 'denied' || meter.state === 'unavailable') {
     return (
       <div className="page stack">
         <Mascot size={148} mood="soft" />
@@ -139,7 +135,9 @@ export function LumisLeap({ profile, mode, onExit }: LumisLeapProps) {
           <p className="muted">
             {meter.state === 'denied'
               ? 'The microphone is switched off for this app. A grown-up can turn it back on in the browser or phone settings.'
-              : 'This device has no microphone available.'}
+              : meter.state === 'unavailable'
+                ? 'Something else may be using the microphone. Closing other apps usually fixes it.'
+                : 'This device has no microphone available.'}
           </p>
           <p className="tiny">
             The voice games need it to measure how loud you are. Every other part of the app works

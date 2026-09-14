@@ -9,7 +9,14 @@ import {
   type VoiceMeterHandle,
 } from '../engine/voiceMeter';
 
-export type MeterState = 'idle' | 'asking' | 'calibrating' | 'live' | 'denied' | 'unsupported';
+export type MeterState =
+  | 'idle'
+  | 'asking'
+  | 'calibrating'
+  | 'live'
+  | 'denied'
+  | 'unavailable'
+  | 'unsupported';
 
 /**
  * React wrapper around the voice meter.
@@ -64,9 +71,11 @@ export function useVoiceMeter() {
         frame.current = requestAnimationFrame(pump);
       };
       frame.current = requestAnimationFrame(sample);
-    } catch {
-      // Denied, or no device. Either way the game must offer a way to play on.
-      setState('denied');
+    } catch (err) {
+      // A parent who refused needs different words from a mic that is broken or
+      // already in use by another app.
+      const refused = err instanceof DOMException && err.name === 'NotAllowedError';
+      setState(refused ? 'denied' : 'unavailable');
     }
   }, []);
 

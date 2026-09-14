@@ -78,14 +78,20 @@ jobs:
           done
           echo "preview server never came up"; exit 1
 
-      # Drives onboarding -> rhyme -> cloze -> rhyme game, and the colour and
-      # letters pillars. Both scripts fail the job on any page or console error.
+      # Drives onboarding -> rhyme -> cloze -> rhyme game, the colour and letters
+      # pillars, adding a second child, and the games arcade. Every script fails
+      # the job on any page or console error.
+      #
+      # Runners have no audio device, so the voice games exercise the
+      # no-microphone fallback rather than the live meter; the meter itself is
+      # covered by unit tests and needs a handset.
       - name: Walk the app
         env:
           SHOT_DIR: ${{ github.workspace }}/screenshots
         run: |
           node scripts/walkthrough.cjs
           node scripts/pillars-shot.cjs
+          node scripts/games-shot.cjs
 
       - name: Upload screenshots
         if: always()

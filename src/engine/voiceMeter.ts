@@ -135,6 +135,63 @@ export function countBursts(levels: Level[], options: BurstOptions = {}): number
 /** Syllables in a word, reused from the rhyme engine's estimator. */
 export { countSyllables } from './rhyme';
 
+/* ---------- scoring an attempt ---------- */
+
+export interface Attempt {
+  /** Every level captured while the child was speaking. */
+  levels: Level[];
+  /** 'leap' rewards one big voice; 'syllable' wants one burst per beat. */
+  mode: 'leap' | 'syllable';
+  /** Beats the word needs, in syllable mode. */
+  syllables: number;
+  /** Level the voice has to reach, in leap mode. */
+  target: number;
+}
+
+export interface AttemptResult {
+  landed: boolean;
+  peak: Level;
+  bursts: number;
+}
+
+/** A burst already needs this much voice, so anything quieter counts for nothing. */
+const AUDIBLE = 0.3;
+
+/**
+ * Scores one turn.
+ *
+ * Extracted from the component so the rule that decides whether a child
+ * succeeded can be tested without a microphone — which matters, because no CI
+ * runner has one, and neither does a headless browser.
+ *
+ * The audible floor in syllable mode is mostly belt-and-braces: `countBursts`
+ * will not register anything below its own ON threshold, which is already
+ * higher. It earns its place by covering the degenerate case of a word that
+ * reports zero syllables, where "enough beats" would otherwise be satisfied by
+ * silence.
+ */
+export function scoreAttempt(attempt: Attempt): AttemptResult {
+  const { levels, mode, syllables, target } = attempt;
+  const peak = levels.reduce((m, l) => Math.max(m, l), 0);
+  const bursts = countBursts(levels);
+  const landed =
+    mode === 'syllable'
+      ? bursts >= Math.max(1, syllables) && peak >= AUDIBLE
+      : peak >= target;
+  return { landed, peak, bursts };
+}
+
+/**
+ * How loud this word needs to be.
+ *
+ * A longer word asks for a little more voice, but the ceiling is capped so a
+ * five-syllable word never becomes a shouting match.
+ */
+export function targetForWord(syllables: number, mode: 'leap' | 'syllable'): number {
+  if (mode === 'syllable') return 0.42;
+  return Math.min(0.75, 0.4 + syllables * 0.08);
+}
+
 /* ---------- live meter ---------- */
 
 export interface VoiceMeterHandle {
@@ -146,6 +203,44 @@ export interface VoiceMeterHandle {
 }
 
 export type MicPermission = 'granted' | 'denied' | 'unsupported';
+
+/** Raised when the microphone exists but could not be opened. */
+export class MicUnavailableError extends Error {}
+
+/**
+ * Opens the microphone, degrading rather than failing.
+ *
+ * The processing hints are expressed as `ideal`, never as hard constraints: a
+ * device that cannot honour them (plenty of Android hardware, and Chromium's
+ * fake capture device) rejects the whole request with OverconstrainedError, and
+ * the game dies for a reason that has nothing to do with permission. Asked as
+ * preferences they are simply ignored.
+ *
+ * `autoGainControl` matters most — AGC normalises volume, which would flatten
+ * the exact signal the game measures — but a working mic without it beats no
+ * mic at all, so there is a plain `audio: true` retry behind it.
+ */
+async function openMicrophone(): Promise<MediaStream> {
+  const preferred: MediaStreamConstraints = {
+    audio: {
+      echoCancellation: { ideal: true },
+      noiseSuppression: { ideal: true },
+      autoGainControl: { ideal: false },
+    },
+  };
+  try {
+    return await navigator.mediaDevices.getUserMedia(preferred);
+  } catch (err) {
+    // A refusal is final; anything else is worth one plain retry.
+    if (err instanceof DOMException && err.name === 'NotAllowedError') throw err;
+    try {
+      return await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (retryErr) {
+      if (retryErr instanceof DOMException && retryErr.name === 'NotAllowedError') throw retryErr;
+      throw new MicUnavailableError('The microphone could not be opened.');
+    }
+  }
+}
 
 export function isMicSupported(): boolean {
   return (
@@ -167,14 +262,7 @@ export function isMicSupported(): boolean {
 export async function startVoiceMeter(
   cal: MeterCalibration = DEFAULT_CALIBRATION,
 ): Promise<VoiceMeterHandle> {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      echoCancellation: true,
-      noiseSuppression: true,
-      // Keep the child's own volume intact; AGC would flatten the thing we measure.
-      autoGainControl: false,
-    },
-  });
+  const stream = await openMicrophone();
 
   const Ctx =
     window.AudioContext ??

@@ -1,0 +1,55 @@
+{
+  "contact": "privacy@lumisleepyworlds.example",
+  "updated": "14 September 2026",
+  "title": "Lumi & the Sleepy Worlds — Privacy Policy",
+  "sections": [
+    {
+      "heading": "The short version",
+      "body": [
+        "Lumi does not collect anything about you or your child. There are no accounts, no adverts, no analytics and no tracking of any kind. Nothing your child does in this app is sent anywhere."
+      ]
+    },
+    {
+      "heading": "What stays on your device",
+      "body": [
+        "Your child’s first name, their age band, the companion they chose, the things they said they like, and what they have listened to, played or printed.",
+        "All of it is stored only on this device, in this app. It is never uploaded, never backed up to us, and never shared. Deleting the app deletes it."
+      ]
+    },
+    {
+      "heading": "How the name is used",
+      "body": [
+        "Stories and rhymes are written with a placeholder where a name goes. Your child’s name is put in on this device, at the moment the words appear on screen.",
+        "That means the name never has to leave the device to personalise anything — not to our servers, and not to any story service."
+      ]
+    },
+    {
+      "heading": "The microphone",
+      "body": [
+        "The voice games measure how loud your child is, and nothing else.",
+        "No recording is made. Audio is never saved, never sent anywhere, and never turned into text. The app reads the loudness of the sound about sixty times a second and immediately discards it.",
+        "The microphone is switched on only while a voice game is open, and released the moment you leave it. You can refuse microphone access and every other part of the app still works."
+      ]
+    },
+    {
+      "heading": "Children’s privacy",
+      "body": [
+        "This app is made for children. Because it collects no personal information at all, there is nothing for us to hold, share, sell or lose.",
+        "We do not use anything your child does to train any AI model."
+      ]
+    },
+    {
+      "heading": "Purchases",
+      "body": [
+        "Payment is handled entirely by the App Store or Google Play. We never see or store card details."
+      ]
+    },
+    {
+      "heading": "Changes and contact",
+      "body": [
+        "If this policy changes we will update it in the app and change the date above. Last updated: 14 September 2026.",
+        "Questions: privacy@lumisleepyworlds.example"
+      ]
+    }
+  ]
+}

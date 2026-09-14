@@ -13,6 +13,7 @@ import { RhymeRace } from './components/games/RhymeRace';
 import { WakeTheAnimal } from './components/games/WakeTheAnimal';
 import { LettersLab } from './components/LettersLab';
 import { ParentZone } from './components/ParentZone';
+import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { getCompanion } from './content/companions';
 import { LibraryProvider, tellStory } from './engine/providers';
 import { MODES, currentMode, type Pillar } from './engine/dayArc';
@@ -37,7 +38,8 @@ type Screen =
   | 'letters'
   | 'games'
   | 'game'
-  | 'parent';
+  | 'parent'
+  | 'privacy';
 
 /** Routes a catalogue entry to its implementation. */
 function PlayGame({
@@ -189,7 +191,14 @@ export default function App() {
         <PlayGame game={game} profile={profile} onExit={() => setScreen('games')} />
       )}
 
-      {screen === 'parent' && <ParentZone onExit={() => setScreen('today')} />}
+      {screen === 'parent' && (
+        <ParentZone
+          onExit={() => setScreen('today')}
+          onOpenPrivacy={() => setScreen('privacy')}
+        />
+      )}
+
+      {screen === 'privacy' && <PrivacyPolicy onExit={() => setScreen('parent')} />}
     </div>
   );
 }

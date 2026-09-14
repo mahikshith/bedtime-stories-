@@ -61,7 +61,7 @@ export function WakeTheAnimal({ onExit }: { onExit: () => void }) {
     );
   }
 
-  if (meter.state === 'denied' || meter.state === 'unsupported') {
+  if (meter.state === 'denied' || meter.state === 'unsupported' || meter.state === 'unavailable') {
     return (
       <div className="page stack">
         <Mascot size={148} mood="soft" />

@@ -116,3 +116,20 @@ A missed platform costs another go. A four-year-old practising a new word should
 never be punished for trying, and a fail state turns a confidence exercise into
 a test. Reward is for hitting a target band, not for maximum volume — better for
 vocal health, and better for the child who is always told to be quiet.
+
+### D20 — Media constraints are preferences, never requirements *(session 3)*
+`getUserMedia` asks for echo cancellation, noise suppression and no auto-gain as
+`ideal`, with a plain `audio: true` retry behind it. As hard constraints they
+throw `OverconstrainedError` on hardware that cannot honour them — which killed
+the microphone in testing for a reason that had nothing to do with permission.
+A working microphone without the hints beats no microphone at all. A refusal
+(`NotAllowedError`) is final and is reported differently from a broken or busy
+device, because the wording a parent needs is different.
+
+### D21 — The privacy policy is generated from one source and tested *(session 3)*
+Text lives in `content/privacy.json`; the in-app screen and `dist/privacy.html`
+both render it, so they cannot drift. `__tests__/privacy.test.ts` pins each
+claim to the code — no network calls, no analytics dependency, no
+`MediaRecorder`, no `SpeechRecognition`, one persistence layer. A Data safety
+form or Nutrition Label that contradicts the app is a store removal rather than
+a warning, so those assertions are load-bearing: if one fails, change the code.

@@ -16,7 +16,9 @@ import {
   countSyllables,
   rms,
   rmsToLevel,
+  scoreAttempt,
   smooth,
+  targetForWord,
 } from '../engine/voiceMeter';
 import { MODES, PILLARS, isEncouraged } from '../engine/dayArc';
 
@@ -138,6 +140,62 @@ describe('syllable bursts', () => {
     expect(countBursts([...quiet, ...shout, ...quiet])).toBeLessThan(
       countSyllables('butterfly'),
     );
+  });
+});
+
+describe('scoring an attempt', () => {
+  const quiet = [0.05, 0.05];
+  const loud = (n = 3) => Array.from({ length: n }, () => 0.7);
+
+  it('lands a leap when the voice reaches the target', () => {
+    const r = scoreAttempt({ levels: [...quiet, ...loud(), ...quiet], mode: 'leap', syllables: 1, target: 0.5 });
+    expect(r.landed).toBe(true);
+    expect(r.peak).toBeCloseTo(0.7, 5);
+  });
+
+  it('misses a leap when the voice falls short', () => {
+    const r = scoreAttempt({ levels: [0.2, 0.25, 0.2], mode: 'leap', syllables: 1, target: 0.5 });
+    expect(r.landed).toBe(false);
+  });
+
+  it('lands a syllable word only with enough beats', () => {
+    const three = [...quiet, ...loud(), ...quiet, ...loud(), ...quiet, ...loud(), ...quiet];
+    expect(scoreAttempt({ levels: three, mode: 'syllable', syllables: 3, target: 0.42 }).landed).toBe(true);
+    expect(scoreAttempt({ levels: three, mode: 'syllable', syllables: 4, target: 0.42 }).landed).toBe(false);
+  });
+
+  it('will not let one long shout pass for a three-beat word', () => {
+    // The whole reason syllable mode exists.
+    const shout = Array.from({ length: 40 }, () => 0.95);
+    const r = scoreAttempt({ levels: [...quiet, ...shout, ...quiet], mode: 'syllable', syllables: 3, target: 0.42 });
+    expect(r.bursts).toBe(1);
+    expect(r.landed).toBe(false);
+  });
+
+  it('ignores noise too quiet to be a burst', () => {
+    // Three blips, all under the burst threshold: no beats, no landing.
+    const blips = [0.05, 0.3, 0.3, 0.05, 0.3, 0.3, 0.05, 0.3, 0.3, 0.05];
+    const r = scoreAttempt({ levels: blips, mode: 'syllable', syllables: 3, target: 0.42 });
+    expect(r.bursts).toBe(0);
+    expect(r.landed).toBe(false);
+  });
+
+  it('cannot be won in silence by a word that reports no syllables', () => {
+    // Degenerate input: "enough beats" must not be satisfiable by saying nothing.
+    const r = scoreAttempt({ levels: [0, 0, 0], mode: 'syllable', syllables: 0, target: 0.42 });
+    expect(r.landed).toBe(false);
+  });
+
+  it('scores an empty attempt as a miss, not a crash', () => {
+    const r = scoreAttempt({ levels: [], mode: 'leap', syllables: 1, target: 0.5 });
+    expect(r).toEqual({ landed: false, peak: 0, bursts: 0 });
+  });
+
+  it('asks a little more voice of a longer word, but caps the shouting', () => {
+    expect(targetForWord(3, 'leap')).toBeGreaterThan(targetForWord(1, 'leap'));
+    expect(targetForWord(9, 'leap')).toBeLessThanOrEqual(0.75);
+    // Syllable mode is about beats, not volume, so the bar does not move.
+    expect(targetForWord(1, 'syllable')).toBe(targetForWord(5, 'syllable'));
   });
 });
 

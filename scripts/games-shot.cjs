@@ -54,26 +54,42 @@ require('fs').mkdirSync(OUT, { recursive: true });
   await page.getByRole('button', { name: /Let.s play/ }).click();
   await page.waitForTimeout(2500);
   await page.screenshot({ path: `${OUT}/23-leap-stage.png` });
-  const readyText = await page.locator('.leap__word').first().innerText().catch(() => 'NONE');
+  const readyText = await page.locator('.leap__word').first().innerText().catch(() => 'no-mic');
   const meterExists = await page.locator('.leap__meter').count();
 
+  // CI runners and this sandbox have no audio device at all, so Chromium cannot
+  // even synthesise a fake microphone. Verify whichever path the machine offers:
+  // the live meter where a mic exists, the graceful fallback where none does.
   const ready = page.getByRole('button', { name: /I.m ready/ });
+  const noMic = page.getByRole('button', { name: /Pick another game/ });
+  let voicePath = 'unknown';
+
   if (await ready.count()) {
+    voicePath = 'live-meter';
     await ready.click({ force: true });
     await page.waitForTimeout(3200);
     await page.screenshot({ path: `${OUT}/24-leap-result.png` });
+  } else if (await noMic.count()) {
+    voicePath = 'no-mic-fallback';
+    await page.screenshot({ path: `${OUT}/24-leap-no-mic.png` });
+    await noMic.click();
+    await page.waitForTimeout(500);
+  } else {
+    throw new Error('Leap showed neither a ready button nor the no-mic fallback');
   }
-  const resultShown = await page.locator('text=/Lumi made it|Not quite|Lumi heard/').count();
+  console.log('VOICE_PATH', voicePath);
 
-  await page.getByRole('button', { name: /Games/ }).first().click();
-  await page.waitForTimeout(500);
+  // Back on the arcade either way.
+  if (await page.getByRole('button', { name: /Rhyme Race/ }).count() === 0) {
+    await page.getByRole('button', { name: /Games/ }).first().click();
+    await page.waitForTimeout(500);
+  }
   await page.getByRole('button', { name: /Rhyme Race/ }).click();
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${OUT}/25-rhyme-race.png` });
 
   console.log('WORD_CARD', readyText);
   console.log('METER_PRESENT', meterExists);
-  console.log('RESULT_SHOWN', resultShown);
   console.log('ERRORS', errors.length ? errors.join('\n') : 'none');
   await browser.close();
   if (errors.length) process.exitCode = 1;

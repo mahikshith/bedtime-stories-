@@ -31,7 +31,7 @@ import {
 
 const AGE_BANDS: AgeBand[] = ['3-5', '6-8', '9-11'];
 
-export function ParentZone({ onExit }: { onExit: () => void }) {
+export function ParentZone({ onExit, onOpenPrivacy }: { onExit: () => void; onOpenPrivacy: () => void }) {
   const state = useAppState();
   const [unlocked, setUnlocked] = useState(state.parentPinHash === null);
 
@@ -156,6 +156,9 @@ export function ParentZone({ onExit }: { onExit: () => void }) {
             <strong>No adverts, no tracking, no account, no analytics.</strong>
           </li>
         </ul>
+        <button className="btn btn--block" onClick={onOpenPrivacy}>
+          Read the privacy policy
+        </button>
         <hr className="divider" />
         <p className="tiny">
           <strong>AI disclosure:</strong> the 216 library stories were written by people and are
