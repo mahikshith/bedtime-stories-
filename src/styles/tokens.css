@@ -1,9 +1,12 @@
 /*
  * Lumi design tokens.
  *
- * Night-first by default. A bedtime app that renders bright white at 8pm is
- * fighting its own purpose, so there is no light theme — there is a dusk theme
- * and a deeper one, and the app moves between them as the story winds down.
+ * These are the Midnight palette, and the fallback when no theme is applied.
+ * `content/themes.ts` overrides the same names at the document root to swap
+ * palettes, so nothing below needs to know which theme is active.
+ *
+ * Whichever palette is chosen, the sleep gradient still warms and dims on top:
+ * a bright daytime palette does not defeat the wind-down.
  */
 :root {
   /* Ground */
@@ -16,6 +19,8 @@
   --amber-400: #ffcf8f;
   --amber-300: #ffe0b4;
   --amber-500: #f2a65a;
+  /* Text that sits ON the accent — contrasts with the button, not the page. */
+  --on-accent: #2a1605;
   --rose-400: #ffb4c4;
   --violet-400: #b9a6ff;
   --mint-400: #9ff0d4;

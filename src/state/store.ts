@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import type { ChildProfile } from '../engine/types';
 import { hashString } from '../engine/rng';
 import { DEFAULT_VOICE, type Pace, type VoicePersona } from '../engine/narration';
+import { DEFAULT_THEME } from '../content/themes';
 
 /**
  * All state lives on the device. There is no account, no server and no network
@@ -12,6 +13,8 @@ import { DEFAULT_VOICE, type Pace, type VoicePersona } from '../engine/narration
 export type Screen = 'map' | 'story' | 'parent';
 
 export interface Settings {
+  /** Palette id from content/themes.ts. */
+  theme: string;
   narration: boolean;
   /** How the story is read aloud. */
   voicePersona: VoicePersona;
@@ -105,6 +108,7 @@ export const INITIAL_STATE: AppState = {
   lastSessionDay: null,
   parentPinHash: null,
   settings: {
+    theme: DEFAULT_THEME,
     narration: true,
     voicePersona: DEFAULT_VOICE.persona,
     voicePace: DEFAULT_VOICE.pace,

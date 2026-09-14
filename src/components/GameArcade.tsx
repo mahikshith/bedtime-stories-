@@ -1,5 +1,6 @@
 import { GAMES, gamesForBand, isGameEncouraged, type Game } from '../content/games';
 import { MascotBuddy } from './MascotBuddy';
+import { Tile } from './Tile';
 import { currentMode } from '../engine/dayArc';
 import type { ChildProfile } from '../engine/types';
 
@@ -52,52 +53,56 @@ export function GameArcade({ profile, onPick, onExit }: GameArcadeProps) {
         <MascotBuddy size={120} mood="happy" settled={winddown} />
       </div>
 
-      <section className="stack" aria-label={`Games for ages ${profile.ageBand}`}>
-        {fitted.map((game) => (
-          <GameRow
-            key={game.id}
-            game={game}
-            onPick={onPick}
-            dimmed={!isGameEncouraged(winddown, game)}
-          />
-        ))}
+      <section>
+        <div className="shelf__head">
+          <p className="h3">Just right for {profile.name}</p>
+          <span className="shelf__count">{fitted.length} &rarr;</span>
+        </div>
+        <div className="shelf" aria-label={`Games for ages ${profile.ageBand}`}>
+          {fitted.map((game, i) => (
+            <GameTile
+              key={game.id}
+              game={game}
+              index={i}
+              onPick={onPick}
+              dimmed={!isGameEncouraged(winddown, game)}
+            />
+          ))}
+        </div>
       </section>
 
       {rest.length > 0 && (
-        <section className="stack">
-          <p className="h3">For other ages</p>
-          {rest.map((game) => (
-            <GameRow key={game.id} game={game} onPick={onPick} dimmed />
-          ))}
+        <section>
+          <div className="shelf__head">
+            <p className="h3">For other ages</p>
+            <span className="shelf__count">{rest.length} &rarr;</span>
+          </div>
+          <div className="shelf" aria-label="Games for other ages">
+            {rest.map((game, i) => (
+              <GameTile key={game.id} game={game} index={i} onPick={onPick} dimmed />
+            ))}
+          </div>
         </section>
       )}
     </div>
   );
 }
 
-function GameRow({
-  game, onPick, dimmed,
-}: { game: Game; onPick: (g: Game) => void; dimmed?: boolean }) {
+function GameTile({
+  game, index, onPick, dimmed,
+}: { game: Game; index: number; onPick: (g: Game) => void; dimmed?: boolean }) {
   const planned = game.status === 'planned';
   return (
-    <button
-      className="map__node"
-      style={{ opacity: dimmed || planned ? 0.5 : 1 }}
+    <Tile
+      index={index}
+      emoji={game.emoji}
+      title={game.title}
+      subtitle={game.blurb}
+      meta={`Ages ${game.minAge}\u2013${game.maxAge}${planned ? ' \u00b7 soon' : ''}`}
+      dimmed={dimmed}
       disabled={planned}
+      badge={game.input === 'voice' ? <span aria-label="Uses the microphone">🎤</span> : undefined}
       onClick={() => onPick(game)}
-    >
-      <span className="map__orb" aria-hidden="true">{game.emoji}</span>
-      <span className="grow">
-        <span className="h2" style={{ display: 'block' }}>{game.title}</span>
-        <span className="tiny">{game.blurb}</span>
-        <span className="tiny" style={{ display: 'block', marginTop: 4 }}>
-          Ages {game.minAge}&ndash;{game.maxAge}
-          {' · '}{game.skills.slice(0, 2).join(', ')}
-          {game.together && ' · with a grown-up'}
-          {planned && ' · coming soon'}
-        </span>
-      </span>
-      {game.input === 'voice' && <span className="badge" aria-label="Uses the microphone">🎤</span>}
-    </button>
+    />
   );
 }

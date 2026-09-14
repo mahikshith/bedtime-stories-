@@ -54,7 +54,7 @@ input, select { font: inherit; color: inherit; }
   inset: 0;
   z-index: 40;
   pointer-events: none;
-  background: radial-gradient(120% 100% at 50% 100%, rgba(255, 176, 92, 0.5), rgba(10, 6, 20, 0.75));
+  background: var(--veil, radial-gradient(120% 100% at 50% 100%, rgba(255, 176, 92, 0.5), rgba(10, 6, 20, 0.75)));
   transition: opacity var(--dur-slow) var(--ease-soft);
 }
 
@@ -142,7 +142,7 @@ input, select { font: inherit; color: inherit; }
 
 .btn--primary {
   background: linear-gradient(165deg, var(--amber-300), var(--amber-500));
-  color: #2a1605;
+  color: var(--on-accent);
   border-color: rgba(255, 255, 255, 0.45);
 }
 
@@ -166,7 +166,7 @@ input, select { font: inherit; color: inherit; }
 
 .chip[aria-pressed='true'] {
   background: linear-gradient(165deg, rgba(255, 224, 180, 0.95), rgba(242, 166, 90, 0.9));
-  color: #2a1605;
+  color: var(--on-accent);
   border-color: rgba(255, 255, 255, 0.5);
   font-weight: 650;
 }
@@ -256,6 +256,23 @@ input, select { font: inherit; color: inherit; }
 
 .story--buddy { padding-bottom: 150px; }
 
+/*
+ * The story player is its own room. Worlds carry deep night gradients by
+ * design — that is the sleep gradient — so text inside it stays light whatever
+ * palette the rest of the app is wearing. Without this, a bright theme puts
+ * dark green type on a midnight-blue sky.
+ */
+.story,
+.story .glass,
+.realwindow {
+  --text-hi: #fdf6ec;
+  --text-mid: rgba(253, 246, 236, 0.78);
+  --text-low: rgba(253, 246, 236, 0.55);
+  /* Redefining the variable is not enough: something in here has to consume it,
+     or the colour stays inherited from body and the override does nothing. */
+  color: var(--text-hi);
+}
+
 .story {
   flex: 1;
   display: flex;
@@ -333,19 +350,19 @@ input, select { font: inherit; color: inherit; }
   background: rgba(0, 0, 0, 0.3);
 }
 
-/* ---------- Mascot: Lumi ---------- */
+/* ---------- Mascot: Lumi the lantern-bird ---------- */
 
 .lumi {
   display: block;
   margin-inline: auto;
   overflow: visible;
-  filter: drop-shadow(0 14px 30px rgba(255, 180, 94, 0.3));
+  filter: drop-shadow(0 16px 32px rgba(22, 216, 196, 0.32));
 }
 
 .lumi__rig {
   transform-box: fill-box;
-  transform-origin: 50% 92%;
-  animation: lumi-idle 3.6s var(--ease-soft) infinite;
+  transform-origin: 50% 94%;
+  animation: lumi-idle 3.8s var(--ease-soft) infinite;
 }
 
 /* Squash and stretch. The anticipation crouch is what sells a hop. */
@@ -358,61 +375,85 @@ input, select { font: inherit; color: inherit; }
 
 @keyframes lumi-hop {
   0%   { transform: translateY(0) scale(1, 1); }
-  18%  { transform: translateY(4px) scale(1.12, 0.88); }
-  42%  { transform: translateY(-40px) scale(0.9, 1.14); }
-  62%  { transform: translateY(-46px) scale(0.95, 1.06); }
-  84%  { transform: translateY(3px) scale(1.14, 0.86); }
+  18%  { transform: translateY(5px) scale(1.12, 0.88); }
+  42%  { transform: translateY(-42px) scale(0.9, 1.14); }
+  62%  { transform: translateY(-48px) scale(0.95, 1.06); }
+  84%  { transform: translateY(4px) scale(1.14, 0.86); }
   100% { transform: translateY(0) scale(1, 1); }
 }
 
-.lumi__eyes {
+/* The head tilt is set inline per mood; these only need the right pivot. */
+.lumi__head,
+.lumi__crest,
+.lumi__wing,
+.lumi__eyes,
+.lumi__beak {
   transform-box: fill-box;
-  transform-origin: center;
 }
 
-.lumi__eyes--blink { animation: lumi-blink 5.2s var(--ease-soft) infinite; }
+.lumi__head { transform-origin: 50% 80%; }
+
+.lumi__eyes {
+  transform-origin: center;
+  animation: lumi-blink 5.4s var(--ease-soft) infinite;
+}
 
 @keyframes lumi-blink {
-  0%, 92%, 100% { transform: scaleY(1); }
-  95%           { transform: scaleY(0.08); }
+  0%, 93%, 100% { transform: scaleY(1); }
+  96%           { transform: scaleY(0.08); }
 }
 
 .lumi__halo { animation: lumi-pulse 4.4s var(--ease-soft) infinite alternate; }
-.lumi__glow { animation: lumi-pulse 2.9s var(--ease-soft) infinite alternate; }
 
 @keyframes lumi-pulse {
   from { opacity: 0.45; }
   to   { opacity: 1; }
 }
 
-.lumi__antenna {
-  transform-box: fill-box;
+.lumi__crest {
   transform-origin: 50% 100%;
+  animation: lumi-crest 3.4s var(--ease-soft) infinite alternate;
 }
 
-.lumi__antenna--l { animation: lumi-sway-l 4.2s var(--ease-soft) infinite alternate; }
-.lumi__antenna--r { animation: lumi-sway-r 4.6s var(--ease-soft) infinite alternate; }
+@keyframes lumi-crest {
+  from { transform: rotate(-3deg); }
+  to   { transform: rotate(4deg); }
+}
 
-@keyframes lumi-sway-l { from { transform: rotate(-4deg); } to { transform: rotate(5deg); } }
-@keyframes lumi-sway-r { from { transform: rotate(4deg); } to { transform: rotate(-5deg); } }
+.lumi__wing { transform-origin: 50% 18%; }
+.lumi__wing--l { transform-origin: 70% 18%; }
+.lumi__wing--r { transform-origin: 30% 18%; }
 
-.lumi__arm {
+/* A raised wing that actually waves, for encouragement. */
+.lumi__wing--wave { animation: lumi-wave 1.5s var(--ease-soft) infinite; }
+
+@keyframes lumi-wave {
+  0%, 100% { transform: rotate(-8deg); }
+  50%      { transform: rotate(-34deg); }
+}
+
+.lumi--hop .lumi__wing--l { animation: lumi-flap-l 820ms var(--ease-soft); }
+.lumi--hop .lumi__wing--r { animation: lumi-flap-r 820ms var(--ease-soft); }
+
+@keyframes lumi-flap-l {
+  0%, 100% { transform: rotate(0deg); }
+  45%      { transform: rotate(-38deg); }
+}
+
+@keyframes lumi-flap-r {
+  0%, 100% { transform: rotate(0deg); }
+  45%      { transform: rotate(38deg); }
+}
+
+.lumi__sparkle {
   transform-box: fill-box;
-  /* Pivot at the shoulder, not the middle of the arm. */
-  transform-origin: 50% 8%;
+  transform-origin: center;
+  animation: lumi-sparkle 2.6s var(--ease-soft) infinite;
 }
 
-.lumi--hop .lumi__arm--l { animation: lumi-wave-l 820ms var(--ease-soft); }
-.lumi--hop .lumi__arm--r { animation: lumi-wave-r 820ms var(--ease-soft); }
-
-@keyframes lumi-wave-l {
-  0%, 100% { transform: rotate(0deg); }
-  50%      { transform: rotate(-26deg); }
-}
-
-@keyframes lumi-wave-r {
-  0%, 100% { transform: rotate(0deg); }
-  50%      { transform: rotate(26deg); }
+@keyframes lumi-sparkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.8); }
+  50%      { opacity: 1;    transform: scale(1.1); }
 }
 
 .lumi__zzz { animation: lumi-zzz 3.4s var(--ease-soft) infinite; }
@@ -423,10 +464,85 @@ input, select { font: inherit; color: inherit; }
   100% { opacity: 0; transform: translate(8px, -14px); }
 }
 
+/* ---------- Lumi in motion ---------- */
+
+.lumi__legs { transform-box: fill-box; }
+
+.lumi__leg {
+  transform-box: fill-box;
+  /* Pivot at the hip, not the middle of the leg. */
+  transform-origin: 50% 0%;
+}
+
+/*
+ * Walking: legs alternate half a cycle apart and the body waddles with them.
+ * The waddle is what makes it read as walking rather than legs twitching.
+ */
+.lumi--walk .lumi__leg--l { animation: lumi-step 620ms var(--ease-soft) infinite; }
+.lumi--walk .lumi__leg--r { animation: lumi-step 620ms var(--ease-soft) infinite -310ms; }
+.lumi--walk .lumi__rig { animation: lumi-waddle 620ms var(--ease-soft) infinite; }
+.lumi--walk .lumi__wing--l { animation: lumi-balance-l 620ms var(--ease-soft) infinite; }
+.lumi--walk .lumi__wing--r { animation: lumi-balance-r 620ms var(--ease-soft) infinite; }
+
+@keyframes lumi-step {
+  0%, 100% { transform: rotate(18deg); }
+  50%      { transform: rotate(-18deg); }
+}
+
+@keyframes lumi-waddle {
+  0%, 100% { transform: translateY(0) rotate(-2.5deg); }
+  50%      { transform: translateY(-3px) rotate(2.5deg); }
+}
+
+@keyframes lumi-balance-l {
+  0%, 100% { transform: rotate(-12deg); }
+  50%      { transform: rotate(6deg); }
+}
+
+@keyframes lumi-balance-r {
+  0%, 100% { transform: rotate(12deg); }
+  50%      { transform: rotate(-6deg); }
+}
+
+/*
+ * Flying: fast wing beats, a slow hover, and the legs tuck back. Tucked legs
+ * are the detail that separates "flying" from "hovering awkwardly".
+ */
+.lumi--fly .lumi__wing--l { animation: lumi-beat-l 240ms linear infinite; }
+.lumi--fly .lumi__wing--r { animation: lumi-beat-r 240ms linear infinite; }
+.lumi--fly .lumi__rig { animation: lumi-hover 1.5s var(--ease-soft) infinite alternate; }
+.lumi--fly .lumi__leg { transform: rotate(34deg); }
+
+@keyframes lumi-beat-l {
+  0%, 100% { transform: rotate(-6deg); }
+  50%      { transform: rotate(-58deg); }
+}
+
+@keyframes lumi-beat-r {
+  0%, 100% { transform: rotate(6deg); }
+  50%      { transform: rotate(58deg); }
+}
+
+@keyframes lumi-hover {
+  from { transform: translateY(2px) rotate(-3deg); }
+  to   { transform: translateY(-16px) rotate(3deg); }
+}
+
+/* A full barrel roll, for a moment worth celebrating. */
+.lumi--spin .lumi__rig { animation: lumi-spin 900ms var(--ease-soft); }
+.lumi--spin .lumi__wing--l { animation: lumi-beat-l 200ms linear 4; }
+.lumi--spin .lumi__wing--r { animation: lumi-beat-r 200ms linear 4; }
+
+@keyframes lumi-spin {
+  0%   { transform: rotate(0) scale(1); }
+  35%  { transform: rotate(180deg) scale(1.08); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+/* A hop should flap too — a bird pushes off with its wings. */
 /* Lumi settles with the story: by the wind-down there is no motion left. */
-.lumi--asleep .lumi__rig { animation-duration: 6.5s; }
-.lumi--asleep .lumi__antenna--l,
-.lumi--asleep .lumi__antenna--r { animation-duration: 8s; }
+.lumi--asleep .lumi__rig { animation-duration: 6.8s; }
+.lumi--asleep .lumi__crest { animation-duration: 7.5s; }
 
 /* ---------- Mascot buddy (the hopping layer) ---------- */
 
@@ -471,11 +587,12 @@ input, select { font: inherit; color: inherit; }
 
 @media (prefers-reduced-motion: reduce) {
   .lumi__rig,
-  .lumi__eyes--blink,
+  .lumi__eyes,
   .lumi__halo,
-  .lumi__glow,
-  .lumi__antenna--l,
-  .lumi__antenna--r,
+  .lumi__crest,
+  .lumi__sparkle,
+  .lumi__wing,
+  .lumi__leg,
   .lumi__zzz { animation: none; }
   .buddy { transition: none; }
 }
@@ -648,7 +765,7 @@ input, select { font: inherit; color: inherit; }
 
 .letters__card--on {
   background: linear-gradient(165deg, rgba(255, 224, 180, 0.95), rgba(242, 166, 90, 0.9));
-  color: #2a1605;
+  color: var(--on-accent);
 }
 
 .letters__glyph {
@@ -668,7 +785,7 @@ input, select { font: inherit; color: inherit; }
   color: var(--mint-400);
 }
 
-.letters__card--on .letters__met { color: #2a1605; }
+.letters__card--on .letters__met { color: var(--on-accent); }
 
 /* ---------- Games ---------- */
 
@@ -848,3 +965,188 @@ input, select { font: inherit; color: inherit; }
   .breath__lantern--swelling { animation: none; }
   .breath, .breath__bar-fill { transition: none; }
 }
+
+/* ---------- Theme swatches ---------- */
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: var(--sp-2);
+}
+
+.swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  min-height: 84px;
+  transition: transform var(--dur-fast) var(--ease-soft);
+}
+
+.swatch:active { transform: scale(0.96); }
+.swatch:focus-visible { outline: 3px solid var(--amber-400); outline-offset: 3px; }
+.swatch[aria-pressed='true'] { box-shadow: 0 0 0 3px var(--amber-400); }
+
+.swatch__chip {
+  position: relative;
+  width: 100%;
+  height: 34px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 4px;
+}
+
+.swatch__dot { width: 9px; height: 9px; border-radius: 50%; }
+.swatch__name { font-size: 0.76rem; font-weight: 650; }
+
+.buddy__facing {
+  display: block;
+  transition: transform var(--dur-mid) var(--ease-soft);
+}
+
+/* Flight carries further than a waddle, so give the travel a matching arc. */
+.buddy--moving { transition: left 900ms var(--ease-soft); }
+
+@media (prefers-reduced-motion: reduce) {
+  .buddy__facing { transition: none; }
+}
+
+/* ---------- Tile grid ---------- */
+
+/*
+ * Grid, never flexbox percentage maths. Two tiles fit across a 390px phone,
+ * which is the whole reason this replaced the vertical row lists.
+ */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(142px, 1fr));
+  gap: var(--sp-3);
+}
+
+.tiles--roomy { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+
+/* Below the narrowest phones a second column would make targets too small. */
+@media (max-width: 330px) {
+  .tiles, .tiles--roomy { grid-template-columns: 1fr; }
+}
+
+/* Outer shell of the nested enclosure. */
+.tile {
+  padding: 5px;
+  border-radius: var(--r-xl);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  box-shadow: var(--clay-shadow);
+  transition: transform var(--dur-fast) var(--ease-soft), opacity var(--dur-mid);
+  animation: tile-in var(--dur-mid) var(--ease-soft) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+  text-align: center;
+}
+
+.tile:active:not(:disabled) { transform: scale(0.97); }
+.tile:focus-visible { outline: 3px solid var(--amber-400); outline-offset: 3px; }
+.tile:disabled { cursor: not-allowed; }
+
+@keyframes tile-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Inner core — concentric radius: outer radius minus the shell padding. */
+.tile__inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: var(--sp-3) var(--sp-2) var(--sp-3);
+  min-height: 148px;
+  border-radius: calc(var(--r-xl) - 5px);
+  background: var(--glass-bg-strong);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.tile__orb {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.7rem;
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--glass-border);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+
+.tile__title {
+  font-weight: 700;
+  font-size: 0.99rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.tile__sub {
+  font-size: 0.76rem;
+  color: var(--text-mid);
+  line-height: 1.35;
+}
+
+.tile__meta { font-size: 0.7rem; color: var(--text-low); }
+
+.tile__badge {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 0.72rem;
+  color: var(--mint-400);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile { animation: none; }
+}
+
+
+/* ---------- Shelves: side-by-side rows ---------- */
+
+/*
+ * A horizontal row you swipe through, rather than a column you scroll past.
+ * Long lists — eighteen worlds, twenty-two rhymes — become one glanceable row
+ * per group instead of a wall, and the peeking next tile is what tells a child
+ * there is more to the right.
+ */
+.shelf {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 152px;
+  gap: var(--sp-3);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* Bleed to the screen edge so a tile can peek past the gutter. */
+  margin-inline: calc(var(--sp-3) * -1);
+  padding-inline: var(--sp-3);
+  padding-block: 4px 10px;
+}
+
+.shelf::-webkit-scrollbar { display: none; }
+.shelf > * { scroll-snap-align: start; }
+
+.shelf__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.shelf__count { font-size: 0.74rem; color: var(--text-low); }

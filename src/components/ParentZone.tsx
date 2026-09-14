@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { WORLDS } from '../content/worlds';
 import { COMPANIONS, getCompanion } from '../content/companions';
 import { sanitizeName } from '../engine/safety';
+import { THEMES } from '../content/themes';
 import { SPARK_COST, SPARK_COST_TOTAL } from '../engine/providers';
 import {
   SEATS,
@@ -88,6 +89,8 @@ export function ParentZone({ onExit, onOpenPrivacy }: { onExit: () => void; onOp
         </button>
         <p className="tiny">Demo build: no payment is taken and no card is requested.</p>
       </section>
+
+      <ThemePicker />
 
       <Household />
 
@@ -179,6 +182,70 @@ export function ParentZone({ onExit, onOpenPrivacy }: { onExit: () => void; onOp
         </section>
       )}
     </div>
+  );
+}
+
+/**
+ * Palette chooser.
+ *
+ * Lives in the parent zone rather than on the child's screens: a four-year-old
+ * given a colour switcher will use it instead of the app. A parent sets it once
+ * and it sticks.
+ */
+function ThemePicker() {
+  const state = useAppState();
+  const current = state.settings.theme;
+  const night = THEMES.filter((t) => t.mode === 'night');
+  const day = THEMES.filter((t) => t.mode === 'day');
+
+  return (
+    <section className="glass stack" style={{ padding: 'var(--sp-4)' }}>
+      <p className="eyebrow">Colours</p>
+      <p className="tiny">
+        Whichever you pick, the screen still warms and dims as the story winds down.
+      </p>
+
+      <p className="h3">Darker</p>
+      <div className="swatches" role="group" aria-label="Dark palettes">
+        {night.map((t) => (
+          <ThemeSwatch key={t.id} theme={t} active={t.id === current} />
+        ))}
+      </div>
+
+      <p className="h3">Brighter</p>
+      <div className="swatches" role="group" aria-label="Light palettes">
+        {day.map((t) => (
+          <ThemeSwatch key={t.id} theme={t} active={t.id === current} />
+        ))}
+      </div>
+
+      <p className="tiny">
+        {THEMES.find((t) => t.id === current)?.blurb}
+        {' '}Bright palettes are lovely during the day; Midnight is the kindest at bedtime.
+      </p>
+    </section>
+  );
+}
+
+function ThemeSwatch({ theme, active }: { theme: (typeof THEMES)[number]; active: boolean }) {
+  const t = theme.tokens;
+  return (
+    <button
+      className="swatch"
+      aria-pressed={active}
+      aria-label={`${theme.name} palette`}
+      onClick={() => updateSettings({ theme: theme.id })}
+    >
+      <span
+        className="swatch__chip"
+        aria-hidden="true"
+        style={{ background: `linear-gradient(140deg, ${t.ink700} 0 52%, ${t.accent} 52%)` }}
+      >
+        <span className="swatch__dot" style={{ background: t.pop1 }} />
+        <span className="swatch__dot" style={{ background: t.pop3 }} />
+      </span>
+      <span className="swatch__name">{theme.emoji} {theme.name}</span>
+    </button>
   );
 }
 

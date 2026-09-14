@@ -10,7 +10,13 @@ interface SkyProps {
   dimming?: boolean;
 }
 
-const DEFAULT_PALETTE: World['palette'] = ['#070a16', '#1e2749', '#b9a6ff'];
+/*
+ * Outside a story the sky is built from the active palette's own surfaces, so a
+ * light theme gets a light sky. Hardcoding a night gradient here made every
+ * bright palette look like a dark one with the wrong text colour.
+ */
+const THEMED_SKY =
+  'radial-gradient(125% 92% at 50% 6%, var(--ink-600) 0%, var(--ink-800) 48%, var(--ink-900) 100%)';
 
 /**
  * The ambient layer: a world gradient, a deterministic speck field, and the
@@ -21,9 +27,7 @@ export function Sky({ world, calm = 0, dimming = true }: SkyProps) {
   const seed = hashString(world?.id ?? 'home');
   const specks = useMemo(() => buildSpecks(seed, 46), [seed]);
 
-  const background = world
-    ? worldGradient(world, calm)
-    : `radial-gradient(120% 90% at 50% 8%, ${DEFAULT_PALETTE[2]}22 0%, ${DEFAULT_PALETTE[1]}44 34%, ${DEFAULT_PALETTE[0]} 66%, ${DEFAULT_PALETTE[0]} 100%)`;
+  const background = world ? worldGradient(world, calm) : THEMED_SKY;
 
   return (
     <>
@@ -36,7 +40,7 @@ export function Sky({ world, calm = 0, dimming = true }: SkyProps) {
             cx={`${s.x}%`}
             cy={`${s.y}%`}
             r={s.r}
-            fill="#fff6e2"
+            fill="var(--speck, #fff6e2)"
             opacity={s.o * (1 - calm * 0.55)}
             style={{ animationDelay: `${s.delay}s` }}
           />

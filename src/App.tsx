@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Sky } from './components/Sky';
+import { useTheme } from './hooks/useTheme';
 import { Onboarding } from './components/Onboarding';
 import { Today } from './components/Today';
 import { WorldMap } from './components/WorldMap';
@@ -73,6 +74,8 @@ export default function App() {
 
   const handleCalm = useCallback((next: number) => setStoryCalm(next), []);
   const profile = activeProfile(state);
+
+  useTheme(state.settings.theme);
 
   // One bedtime counts as one trial night, however many times the app is opened.
   useEffect(() => {

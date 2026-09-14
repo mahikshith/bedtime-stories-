@@ -1,5 +1,6 @@
 import { RHYMES } from '../content/rhymes';
 import { MascotBuddy } from './MascotBuddy';
+import { Tile } from './Tile';
 import type { ChildProfile, Rhyme } from '../engine/types';
 import { progressFor, useAppState } from '../state/store';
 
@@ -39,22 +40,31 @@ export function RhymeList({ profile, onPick, onExit }: RhymeListProps) {
         <MascotBuddy size={120} mood="happy" />
       </div>
 
-      <section className="stack">
-        {ordered.map((rhyme) => (
-          <button key={rhyme.id} className="map__node" onClick={() => onPick(rhyme)}>
-            <span className="map__orb" aria-hidden="true">{rhyme.emoji}</span>
-            <span className="grow">
-              <span className="h2" style={{ display: 'block' }}>{rhyme.title}</span>
-              <span className="tiny">
-                {rhyme.kind === 'original' ? 'A Lumi original' : 'Traditional'}
-                {' · '}
-                {rhyme.devices.slice(0, 3).join(', ')}
-              </span>
-            </span>
-            {recited.has(rhyme.id) && <span className="badge" aria-label="Recited">&#10003;</span>}
-          </button>
-        ))}
-      </section>
+      {/* Grouped into rows that mean something, rather than one long wall. */}
+      {[
+        { key: 'original', label: 'Lumi originals', list: ordered.filter((r) => r.kind === 'original') },
+        { key: 'traditional', label: 'The old favourites', list: ordered.filter((r) => r.kind === 'traditional') },
+      ].map((group) => (
+        <section key={group.key}>
+          <div className="shelf__head">
+            <p className="h3">{group.label}</p>
+            <span className="shelf__count">{group.list.length} &rarr;</span>
+          </div>
+          <div className="shelf" role="list" aria-label={group.label}>
+            {group.list.map((rhyme, i) => (
+              <Tile
+                key={rhyme.id}
+                index={i}
+                emoji={rhyme.emoji}
+                title={rhyme.title}
+                subtitle={rhyme.devices.slice(0, 2).join(', ')}
+                badge={recited.has(rhyme.id) ? <span aria-label="Recited">&#10003;</span> : undefined}
+                onClick={() => onPick(rhyme)}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

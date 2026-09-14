@@ -1,6 +1,99 @@
 import { useEffect, useState } from 'react';
 
-export type Mood = 'happy' | 'awake' | 'soft' | 'sleepy';
+export type Mood =
+  | 'happy'
+  | 'awake'
+  | 'soft'
+  | 'sleepy'
+  | 'excited'
+  | 'curious'
+  | 'proud'
+  | 'encouraging'
+  | 'oops';
+
+/** What the body is doing, independent of what the face is feeling. */
+export type Action = 'idle' | 'walk' | 'fly' | 'spin';
+
+interface MascotProps {
+  size?: number;
+  mood?: Mood;
+  /** Body motion. The face still carries the mood on top of it. */
+  action?: Action;
+  /** Squash-and-stretch hop. Ignored under prefers-reduced-motion via CSS. */
+  hopping?: boolean;
+  /** Hop on a timer without an external driver. */
+  autoHop?: boolean;
+  title?: string;
+}
+
+/**
+ * Lumi — the lantern-bird.
+ *
+ * Rebuilt as a bird because the previous round blob had no silhouette and no
+ * face to speak of. What makes a mascot legible at 24px and lovable at 200px is
+ * the same thing: a distinctive outline plus a face that can actually feel
+ * something.
+ *
+ * **Eyebrows do almost all of the emotional work.** A face without them reads
+ * blank no matter how big the eyes are; two rotated bars above the eyes carry
+ * happy, worried, curious and proud between them. Everything else — eye
+ * openness, pupil direction, beak opening, wing lift, head tilt — is a
+ * modifier on that.
+ *
+ * Drawn inline so it ships offline, scales without artefacts, needs no image
+ * pipeline, and can react to the sleep gradient.
+ *
+ * **Colour is deliberately fixed, not themed.** A mascot that changes colour
+ * with the palette is a shape, not a character — Duo is the same green
+ * everywhere. Lumi stays turquoise on every theme.
+ *
+ * The hues come from the research rather than taste: children's preference
+ * correlates positively with saturation across every hue family, they favour
+ * bright over deep (darker shades read as negative to them), and warm hues
+ * slightly dominate. So: a vividly saturated turquoise body carrying the warm
+ * colours where they count — a sunny-yellow lantern belly and a coral beak and
+ * feet. Complementary teal-against-coral is the highest-chroma pairing
+ * available, which is why it stays legible on all six palettes.
+ */
+
+interface Face {
+  /** Vertical brow offset. Negative is raised. */
+  browY: number;
+  /** Brow rotation in degrees. Positive tilts the INNER end up (worried). */
+  browRot: number;
+  /** Asymmetry factor for the right brow — 1 mirrors, <1 cocks one brow. */
+  browAsym: number;
+  /** 1 is wide open; below 0.2 the eye is drawn as a closed arc. */
+  eyeOpen: number;
+  /** Closed-eye shape: a contented upward arc or a sleeping downward one. */
+  closed: 'happy' | 'sleepy';
+  pupilX: number;
+  pupilY: number;
+  /** 0 shut, 1 wide. */
+  beak: number;
+  /** Wing lift in degrees. Negative is up. */
+  wing: number;
+  /** One wing raised in a wave. */
+  wave: boolean;
+  blush: number;
+  /** Whole-head tilt. */
+  tilt: number;
+  sparkle: boolean;
+  zzz: boolean;
+}
+
+const FACES: Record<Mood, Face> = {
+  happy:       { browY: 0,  browRot: -8,  browAsym: 1,   eyeOpen: 1,    closed: 'happy',  pupilX: 0, pupilY: 0,  beak: 0.18, wing: 0,   wave: false, blush: 0.55, tilt: 0,  sparkle: true,  zzz: false },
+  excited:     { browY: -9, browRot: -16, browAsym: 1,   eyeOpen: 1.12, closed: 'happy',  pupilX: 0, pupilY: -2, beak: 0.75, wing: -24, wave: false, blush: 0.72, tilt: 0,  sparkle: true,  zzz: false },
+  curious:     { browY: -5, browRot: -14, browAsym: 0.1, eyeOpen: 1,    closed: 'happy',  pupilX: 6, pupilY: 0,  beak: 0.1,  wing: 0,   wave: false, blush: 0.4,  tilt: -7, sparkle: true,  zzz: false },
+  proud:       { browY: -3, browRot: -5,  browAsym: 1,   eyeOpen: 0.14, closed: 'happy',  pupilX: 0, pupilY: 0,  beak: 0.34, wing: -12, wave: false, blush: 0.62, tilt: 0,  sparkle: false, zzz: false },
+  encouraging: { browY: -7, browRot: -12, browAsym: 1,   eyeOpen: 0.96, closed: 'happy',  pupilX: 0, pupilY: -1, beak: 0.46, wing: -8,  wave: true,  blush: 0.6,  tilt: -3, sparkle: true,  zzz: false },
+  oops:        { browY: -6, browRot: 20,  browAsym: 1,   eyeOpen: 1.1,  closed: 'happy',  pupilX: 0, pupilY: 2,  beak: 0.22, wing: 9,   wave: false, blush: 0.5,  tilt: 4,  sparkle: false, zzz: false },
+  // Legacy moods kept so every existing call site still reads correctly.
+  awake:       { browY: -2, browRot: -6,  browAsym: 1,   eyeOpen: 1,    closed: 'happy',  pupilX: 0, pupilY: 0,  beak: 0.12, wing: 0,   wave: false, blush: 0.45, tilt: 0,  sparkle: true,  zzz: false },
+  soft:        { browY: 2,  browRot: -2,  browAsym: 1,   eyeOpen: 0.5,  closed: 'sleepy', pupilX: 0, pupilY: 1,  beak: 0.08, wing: 3,   wave: false, blush: 0.5,  tilt: 0,  sparkle: false, zzz: false },
+  sleepy:      { browY: 7,  browRot: 13,  browAsym: 1,   eyeOpen: 0.05, closed: 'sleepy', pupilX: 0, pupilY: 3,  beak: 0,    wing: 7,   wave: false, blush: 0.45, tilt: 3,  sparkle: false, zzz: true  },
+};
 
 /** Periodic self-triggered hop, for Lumi outside the hopping buddy layer. */
 function useAutoHop(enabled: boolean): boolean {
@@ -20,157 +113,181 @@ function useAutoHop(enabled: boolean): boolean {
   return hopping;
 }
 
-interface MascotProps {
-  size?: number;
-  /** Lumi's face follows the sleep gradient: by the last page the eyes are closed. */
-  mood?: Mood;
-  /** Squash-and-stretch hop. Ignored under prefers-reduced-motion via CSS. */
-  hopping?: boolean;
-  /** Hop on a timer without an external driver. */
-  autoHop?: boolean;
-  title?: string;
-}
+const EYE = { lx: 94, rx: 146, cy: 112, rx_: 26, ry: 27 };
 
-/**
- * Lumi — the lantern-sprite.
- *
- * Drawn from the principles that make a mascot readable rather than from any
- * existing character: one big rounded silhouette, a head that is most of the
- * body, eyes at roughly 40% of the face, a single strong colour, and one
- * signature feature that survives being shrunk to a 24px icon — here, the two
- * curved antennae with glowing lantern bulbs.
- *
- * Inline SVG so it ships offline, scales without artefacts, and can react to
- * the story's calm value.
- */
 export function Mascot({
   size = 200,
   mood = 'happy',
+  action = 'idle',
   hopping = false,
   autoHop = false,
   title = 'Lumi',
 }: MascotProps) {
   const autoHopping = useAutoHop(autoHop && mood !== 'sleepy');
   const isHopping = hopping || autoHopping;
-  const lidScale = mood === 'happy' || mood === 'awake' ? 1 : mood === 'soft' ? 0.42 : 0.04;
-  const asleep = mood === 'sleepy';
+  const f = FACES[mood];
+  const shut = f.eyeOpen <= 0.2;
 
-  const mouth = {
-    happy: 'M84 150 Q100 168 116 150 Q100 158 84 150 Z',
-    awake: 'M86 151 Q100 163 114 151',
-    soft: 'M88 152 Q100 160 112 152',
-    sleepy: 'M91 153 Q100 159 109 153',
-  }[mood];
+  /** Closed eyes are a curve, not a flat line — a line reads as unconscious. */
+  const lid = (cx: number) =>
+    f.closed === 'happy'
+      ? `M${cx - 22} ${EYE.cy + 4} Q${cx} ${EYE.cy - 18} ${cx + 22} ${EYE.cy + 4}`
+      : `M${cx - 22} ${EYE.cy - 2} Q${cx} ${EYE.cy + 16} ${cx + 22} ${EYE.cy - 2}`;
+
+  const gape = f.beak * 16;
 
   return (
     <svg
-      className={`lumi${isHopping ? ' lumi--hop' : ''}${asleep ? ' lumi--asleep' : ''}`}
+      className={[
+        'lumi',
+        `lumi--${action}`,
+        isHopping ? 'lumi--hop' : '',
+        mood === 'sleepy' ? 'lumi--asleep' : '',
+      ].filter(Boolean).join(' ')}
       width={size}
       height={size}
-      viewBox="0 0 200 210"
+      viewBox="-6 0 252 244"
       role="img"
       aria-label={title}
     >
       <defs>
-        <radialGradient id="lumi-halo" cx="50%" cy="58%" r="52%">
-          <stop offset="0%" stopColor="#ffe3ae" stopOpacity="0.85" />
-          <stop offset="55%" stopColor="#ffb45e" stopOpacity="0.3" />
-          <stop offset="100%" stopColor="#ffb45e" stopOpacity="0" />
+        <radialGradient id="lumi-halo" cx="50%" cy="54%" r="52%">
+          <stop offset="0%" stopColor="#8ff7e8" stopOpacity="0.85" />
+          <stop offset="55%" stopColor="#16d8c4" stopOpacity="0.28" />
+          <stop offset="100%" stopColor="#16d8c4" stopOpacity="0" />
         </radialGradient>
-        <linearGradient id="lumi-skin" x1="0.2" y1="0" x2="0.8" y2="1">
-          <stop offset="0%" stopColor="#fff4dc" />
-          <stop offset="48%" stopColor="#ffd79b" />
-          <stop offset="100%" stopColor="#f0a35c" />
+        <linearGradient id="lumi-body" x1="0.25" y1="0" x2="0.8" y2="1">
+          <stop offset="0%" stopColor="#6ff3e2" />
+          <stop offset="44%" stopColor="#1fd6c1" />
+          <stop offset="100%" stopColor="#0aa694" />
         </linearGradient>
-        <radialGradient id="lumi-belly" cx="50%" cy="38%" r="62%">
-          <stop offset="0%" stopColor="#fffdf6" />
-          <stop offset="70%" stopColor="#ffe9bd" />
-          <stop offset="100%" stopColor="#ffcf8f" />
+        <radialGradient id="lumi-belly" cx="50%" cy="34%" r="66%">
+          <stop offset="0%" stopColor="#fffbe8" />
+          <stop offset="62%" stopColor="#ffe45c" />
+          <stop offset="100%" stopColor="#ffc60a" />
         </radialGradient>
-        <radialGradient id="lumi-bulb" cx="38%" cy="32%" r="70%">
-          <stop offset="0%" stopColor="#fffdf2" />
-          <stop offset="60%" stopColor="#ffd98a" />
-          <stop offset="100%" stopColor="#ffab4d" />
-        </radialGradient>
+        <linearGradient id="lumi-crest" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0%" stopColor="#ff5f8f" />
+          <stop offset="100%" stopColor="#ffa1bf" />
+        </linearGradient>
+        <linearGradient id="lumi-beak" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ffa24a" />
+          <stop offset="100%" stopColor="#ff5f3d" />
+        </linearGradient>
       </defs>
 
-      <circle className="lumi__halo" cx="100" cy="122" r="88" fill="url(#lumi-halo)" />
+      <circle className="lumi__halo" cx="120" cy="128" r="104" fill="url(#lumi-halo)" />
 
       <g className="lumi__rig">
-        {/* feet — drawn first so the body overlaps them */}
-        <ellipse className="lumi__foot lumi__foot--l" cx="76" cy="186" rx="18" ry="11" fill="#e08f4a" />
-        <ellipse className="lumi__foot lumi__foot--r" cx="124" cy="186" rx="18" ry="11" fill="#e08f4a" />
-
-        {/* antennae — the silhouette signature */}
-        <g className="lumi__antenna lumi__antenna--l">
-          <path d="M81 62 C70 38 54 26 42 21" stroke="#e8a45f" strokeWidth="7" fill="none" strokeLinecap="round" />
-          <circle cx="39" cy="19" r="14" fill="url(#lumi-bulb)" />
-          <circle cx="35" cy="15" r="4.5" fill="#fffdf4" opacity="0.9" />
+        {/* legs and feet, behind the body */}
+        {/*
+          Three toes each, so they read as bird feet rather than one bar, and
+          each leg is its own group pivoting at the hip so it can swing.
+        */}
+        <g className="lumi__legs" stroke="#ff7a4d" strokeWidth="7" strokeLinecap="round" fill="none">
+          <g className="lumi__leg lumi__leg--l">
+            <path d="M103 198 L103 214" stroke="#f2603a" />
+            <path d="M103 213 L90 229" />
+            <path d="M103 213 L103 232" />
+            <path d="M103 213 L116 229" />
+          </g>
+          <g className="lumi__leg lumi__leg--r">
+            <path d="M137 198 L137 214" stroke="#f2603a" />
+            <path d="M137 213 L124 229" />
+            <path d="M137 213 L137 232" />
+            <path d="M137 213 L150 229" />
+          </g>
         </g>
-        <g className="lumi__antenna lumi__antenna--r">
-          <path d="M119 62 C130 38 146 26 158 21" stroke="#e8a45f" strokeWidth="7" fill="none" strokeLinecap="round" />
-          <circle cx="161" cy="19" r="14" fill="url(#lumi-bulb)" />
-          <circle cx="157" cy="15" r="4.5" fill="#fffdf4" opacity="0.9" />
+
+        {/* wings, behind the body so they read as attached */}
+        <g
+          className={`lumi__wing lumi__wing--l${f.wave ? ' lumi__wing--wave' : ''}`}
+          style={{ transform: `rotate(${f.wing}deg)` }}
+        >
+          <ellipse cx="34" cy="150" rx="23" ry="36" fill="#13bfae" transform="rotate(-14 34 150)" />
+        </g>
+        <g className="lumi__wing lumi__wing--r" style={{ transform: `rotate(${-f.wing}deg)` }}>
+          <ellipse cx="206" cy="150" rx="23" ry="36" fill="#13bfae" transform="rotate(14 206 150)" />
         </g>
 
-        {/* arms */}
-        <ellipse className="lumi__arm lumi__arm--l" cx="46" cy="141" rx="13" ry="21" fill="#e89751" />
-        <ellipse className="lumi__arm lumi__arm--r" cx="154" cy="141" rx="13" ry="21" fill="#e89751" />
-
-        {/* body — one big rounded mass, head and body as a single silhouette */}
-        <g className="lumi__body">
-          <path
-            d="M100 46 C142 46 166 80 166 118 C166 158 138 182 100 182 C62 182 34 158 34 118 C34 80 58 46 100 46 Z"
-            fill="url(#lumi-skin)"
-          />
-
-          {/* lantern belly */}
-          <ellipse className="lumi__glow" cx="100" cy="152" rx="30" ry="23" fill="url(#lumi-belly)" />
-
-          {/* eyes */}
-          <g
-            className={`lumi__eyes${lidScale === 1 ? ' lumi__eyes--blink' : ''}`}
-            style={lidScale === 1 ? undefined : { transform: `scaleY(${lidScale})` }}
-          >
-            <ellipse cx="76" cy="112" rx="19" ry="21" fill="#fffdf6" />
-            <ellipse cx="124" cy="112" rx="19" ry="21" fill="#fffdf6" />
-            <circle cx="79" cy="115" r="11" fill="#3a2410" />
-            <circle cx="127" cy="115" r="11" fill="#3a2410" />
-            <circle cx="83" cy="110" r="4.4" fill="#ffffff" />
-            <circle cx="131" cy="110" r="4.4" fill="#ffffff" />
-            <circle cx="75" cy="120" r="2.2" fill="#ffffff" opacity="0.75" />
-            <circle cx="123" cy="120" r="2.2" fill="#ffffff" opacity="0.75" />
+        {/* head and body are one silhouette, which is what makes it readable small */}
+        <g className="lumi__head" style={{ transform: `rotate(${f.tilt}deg)` }}>
+          {/* crest — the signature that survives being shrunk to an icon */}
+          <g className="lumi__crest">
+            <path d="M104 50 C88 30 88 14 97 4 C109 13 112 32 110 50 Z" fill="url(#lumi-crest)" />
+            <path d="M120 46 C112 22 119 4 130 0 C139 13 133 32 127 46 Z" fill="url(#lumi-crest)" />
+            <path d="M136 52 C139 31 150 17 160 16 C161 31 152 44 143 54 Z" fill="url(#lumi-crest)" />
           </g>
 
-          {/* closed lids, shown only when the eyes are shut */}
-          {lidScale < 0.2 && (
-            <>
-              <path d="M62 112 Q76 122 90 112" stroke="#3a2410" strokeWidth="4.5" fill="none" strokeLinecap="round" />
-              <path d="M110 112 Q124 122 138 112" stroke="#3a2410" strokeWidth="4.5" fill="none" strokeLinecap="round" />
-            </>
-          )}
+          <path
+            d="M120 38 C170 38 202 80 202 130 C202 182 168 212 120 212 C72 212 38 182 38 130 C38 80 70 38 120 38 Z"
+            fill="url(#lumi-body)"
+          />
+          <ellipse cx="120" cy="156" rx="46" ry="46" fill="url(#lumi-belly)" />
 
           {/* blush */}
-          <ellipse cx="53" cy="140" rx="11" ry="7" fill="#ff9aae" opacity="0.5" />
-          <ellipse cx="147" cy="140" rx="11" ry="7" fill="#ff9aae" opacity="0.5" />
+          <ellipse cx="58" cy="146" rx="15" ry="9" fill="#ff5f8f" opacity={f.blush} />
+          <ellipse cx="182" cy="146" rx="15" ry="9" fill="#ff5f8f" opacity={f.blush} />
 
-          {/* mouth */}
-          <path
-            d={mouth}
-            stroke="#3a2410"
-            strokeWidth="4"
-            fill={mood === 'happy' ? '#3a2410' : 'none'}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          {/* eyes */}
+          {shut ? (
+            <g stroke="#123c3a" strokeWidth="6" fill="none" strokeLinecap="round">
+              <path d={lid(EYE.lx)} />
+              <path d={lid(EYE.rx)} />
+            </g>
+          ) : (
+            <g className="lumi__eyes">
+              {[EYE.lx, EYE.rx].map((cx) => (
+                <g key={cx}>
+                  <ellipse cx={cx} cy={EYE.cy} rx={EYE.rx_} ry={EYE.ry * f.eyeOpen} fill="#fffdf7" />
+                  <circle cx={cx + f.pupilX} cy={EYE.cy + f.pupilY} r="13" fill="#123c3a" />
+                  <circle cx={cx + f.pupilX - 5} cy={EYE.cy + f.pupilY - 6} r="5.5" fill="#fff" />
+                  <circle cx={cx + f.pupilX + 5} cy={EYE.cy + f.pupilY + 5} r="2.4" fill="#fff" opacity="0.8" />
+                </g>
+              ))}
+            </g>
+          )}
+
+          {/*
+            Eyebrows. Positive browRot lifts the INNER end, which is the shape
+            the face reads as worried; negative lifts the outer end for cheerful.
+          */}
+          <g fill="#06857a">
+            <rect
+              x={EYE.lx - 19} y={72 + f.browY} width="38" height="9" rx="4.5"
+              transform={`rotate(${f.browRot} ${EYE.lx} ${76 + f.browY})`}
+            />
+            <rect
+              x={EYE.rx - 19} y={72 + f.browY} width="38" height="9" rx="4.5"
+              transform={`rotate(${-f.browRot * f.browAsym} ${EYE.rx} ${76 + f.browY})`}
+            />
+          </g>
+
+          {/* beak — opens downward so the head shape is never broken */}
+          <g className="lumi__beak">
+            <path d={`M100 138 L140 138 L120 ${156 - gape / 2} Z`} fill="url(#lumi-beak)" />
+            {gape > 2 && (
+              <path
+                d={`M104 ${142 + gape / 2} L136 ${142 + gape / 2} L120 ${160 + gape} Z`}
+                fill="#c8341c"
+              />
+            )}
+          </g>
         </g>
+
+        {f.sparkle && (
+          <g className="lumi__sparkle" fill="#fff3d4">
+            <path d="M206 62 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4 Z" />
+            <path d="M32 84 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3 Z" opacity="0.7" />
+          </g>
+        )}
       </g>
 
-      {asleep && (
-        <g className="lumi__zzz" fill="#ffe0b4" fontFamily="inherit" fontWeight="700">
-          <text x="156" y="76" fontSize="17">z</text>
-          <text x="170" y="58" fontSize="13">z</text>
-          <text x="181" y="44" fontSize="10">z</text>
+      {f.zzz && (
+        <g className="lumi__zzz" fill="#ffe0b4" fontWeight="700">
+          <text x="196" y="72" fontSize="19">z</text>
+          <text x="212" y="52" fontSize="14">z</text>
+          <text x="224" y="37" fontSize="10">z</text>
         </g>
       )}
     </svg>

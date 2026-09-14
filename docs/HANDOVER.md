@@ -2,7 +2,7 @@
 
 **Last updated:** session 3 (2026-09-14)
 **Branch:** `claude/bedtime-stories-app-6vk9be`
-**State:** green — 192 tests pass, `npm run build` clean, all three smoke scripts exit 0.
+**State:** green — 201 tests pass, `npm run build` clean, all three smoke scripts exit 0.
 **End goal:** ship to the **App Store and Google Play** — `STORE-READINESS.md`
 is the gap list.
 
@@ -117,6 +117,26 @@ Full reasoning in `DECISIONS.md`.
 - **`docs/IDEAS.md`** — the ranked idea book, including what was deliberately
   rejected and why, so good ideas are not re-litigated and bad ones are not
   re-proposed.
+
+## Also done in session 3 — the UI pass
+
+- **Six palettes** (`content/themes.ts`), three dark and three light, switched
+  from the parent zone. Contrast is enforced by test; two palettes failed on
+  first write and were fixed by darkening the text rather than the accent.
+- **Lumi rebuilt as a turquoise bird** with eyebrows, nine moods, and body
+  actions (walk, fly, spin). The buddy picks its gait from the distance it is
+  travelling and faces the way it goes.
+- **Side-by-side layout**: `.tiles` grids two across at 390px, `.shelf` rows for
+  long lists.
+- `.claude/skills/lumi-ui/SKILL.md` — design rules adapted from the
+  UIUX-high-taste-skill collection, with §2 listing what was deliberately
+  rejected (that collection bans emoji and mandates desaturated luxury palettes;
+  both are wrong for pre-readers).
+
+Three bugs the light themes exposed, all fixed: the sky and veil were hardcoded
+dark; the story player's `--text-hi` override was never consumed so the variable
+did nothing; and the world gradient's translucent stops let a light page colour
+bleed through and stop the story looking like night.
 
 ## What to do next
 

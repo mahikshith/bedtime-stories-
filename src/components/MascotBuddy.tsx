@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Mascot, type Mood } from './Mascot';
+import { Mascot, type Action, type Mood } from './Mascot';
 
 /** Calm, bedtime-appropriate. Nothing here is trying to excite anybody. */
 const LINES = [
@@ -30,16 +30,30 @@ interface MascotBuddyProps {
  */
 export function MascotBuddy({ settled = false, size = 128, mood = 'happy' }: MascotBuddyProps) {
   const [stop, setStop] = useState(0);
-  const [hopping, setHopping] = useState(false);
+  const [action, setAction] = useState<Action>('idle');
+  const [facing, setFacing] = useState(1);
   const [says, setSays] = useState<string | null>(null);
   const hopTimer = useRef<number | undefined>(undefined);
   const bubbleTimer = useRef<number | undefined>(undefined);
 
-  const hop = useCallback((next?: number) => {
-    setStop((prev) => next ?? (prev + 1 + Math.floor(Math.random() * (STOPS.length - 1))) % STOPS.length);
-    setHopping(true);
+  /**
+   * Crossing the screen: a short move is a waddle, a long one is a flight.
+   *
+   * Picking the gait from the distance is what stops it looking like a sprite
+   * being slid around — a bird that flies two inches looks wrong, and one that
+   * walks half the screen in 800ms looks worse.
+   */
+  const travel = useCallback((next?: number) => {
+    setStop((prev) => {
+      const target =
+        next ?? (prev + 1 + Math.floor(Math.random() * (STOPS.length - 1))) % STOPS.length;
+      const distance = Math.abs(STOPS[target] - STOPS[prev]);
+      setFacing(STOPS[target] >= STOPS[prev] ? 1 : -1);
+      setAction(distance > 30 ? 'fly' : 'walk');
+      return target;
+    });
     window.clearTimeout(hopTimer.current);
-    hopTimer.current = window.setTimeout(() => setHopping(false), 850);
+    hopTimer.current = window.setTimeout(() => setAction('idle'), 900);
   }, []);
 
   useEffect(() => {
@@ -47,9 +61,9 @@ export function MascotBuddy({ settled = false, size = 128, mood = 'happy' }: Mas
     const reduced =
       typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduced) return;
-    const id = window.setInterval(() => hop(), 5200 + Math.random() * 2600);
+    const id = window.setInterval(() => travel(), 5200 + Math.random() * 2600);
     return () => window.clearInterval(id);
-  }, [settled, hop]);
+  }, [settled, travel]);
 
   useEffect(() => () => {
     window.clearTimeout(hopTimer.current);
@@ -58,7 +72,10 @@ export function MascotBuddy({ settled = false, size = 128, mood = 'happy' }: Mas
 
   function greet() {
     if (settled) return;
-    hop();
+    // A tap is worth a barrel roll.
+    setAction('spin');
+    window.clearTimeout(hopTimer.current);
+    hopTimer.current = window.setTimeout(() => setAction('idle'), 950);
     setSays(LINES[Math.floor(Math.random() * LINES.length)]);
     window.clearTimeout(bubbleTimer.current);
     bubbleTimer.current = window.setTimeout(() => setSays(null), 2800);
@@ -67,7 +84,7 @@ export function MascotBuddy({ settled = false, size = 128, mood = 'happy' }: Mas
   return (
     <button
       type="button"
-      className={`buddy${hopping ? ' buddy--hopping' : ''}`}
+      className={`buddy${action !== 'idle' ? ' buddy--moving' : ''}`}
       style={{
         // Clamped so Lumi can never hop off the edge of a narrow phone.
         left: `clamp(4px, calc(${settled ? 42 : STOPS[stop]}% ), calc(100% - ${size}px - 4px))`,
@@ -76,7 +93,15 @@ export function MascotBuddy({ settled = false, size = 128, mood = 'happy' }: Mas
       aria-label="Lumi. Tap to say hello."
     >
       {says && <span className="buddy__bubble">{says}</span>}
-      <Mascot size={size} mood={settled ? 'sleepy' : mood} hopping={hopping} title="Lumi" />
+      {/* Face the way it is going; a bird moonwalking is uncanny. */}
+      <span className="buddy__facing" style={{ transform: `scaleX(${facing})` }}>
+        <Mascot
+          size={size}
+          mood={settled ? 'sleepy' : mood}
+          action={settled ? 'idle' : action}
+          title="Lumi"
+        />
+      </span>
     </button>
   );
 }

@@ -155,3 +155,38 @@ Breath is interactive and calming, which is a category with nothing else in it.
 `isGameEncouraged` offers only `calm` games during wind-down, and `detectBreath`
 keys on steadiness rather than loudness specifically so that shouting cannot win
 — otherwise the one calm thing in the app becomes another loud thing.
+
+### D24 — Six palettes, chosen by the parent *(session 3)*
+Supersedes "night-first, no light theme". `content/themes.ts` overrides the same
+token names `tokens.css` declares, so no component knows a theme exists. The
+picker lives in the parent zone: a four-year-old handed a colour switcher will
+use it instead of the app.
+
+Whichever palette is on, the sleep gradient still warms and dims on top, and the
+story player forces its own dark room because worlds carry night gradients by
+design. Contrast is enforced by test — 7:1 body, 3:1 on accent — and when a
+bright accent fails, the text darkens rather than the accent, because children's
+colour preference correlates with saturation and brightness and deep shades read
+as negative to them.
+
+### D25 — Lumi is a turquoise bird, and does not follow the theme *(session 3)*
+The amber blob had no silhouette and no face. A bird gives a readable outline at
+icon size; eyebrows give it emotion, which is what actually carries a mascot —
+a face without them reads blank however big the eyes are. Nine moods, driven by
+brow angle, eye openness, pupil direction, beak gape, wing lift and head tilt.
+
+Colour is fixed across all palettes because a character that changes colour is a
+shape, not a character. Vivid turquoise body with a sunny lantern belly and
+coral beak and feet: complementary teal-against-coral is the highest-chroma
+pairing available, which is why it stays legible on every palette.
+
+Body motion is separate from facial mood: `action` covers idle, walk, fly and
+spin, with legs pivoting at the hip and wings beating. The buddy layer picks the
+gait from the distance travelled — a short move waddles, a long one flies — and
+faces the direction of travel.
+
+### D26 — Side-by-side, not stacked *(session 3)*
+Activity lists were vertical rows a tired parent scrolled past. Short sets are
+now two-across `.tiles` grids; long ones are horizontal `.shelf` rows grouped by
+something meaningful (Lumi originals vs the old favourites, just-right vs other
+ages). A tile peeking past the gutter is the affordance for "there is more".

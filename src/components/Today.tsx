@@ -1,5 +1,6 @@
 import { MODES, PILLARS, currentMode, isEncouraged, type Pillar } from '../engine/dayArc';
 import { MascotBuddy } from './MascotBuddy';
+import { Tile } from './Tile';
 import { getCompanion } from '../content/companions';
 import { RHYMES } from '../content/rhymes';
 import { SCENES } from '../content/colouring';
@@ -98,28 +99,20 @@ export function Today({ onOpenPillar, onOpenParent, now }: TodayProps) {
         <MascotBuddy size={128} mood="happy" settled={mode.id === 'winddown'} />
       </div>
 
-      <section className="stack" aria-label="What we can do">
-        {mode.order.map((id) => {
+      <section className="tiles tiles--roomy" aria-label="What we can do">
+        {mode.order.map((id, i) => {
           const pillar = PILLARS[id];
-          const encouraged = isEncouraged(mode.id, id);
           return (
-            <button
+            <Tile
               key={id}
-              className="map__node"
-              style={{ opacity: encouraged ? 1 : 0.46 }}
+              index={i}
+              emoji={pillar.emoji}
+              title={pillar.label}
+              subtitle={pillar.blurb}
+              meta={done[id] > 0 ? `${done[id]} of ${total[id]}` : undefined}
+              dimmed={!isEncouraged(mode.id, id)}
               onClick={() => onOpenPillar(id)}
-            >
-              <span className="map__orb" aria-hidden="true">{pillar.emoji}</span>
-              <span className="grow">
-                <span className="h2" style={{ display: 'block' }}>{pillar.label}</span>
-                <span className="tiny">{pillar.blurb}</span>
-                {done[id] > 0 && (
-                  <span className="tiny" style={{ display: 'block', marginTop: 4 }}>
-                    {done[id]} of {total[id]}
-                  </span>
-                )}
-              </span>
-            </button>
+            />
           );
         })}
       </section>

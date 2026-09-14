@@ -92,5 +92,11 @@ export function buildSpecks(seed: number, count: number): Speck[] {
 export function worldGradient(world: World, calm = 0): string {
   const [deep, mid, glow] = world.palette;
   const spread = 62 - calm * 18;
-  return `radial-gradient(120% 90% at 50% 8%, ${glow}22 0%, ${mid}44 ${spread * 0.5}%, ${deep} ${spread}%, ${deep} 100%)`;
+  // The upper stops are translucent, so an opaque base layer goes underneath.
+  // Without it a light palette's page colour bleeds through the story sky and
+  // the world stops looking like night.
+  return [
+    `radial-gradient(120% 90% at 50% 8%, ${glow}22 0%, ${mid}44 ${spread * 0.5}%, ${deep} ${spread}%, ${deep} 100%)`,
+    `linear-gradient(${deep}, ${deep})`,
+  ].join(', ');
 }

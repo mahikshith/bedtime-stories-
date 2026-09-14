@@ -4,7 +4,7 @@ One offline-first app for a household of children under 11: **rhymes, stories,
 colouring, letters**. Vite + React 18 + TypeScript PWA, Capacitor-wrappable for
 Play Store. No backend, no accounts, no analytics.
 
-**Branch:** `claude/bedtime-stories-app-6vk9be` · **Tests:** `npm test` (192)
+**Branch:** `claude/bedtime-stories-app-6vk9be` · **Tests:** `npm test` (201)
 **End goal:** ship to the **App Store and Google Play**. See `docs/STORE-READINESS.md`.
 
 ---
@@ -26,6 +26,7 @@ tokens and usually tells you nothing you need.
 | Preparing a store submission, or asked what blocks launch | `docs/STORE-READINESS.md` |
 | Asked for a new game, rhyme or feature idea | `docs/IDEAS.md` ← ranked, with reasoning |
 | Touching the native shells, permissions or Info.plist | `docs/PLATFORM-CONFIG.md` |
+| Changing layout, colour, components or the mascot | `.claude/skills/lumi-ui/SKILL.md` |
 | Onboarding a human | `README.md` |
 
 Don't re-derive research already in those files, and don't re-litigate a
@@ -86,7 +87,7 @@ src/
 ```bash
 npm install && npm run dev      # localhost:5173
 npm run typecheck               # tsc --noEmit
-npm test                        # 192 tests, must stay green
+npm test                        # 201 tests, must stay green
 npm run build                   # tsc -b && vite build
 npm run smoke                   # browser walk + screenshots; needs a preview
                                 # server: (setsid npx vite preview --port 4173 &)
@@ -102,8 +103,11 @@ console error, so a green CI run means the app actually loaded and worked.
 - Every content corpus has a **validator test** (`validateRhyme`, phonics
   decodability, closed colouring paths). Add one for any new corpus — they have
   already caught several authoring errors.
-- Design tokens live in `src/styles/tokens.css`. Night-first; there is no light
-  theme by design. Must work at 390px.
+- Design tokens live in `src/styles/tokens.css` (the Midnight defaults);
+  `content/themes.ts` swaps palettes by overriding the same names on `:root`.
+  Six palettes, dark and light. Must work at 390px.
+- Long lists are horizontal `.shelf` rows; short sets are `.tiles` grids, two
+  across at phone width. Check the `minmax()` arithmetic before changing it.
 - No new runtime dependencies without a reason. Currently only `react` +
   `react-dom`.
 - Speech goes through `engine/ttsEngine.ts`. Any engine must be `local: true` —
