@@ -27,6 +27,7 @@ tokens and usually tells you nothing you need.
 | Asked for a new game, rhyme or feature idea | `docs/IDEAS.md` ← ranked, with reasoning |
 | Touching the native shells, permissions or Info.plist | `docs/PLATFORM-CONFIG.md` |
 | Changing layout, colour, components or the mascot | `.claude/skills/lumi-ui/SKILL.md` |
+| Briefing an outside reviewer, or asked who the customer is | `docs/PROJECT-BRIEF.md` |
 | Onboarding a human | `README.md` |
 
 Don't re-derive research already in those files, and don't re-litigate a
