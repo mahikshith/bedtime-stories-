@@ -1,8 +1,8 @@
 # Handover — read this first
 
-**Last updated:** session 5 (2026-09-16)
+**Last updated:** session 6 (2026-09-16)
 **Branch:** `claude/bedtime-stories-app-6vk9be`
-**State:** green — 217 tests pass, `npm run build` clean, all three smoke scripts exit 0.
+**State:** green — 233 tests pass, `npm run build` clean, all three smoke scripts exit 0.
 **End goal:** ship to the **App Store and Google Play** — `STORE-READINESS.md`
 is the gap list.
 
@@ -253,3 +253,43 @@ to `$SHOT_DIR`, defaulting to the scratchpad path in `scripts/lib/browser.cjs`.
 **Still unverified on hardware:** everything in the mobile layer above. Sticky
 hover, the tap highlight, safe areas, the keyboard and `dvh` are all real-device
 behaviours; the smoke run only proves nothing broke at 390px in Chromium.
+
+## Done in session 6
+
+**Milestone 1 — the native shells exist.** `npx cap add android` and
+`cap add ios` both ran; the shells are now **committed source, not ignored**
+(D30), which is why `RECORD_AUDIO` and `NSMicrophoneUsageDescription` could
+finally be applied somewhere durable. `nativeShell.test.ts` pins both, plus the
+optional-microphone feature flag, the absence of `UIBackgroundModes`, and the
+whole permission list.
+
+`engine/audioUnlock.ts` arms the first gesture to unlock Web Audio and re-arms
+on `statechange`/`visibilitychange` (D32). Without it iOS hands the voice games
+a suspended context that reads as perfect silence with the permission granted.
+
+`privacy.test.ts`'s runtime-dependency assertion is now an explicit five-name
+allowlist including the three `@capacitor/*` packages (D31), with a second test
+banning the Capacitor plugins a kids' app usually acquires a tracker through.
+
+**UI motion pass**, using the installed `find-animation-opportunities` and
+`animate` skills. Five seams that were teleporting now animate; five candidates
+were considered and deliberately rejected. The mascot's brows were refactored
+from an SVG transform attribute to a CSS transform so mood changes can be
+transitioned at all — the old form mixed moving geometry with a moving rotate
+origin, the same pattern that once displaced the wings.
+
+### Still true, and still the biggest risk
+
+**Neither shell has been compiled.** There is no Android SDK and no macOS here,
+so `cap add` and `cap sync` are verified but Gradle and Xcode are not. The
+microphone path, the audio unlock, the safe-area insets and every press state
+remain unverified on real hardware.
+
+### Next, in order
+
+1. **The Tuck-in Ceremony** — the child tucks Lumi in and the screen fades out.
+   Best idea from the third planning doc; note the app *cannot* turn the display
+   off, only fade and release a wake lock it does not currently hold.
+2. The ten circadian rhymes, fixing the `air/air` identical rhyme in "The Cloud
+   Machine" and the meter labels.
+3. Cloud Conductor and Echo Caves. Skip Garden of Sighs — it is Lantern Breath.
