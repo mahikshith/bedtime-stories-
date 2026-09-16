@@ -10,7 +10,7 @@ progression ladders, collectibles, streaks, tilt and motion games, juice. Only
 wind-down (18:00–05:00) is calm by design. Do not apply bedtime constraints to
 the daytime app; that mistake was made repeatedly in earlier sessions.
 
-**Branch:** `claude/bedtime-stories-app-6vk9be` · **Tests:** `npm test` (233)
+**Branch:** `claude/bedtime-stories-app-6vk9be` · **Tests:** `npm test` (280)
 **End goal:** ship to the **App Store and Google Play**. See `docs/STORE-READINESS.md`.
 
 ---
@@ -67,11 +67,14 @@ src/
              phonics.ts (5 sets) · colouring.ts (4 scenes) · games.ts · companions.ts
   engine/    generator · personalize · safety · rhyme · narration · dayArc
              voiceMeter · ttsEngine · providers · backdrop · rng · types.ts
+             audioUnlock · gameAudio (synth, no files) · tiltPhysics
   hooks/     useVoiceMeter.ts — owns the mic only while a game is mounted
+             useDeviceTilt.ts — motion; asks permission from a gesture, never an effect
   state/     store.ts  — localStorage only, per-child progress, seat limits
   components/ Today · RhymeList · RhymePlayer · WorldMap · StoryPlayer
               ColourStudio · LettersLab · GameArcade · ParentZone
-              games/ LumisLeap · RhymeRace · WakeTheAnimal
+              games/ LumisLeap · RhymeRace · WakeTheAnimal · LanternBreath
+                     StardustTilt
               Mascot · MascotBuddy · Sky
 ```
 
@@ -98,7 +101,7 @@ src/
 ```bash
 npm install && npm run dev      # localhost:5173
 npm run typecheck               # tsc --noEmit
-npm test                        # 217 tests, must stay green
+npm test                        # 280 tests, must stay green
 npm run build                   # tsc -b && vite build
 npm run smoke                   # browser walk + screenshots; needs a preview
                                 # server: (setsid npx vite preview --port 4173 &)

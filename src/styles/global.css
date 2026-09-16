@@ -1370,3 +1370,52 @@ input, textarea, select { font-size: 16px; }
     to   { opacity: 0; }
   }
 }
+
+/* ---------- Stardust Tilt ---------- */
+
+/*
+ * Square, because the physics field is a unit square. A non-square box scales
+ * the viewBox unevenly and every circle renders as an egg — the pearl included.
+ * Keeping both square means one set of 0..1 numbers works at 390px and on a
+ * tablet with no per-axis correction anywhere.
+ *
+ * touch-action: none because the drag fallback owns every axis; without it a
+ * downward drag scrolls the page instead of steering.
+ */
+.tiltfield {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  box-shadow: var(--clay-shadow);
+  touch-action: none;
+}
+
+.tiltfield__nest {
+  fill: rgba(255, 207, 143, 0.16);
+  stroke: var(--amber-400);
+  stroke-width: 0.8;
+  stroke-dasharray: 3 2;
+}
+
+.tiltfield__sleeper { fill: var(--violet-400); opacity: 0.55; }
+
+.tiltfield__bell {
+  fill: none;
+  stroke: var(--mint-400);
+  stroke-width: 1.4;
+  transition: fill var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+}
+
+.tiltfield__bell.is-rung { fill: var(--mint-400); opacity: 0.75; }
+
+.tiltfield__pearl {
+  fill: var(--amber-300);
+  filter: drop-shadow(0 0 6px var(--amber-400));
+  /*
+   * No transition on cx/cy. The marble's position is recomputed every frame,
+   * so a transition would fight the simulation and smear the motion instead of
+   * smoothing it. Physics owns position; CSS owns everything else.
+   */
+}
