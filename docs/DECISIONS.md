@@ -227,3 +227,38 @@ and a server, creating the obligation it claims to discharge. The parental gate
 stays an age screen. Reasoning in full in `docs/ROADMAP-REVIEW.md` §1.1. A
 lawyer should confirm the no-collection position in writing before submission —
 that is a review, not a build.
+
+### D30 — The native shells are committed source, not build output *(session 6)*
+
+`android/` and `ios/` were gitignored. That made the microphone permission and
+the usage-description string un-committable: every `npx cap add` regenerated
+them away, which is why `STORE-READINESS.md` carried "permissions not applied"
+as a blocker for three sessions. Capacitor ships its own `.gitignore` inside
+each platform excluding build output, Pods and copied web assets, so committing
+the platforms adds no generated files. Only `android/app/src/main/assets/` and
+`ios/App/App/public/` — the copied web build — stay ignored.
+
+`src/__tests__/nativeShell.test.ts` pins `RECORD_AUDIO`, the optional-microphone
+feature flag, the iOS purpose string, the absence of `UIBackgroundModes`, and
+the total permission list. A dropped permission fails silently on a handset and
+nowhere else, so it gets the `privacy.test.ts` treatment.
+
+### D31 — Capacitor is on the runtime dependency allowlist; nothing else is *(session 6)*
+
+`privacy.test.ts` asserted runtime dependencies were exactly `react` +
+`react-dom`. It now asserts an explicit five-name allowlist including
+`@capacitor/core`, `/android` and `/ios`. Capacitor is not the kind of
+dependency the rule was written against: it is the shell hosting our own code
+and the home of the native permissions, it has no analytics, and without it
+there is nothing to submit. A second test bans the Capacitor plugins a kids' app
+usually acquires a tracker through — push notifications, browser, device,
+network, geolocation, http.
+
+### D32 — Web Audio is unlocked on the first gesture, and re-armed after every suspension *(session 6)*
+
+`engine/audioUnlock.ts`. A context built outside a user gesture starts
+suspended, and a suspended context is not visibly broken: the analyser keeps
+returning frames and every sample reads as silence, so the voice games show a
+dead meter with the microphone permission granted. WKWebView also suspends on
+background, so unlocking once is not enough — arming is re-set on `statechange`
+and on `visibilitychange` rather than latched.

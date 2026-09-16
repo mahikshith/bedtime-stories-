@@ -91,10 +91,37 @@ describe('the policy matches the code', () => {
     expect(deps.filter((d) => banned.test(d))).toEqual([]);
   });
 
-  it('"no accounts" — ships only react at runtime', () => {
+  it('"no accounts" — the runtime dependency list is an allowlist, not a habit', () => {
     // Apple's Kids Category bars third-party SDKs from receiving any device or
     // personal information. The cheapest way to comply is to have none.
-    expect(Object.keys(PACKAGE.dependencies ?? {}).sort()).toEqual(['react', 'react-dom']);
+    //
+    // Capacitor is the exception, and only because it is not that kind of
+    // dependency: it is the native shell that hosts our own code, the place the
+    // microphone permission and the usage-description string live, and without
+    // it there is no app to submit. It has no analytics, opens no sockets of its
+    // own, and ships no plugin we have not asked for. Anything beyond these
+    // five names has to be argued for here before it can be installed.
+    const ALLOWED = [
+      '@capacitor/android',
+      '@capacitor/core',
+      '@capacitor/ios',
+      'react',
+      'react-dom',
+    ];
+    expect(Object.keys(PACKAGE.dependencies ?? {}).sort()).toEqual(ALLOWED);
+  });
+
+  it('"nothing is sent anywhere" — no Capacitor plugin that moves data off the device', () => {
+    // The allowlist above admits the shell; this keeps the door from widening.
+    // Capacitor's own plugin ecosystem is where a kids' app usually acquires
+    // its first tracker — push notifications, a crash reporter, an app-store
+    // review prompt — so name the categories rather than trusting the count.
+    const banned = /@capacitor\/(push-notifications|app-launcher|browser|share|geolocation|device|network|http)/;
+    const deps = Object.keys({
+      ...(PACKAGE.dependencies ?? {}),
+      ...(PACKAGE.devDependencies ?? {}),
+    });
+    expect(deps.filter((d) => banned.test(d))).toEqual([]);
   });
 
   it('"stored only on this device" — persistence is localStorage alone', () => {

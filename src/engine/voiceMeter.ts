@@ -19,6 +19,8 @@
  * reading decibels, which is also why its input lag is milliseconds.
  */
 
+import { unlockContext } from './audioUnlock';
+
 /** Level is normalised 0..1 between the measured noise floor and a loud ceiling. */
 export type Level = number;
 
@@ -331,6 +333,10 @@ export async function startVoiceMeter(
     window.AudioContext ??
     (window as never as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   const context = new Ctx();
+  // On iOS a context built outside a user gesture starts suspended, and the
+  // analyser below then reports perfect silence instead of failing — a dead
+  // meter with the permission granted. Desktop never reproduces it.
+  await unlockContext(context);
   const source = context.createMediaStreamSource(stream);
   const analyser = context.createAnalyser();
   analyser.fftSize = 1024;
