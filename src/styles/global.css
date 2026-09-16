@@ -7,23 +7,60 @@ html, body, #root {
   margin: 0;
 }
 
+html {
+  /*
+   * The WebView paints a grey flash over anything tappable, which fights the
+   * :active states below and is the loudest "this is a website" tell there is.
+   * Removing it is only safe because every tappable thing here has its own
+   * :active feedback.
+   */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%; /* no font inflation in landscape */
+  overscroll-behavior: none;      /* no pull-to-refresh, no whole-page rubber band */
+}
+
 body {
   font-family: var(--font-ui);
   color: var(--text-hi);
   background: var(--ink-900);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  overscroll-behavior-y: none;
 }
 
 button { font: inherit; color: inherit; cursor: pointer; }
 input, select { font: inherit; color: inherit; }
 
+/*
+ * A control's label is not content. Without this, a long press selects the word
+ * inside a button or pops iOS's copy callout — which no native control does,
+ * and which a child triggers constantly by resting a finger on the screen.
+ * Never on body text: parents copy things.
+ */
+button, a, [role='button'], .chip, .tile, .swatch {
+  touch-action: manipulation; /* no 300ms double-tap-zoom wait */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/*
+ * iOS zooms the page when focus lands on an input under 16px and never zooms
+ * back out. `font: inherit` above is 16px today, but only by accident of where
+ * these inputs sit; pin it so a smaller container can't reintroduce the zoom.
+ */
+input, textarea, select { font-size: 16px; }
+
 /* ---------- App shell ---------- */
 
 .app {
   position: relative;
+  /*
+   * dvh, not vh: `vh` is the viewport with the browser chrome collapsed, so a
+   * `100vh` shell overflows by the height of the address bar on load. Percentage
+   * stays first as the fallback for anything that doesn't know dvh.
+   */
   min-height: 100%;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   isolation: isolate;
@@ -65,8 +102,12 @@ input, select { font: inherit; color: inherit; }
   width: 100%;
   max-width: 720px;
   margin: 0 auto;
-  padding-block: var(--sp-4) var(--sp-6);
-  padding-inline: var(--sp-3);
+  padding-block:
+    calc(var(--sp-4) + env(safe-area-inset-top, 0px))
+    calc(var(--sp-6) + env(safe-area-inset-bottom, 0px));
+  padding-inline:
+    calc(var(--sp-3) + env(safe-area-inset-left, 0px))
+    calc(var(--sp-3) + env(safe-area-inset-right, 0px));
   display: flex;
   flex-direction: column;
   gap: var(--sp-4);
@@ -130,7 +171,7 @@ input, select { font: inherit; color: inherit; }
   font-weight: 650;
   letter-spacing: -0.01em;
   box-shadow: var(--clay-shadow);
-  transition: transform var(--dur-fast) var(--ease-soft), background var(--dur-fast);
+  transition: transform var(--dur-press) var(--ease-out), background var(--dur-fast) var(--ease-out);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   min-height: 46px;
@@ -160,7 +201,7 @@ input, select { font: inherit; color: inherit; }
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  transition: transform var(--dur-fast) var(--ease-soft), background var(--dur-fast);
+  transition: transform var(--dur-press) var(--ease-out), background var(--dur-fast) var(--ease-out);
   min-height: 42px;
 }
 
@@ -219,7 +260,7 @@ input, select { font: inherit; color: inherit; }
   text-align: left;
   width: 100%;
   box-shadow: var(--clay-shadow);
-  transition: transform var(--dur-fast) var(--ease-soft);
+  transition: transform var(--dur-press) var(--ease-out);
 }
 
 .map__node:active { transform: scale(0.985); }
@@ -757,7 +798,7 @@ input, select { font: inherit; color: inherit; }
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   box-shadow: var(--clay-shadow);
-  transition: transform var(--dur-fast) var(--ease-soft);
+  transition: transform var(--dur-press) var(--ease-out);
 }
 
 .letters__card:active { transform: scale(0.96); }
@@ -984,7 +1025,7 @@ input, select { font: inherit; color: inherit; }
   border: 1px solid var(--glass-border);
   background: var(--glass-bg);
   min-height: 84px;
-  transition: transform var(--dur-fast) var(--ease-soft);
+  transition: transform var(--dur-press) var(--ease-out);
 }
 
 .swatch:active { transform: scale(0.96); }
@@ -1044,7 +1085,7 @@ input, select { font: inherit; color: inherit; }
   border: 1px solid var(--glass-border);
   background: var(--glass-bg);
   box-shadow: var(--clay-shadow);
-  transition: transform var(--dur-fast) var(--ease-soft), opacity var(--dur-mid);
+  transition: transform var(--dur-press) var(--ease-out), opacity var(--dur-mid) var(--ease-out);
   animation: tile-in var(--dur-mid) var(--ease-soft) both;
   animation-delay: calc(var(--i, 0) * 45ms);
   text-align: center;
@@ -1133,9 +1174,17 @@ input, select { font: inherit; color: inherit; }
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  /* Bleed to the screen edge so a tile can peek past the gutter. */
-  margin-inline: calc(var(--sp-3) * -1);
-  padding-inline: var(--sp-3);
+  /*
+   * Bleed to the screen edge so a tile can peek past the gutter. The gutter now
+   * carries the safe-area inset, so the bleed has to as well or the row stops
+   * short of the edge on a notched phone in landscape.
+   */
+  margin-inline:
+    calc((var(--sp-3) + env(safe-area-inset-left, 0px)) * -1)
+    calc((var(--sp-3) + env(safe-area-inset-right, 0px)) * -1);
+  padding-inline:
+    calc(var(--sp-3) + env(safe-area-inset-left, 0px))
+    calc(var(--sp-3) + env(safe-area-inset-right, 0px));
   padding-block: 4px 10px;
 }
 

@@ -1,8 +1,8 @@
 # Handover — read this first
 
-**Last updated:** session 4 (2026-09-15)
+**Last updated:** session 5 (2026-09-16)
 **Branch:** `claude/bedtime-stories-app-6vk9be`
-**State:** green — 201 tests pass, `npm run build` clean, all three smoke scripts exit 0.
+**State:** green — 217 tests pass, `npm run build` clean, all three smoke scripts exit 0.
 **End goal:** ship to the **App Store and Google Play** — `STORE-READINESS.md`
 is the gap list.
 
@@ -214,3 +214,42 @@ to `$SHOT_DIR`, defaulting to the scratchpad path in `scripts/lib/browser.cjs`.
   The earlier mood sheet was stale (it showed the pre-rebuild amber bird);
   `scripts/moods.html` + `src/devMoods.tsx` render the real one from
   `Mascot.tsx` under `vite dev`, so it can be regenerated when the mascot changes.
+
+## Done in session 5
+
+- **Installed ten craft skills** from `emilkowalski/skills` (MIT) into
+  `.claude/skills/`, and **rewrote `lumi-ui`** to hold only the kid-specific
+  overrides on top of them. `.claude/skills/NOTICE.md` records provenance and
+  which three were deliberately skipped. See D27.
+- **`docs/ROADMAP-REVIEW.md`** — the response to Gemini's 2,309-line roadmap.
+  Taking: a gentle exit routine, sound design, haptics, a cut-down sticker book.
+  Rejecting: credit-card VPC (it would create the collection obligation it
+  claims to discharge — D29), the silent reframing into an SEL app, emotional
+  check-in data, variable reward schedules, and the Phase 4 brand ecosystem.
+- **Mobile platform layer**, from the `mobile-native` skill — none of it
+  reproduces in a desktop browser: killed the tap highlight, `touch-action:
+  manipulation`, no long-press selection on controls, 16px inputs, page-level
+  `overscroll-behavior`, `100dvh` shell, safe-area padding on the page gutter
+  and the shelf bleed, `interactive-widget=resizes-content`.
+- **`theme-color` now follows the palette.** One hardcoded midnight value meant
+  all three light palettes rendered a black status bar above a cream app.
+- **Motion tokens rebuilt** on the `animate` skill's curves
+  (`cubic-bezier(0.23, 1, 0.32, 1)` / `(0.77, 0, 0.175, 1)`), press feedback on
+  its own `--dur-press: 140ms`, and `prefers-reduced-motion` softened rather
+  than zeroed — 1ms durations had been deleting the colour and opacity
+  transitions that make a state change legible.
+- **`src/__tests__/mobile.test.ts`** (16 tests) pins all of the above. D28.
+
+### Next, in order
+
+1. **Gentle exit routine** — the app that claims to end the session has no
+   ending. Highest-value item from the review.
+2. **Sound design** — Web Audio synthesis only, no files, no dependency. Needs
+   a parent mute and must be quieter in wind-down.
+3. **Haptics** — `navigator.vibrate`, Capacitor Haptics in the shell, off at
+   wind-down.
+4. **Sticker book**, in the cut-down form in `ROADMAP-REVIEW.md` §3.
+
+**Still unverified on hardware:** everything in the mobile layer above. Sticky
+hover, the tap highlight, safe areas, the keyboard and `dvh` are all real-device
+behaviours; the smoke run only proves nothing broke at 390px in Chromium.

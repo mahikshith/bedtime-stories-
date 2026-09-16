@@ -4,7 +4,7 @@ One offline-first app for a household of children under 11: **rhymes, stories,
 colouring, letters**. Vite + React 18 + TypeScript PWA, Capacitor-wrappable for
 Play Store. No backend, no accounts, no analytics.
 
-**Branch:** `claude/bedtime-stories-app-6vk9be` · **Tests:** `npm test` (201)
+**Branch:** `claude/bedtime-stories-app-6vk9be` · **Tests:** `npm test` (217)
 **End goal:** ship to the **App Store and Google Play**. See `docs/STORE-READINESS.md`.
 
 ---
@@ -27,6 +27,8 @@ tokens and usually tells you nothing you need.
 | Asked for a new game, rhyme or feature idea | `docs/IDEAS.md` ← ranked, with reasoning |
 | Touching the native shells, permissions or Info.plist | `docs/PLATFORM-CONFIG.md` |
 | Changing layout, colour, components or the mascot | `.claude/skills/lumi-ui/SKILL.md` |
+| Building or reviewing motion, touch, gestures, polish | the installed skills: `animate`, `mobile-native`, `apple-design`, `emil-design-eng` |
+| Asked about Gemini's roadmap, or why we rejected part of it | `docs/ROADMAP-REVIEW.md` |
 | Briefing an outside reviewer, or asked who the customer is | `docs/PROJECT-BRIEF.md` |
 | Onboarding a human | `README.md` |
 
@@ -88,7 +90,7 @@ src/
 ```bash
 npm install && npm run dev      # localhost:5173
 npm run typecheck               # tsc --noEmit
-npm test                        # 201 tests, must stay green
+npm test                        # 217 tests, must stay green
 npm run build                   # tsc -b && vite build
 npm run smoke                   # browser walk + screenshots; needs a preview
                                 # server: (setsid npx vite preview --port 4173 &)

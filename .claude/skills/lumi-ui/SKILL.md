@@ -1,111 +1,116 @@
 ---
 name: lumi-ui
-description: The design system rules for Lumi — a kids' app on Android and iOS. Craft rules adapted from the UIUX-high-taste-skill collection, with the luxury-SaaS aesthetic deliberately overridden for a 3-11 audience. Load before changing any layout, component or visual token.
+description: Lumi's house rules — the kid-specific overrides that sit ON TOP of the installed craft skills (animate, mobile-native, apple-design, emil-design-eng). Load before changing any layout, component, motion or visual token. It does not restate general craft; it records only where a bedtime app for 3-11 year olds must differ, and why.
 ---
 
-# Lumi UI — craft for small hands
+# Lumi UI — house rules
 
-Derived from [Payoss/UIUX-high-taste-skill](https://github.com/Payoss/UIUX-high-taste-skill)
-(`taste-skill`, `soft-skill`), **adapted**. That collection engineers
-"$150k agency" landing pages for adults. We are building a bedtime app for
-three-to-eleven-year-olds on a phone. The engineering craft transfers almost
-entirely; the aesthetic does not.
+**This file is deliberately short, because most of the craft is not ours.**
 
-Read §1 for what we took, §2 for what we deliberately reject and why. §2 exists
-because a future session reading the upstream skill will otherwise "fix" our
-design in the wrong direction.
+General craft lives in the installed skills, which are the authority:
+
+| For | Load |
+|---|---|
+| Building or changing any motion | `animate` (and `RECIPES.md` for a known component) |
+| Anything touch, viewport, safe-area or WebView | `mobile-native` |
+| Gestures, springs, materials, depth, typography | `apple-design` |
+| General polish, review format, component detail | `emil-design-eng` |
+| "What could animate here?" | `find-animation-opportunities` |
+| Auditing motion across the app | `improve-animations` |
+| Checking motion in a diff | `review-animations` |
+
+Those skills encode Emil Kowalski's craft bar (MIT, see `.claude/skills/NOTICE.md`).
+**Follow them by default.** This file exists only to record the places where a
+bedtime app for three-to-eleven-year-olds must diverge — and to stop a future
+session "fixing" those divergences back.
 
 ---
 
-## 1. Rules we adopt
+## 1. Where we diverge, and why
 
-**Layout**
-- **CSS Grid, never flexbox percentage maths.** No `calc(33% - 1rem)`. Use
-  `grid-template-columns` with `gap`.
-- **Never `100vh`. Always `100dvh`.** `vh` jumps catastrophically on iOS Safari
-  when the address bar moves — and we ship inside a WebView on both platforms.
-- **Two across at 390px, and check the arithmetic.** The page is ~358px wide
-  inside its gutters, so with a 16px gap each column is ~171px. An
-  `auto-fill minmax()` minimum any wider than that silently collapses to one
-  column — that exact bug shipped once. `.tiles` uses 140px, `.tiles--roomy`
-  158px. Only below 330px does it drop to a single column.
+| Installed rule | Our override | Why |
+|---|---|---|
+| Hover/press motion is near-imperceptible on frequent elements | **Press feedback is generous and unmissable** — `scale(0.96)`, not `0.99` | A four-year-old's model of "did it hear me" is cruder than an adult's. This is the *feedback* purpose, on an occasional-tier element, so the budget is there. |
+| Delight is reserved for the rare/first-time tier | **Delight is also allowed on the first success of each session** | A child's session is 10–20 minutes. What an adult sees "occasionally" a child sees once per night. Still never on repeated taps within a session. |
+| Reduced motion means *fewer and gentler*, not zero | Same — **but wind-down has its own budget too** | After 18:00 the sleep gradient is already reducing motion for a different reason. Both must compose; neither may re-enable the other. |
+| Icons over text for clarity | **Emoji, at size, as the primary label** | Our users cannot read. For a four-year-old the emoji *is* the affordance — it is how they tell Rhymes from Colouring. Non-negotiable, and the single biggest inversion from any adult-facing guidance. |
+| Restraint in colour; one accent | **Bright, saturated, many hues** | Measured: children's colour preference correlates positively with saturation across every hue family, warm hues slightly dominate, and deep shades read as *negative* to them. Tasteful desaturation is an adult preference. |
+| Typography: optical sizing, tight tracking, modest headings | **Big friendly type** | Correct for a child, and for a tired parent squinting in a dark room. |
+
+## 2. Non-negotiables
+
+- **Tap targets ≥ 44px; ≥ 56px for anything a three-year-old uses.** Measured on
+  the hit area, not the glyph.
+- **Works at 390px.** Check there first, never at desktop width.
+- **Two across at 390px, and check the arithmetic.** The page is ~358px inside
+  its gutters, so with a 16px gap each column is ~171px. An `auto-fill minmax()`
+  minimum wider than that silently collapses to one column — that exact bug
+  shipped once. `.tiles` uses 140px, `.tiles--roomy` 158px.
 - **Long lists are shelves, not columns.** Eighteen worlds or twenty-two rhymes
-  become a horizontal `.shelf` with scroll-snap, grouped into rows that mean
-  something. The tile peeking past the gutter is the affordance that says there
-  is more; that is why the shelf bleeds to the screen edge.
-- **Nested enclosure ("double bezel").** A tile is a chunky outer shell with its
-  own hairline and radius, containing an inner core with a smaller, concentric
-  radius. It reads as a physical object — which is exactly right for children.
-  Concentric radii: inner = outer − padding.
+  become a horizontal `.shelf` with scroll-snap, grouped into rows that *mean*
+  something. The tile peeking past the gutter is the affordance; that is why the
+  shelf bleeds to the screen edge.
+- **The mascot does not follow the palette.** A character that changes colour is
+  a shape. Lumi is turquoise in every theme.
+- **The mascot carries emotion through eyebrows.** A face without brows reads as
+  blank. Every screen state picks a mood.
+- **The story player is its own room.** It stays dark under every palette,
+  including the three light ones — and it must actually *consume* the variable
+  (`color: var(--text-hi)`), because redefining a custom property does not
+  change an already-inherited `color`.
+- **No streaks, XP, timers or leaderboards.** Not a visual rule, but it
+  constrains the visual language: nothing that implies falling behind, and no
+  progress bar a child can lose.
+- **No new runtime dependencies.** `react` + `react-dom` only, enforced by
+  `privacy.test.ts`. Apple's Kids Category bars third-party SDKs from receiving
+  device or personal data; the cheapest way to comply is to have none. This is
+  why `pick-ui-library` will usually answer "hand-roll it" here — that is a real
+  constraint, not laziness, and it means any component we hand-roll owes the
+  focus management the library would have given us.
 
-**Colour**
-- **Palettes are data, not stylesheets.** `content/themes.ts` overrides the same
-  token names `tokens.css` declares, applied inline on `:root`. Components never
-  learn a theme exists.
-- **Children prefer saturation and brightness.** Preference correlates
-  positively with saturation across every hue family, warm hues slightly
-  dominate, and *deep shades read as negative to them*. Bright beats tasteful.
+## 3. Materials and palettes
+
+- **Palettes are data.** `content/themes.ts` overrides the same token names
+  `tokens.css` declares, applied inline on `:root`. Components never learn a
+  theme exists. Six palettes: three night, three day.
 - **Contrast is tested, not eyeballed.** `themes.test.ts` enforces 7:1 for body
   text and 3:1 for text on the accent. Two palettes failed on first write. When
-  a bright accent fails, darken the *text*, not the accent — the brightness is
-  the point.
-- **The mascot does not follow the theme.** A character that changes colour is a
-  shape. Lumi is turquoise everywhere.
-- **The story player is its own room.** Worlds carry deep night gradients by
-  design, so `.story` forces light text whatever palette is on — and it must
-  actually *consume* the variable (`color: var(--text-hi)`), because redefining
-  a custom property does not change an already-inherited `color`.
+  a bright accent fails, **darken the text, not the accent** — the brightness is
+  the point for the user; the ratio is for the buyer.
+- **Glass needs three parts**, not just blur: `backdrop-filter`, a 1px inner
+  highlight (`inset 0 1px 0 rgba(255,255,255,.18)`), and a tinted shadow sharing
+  the background hue. Blur alone looks like frosted plastic.
+- **Never pure `#000`.** Our floor is `--ink-900: #070a16`, and it warms further
+  through the sleep gradient.
+- **Nested enclosure ("double bezel").** A chunky outer shell with its own
+  hairline and radius, containing an inner core at a concentric radius
+  (inner = outer − padding). It reads as a physical object, which is right for
+  children.
 
-**Materiality**
-- Glass needs three parts, not just blur: `backdrop-filter`, a 1px inner
-  highlight (`inset 0 1px 0 rgba(255,255,255,.18)`), and a tinted shadow that
-  shares the background hue. Blur alone looks like frosted plastic.
-- **Never pure `#000`.** Our floor is `--ink-900: #070a16`.
-- Shadows are tinted toward the background, never neutral grey.
+## 4. The motion tokens
 
-**Motion**
-- Animate **`transform` and `opacity` only**. Never `top`, `left`, `width`,
-  `height`.
-- Never `linear` or `ease-in-out`. Use `--ease-soft`.
-- **Staggered entrance** via CSS custom property index:
-  `animation-delay: calc(var(--i) * 45ms)`. No JS, no dependency.
-- Tactile `:active` — `scale(.97)` — on everything tappable.
-- Everything above must vanish under `prefers-reduced-motion`.
+Defined in `tokens.css`, taken from the `animate` skill's table — **do not
+hand-roll a curve**:
 
-**States**
-- Loading, empty and error states are not optional. Skeletons match the real
-  layout; no generic spinners.
+```css
+--ease-out: cubic-bezier(0.23, 1, 0.32, 1);      /* entering, exiting, press */
+--ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);  /* moving on screen */
+--ease-soft: <legacy alias of --ease-out>        /* being retired */
+--dur-press: 140ms;  --dur-fast: 180ms;
+--dur-mid: 240ms;    --dur-slow: 700ms;          /* slow is for the sleep gradient only */
+```
 
-## 2. Rules we deliberately reject
+`--dur-slow` is the one place we exceed the skill's 300ms UI ceiling. That is
+deliberate and scoped: it drives the sleep gradient, which is *content* pacing,
+not UI feedback. Never use it on a control.
 
-| Upstream rule | Why it is wrong here |
-|---|---|
-| **"Emojis are BANNED"** | Our users cannot read. An emoji is the *affordance* for a four-year-old — it is how they tell Rhymes from Colouring. This is the single biggest inversion. |
-| "Max 1 accent, saturation < 80%" | Desaturated luxury palettes are for adults. Children need bright, distinguishable hues; each world and pillar carries its own. |
-| "No oversized H1s" | Big friendly type is correct for a child and for a tired parent in a dark room. |
-| Ultra-light 1px icons (Phosphor Light) | Hairline icons are invisible to a child and untappable. Chunky, high-contrast, ≥44px targets. |
-| "Macro-whitespace, `py-24`–`py-40`" | That is a desktop landing page. On a 390px phone it means one tile per screen and endless scrolling. |
-| Tailwind / Framer Motion / Phosphor | Three runtime dependencies. We ship `react` + `react-dom` only, and `privacy.test.ts` enforces it — Apple's Kids Category bars third-party SDKs from receiving device or personal data, and the cheapest way to comply is to have none. Plain CSS does all of this. |
-| "No 3-column card grids" | Valid for marketing pages. For a launcher grid of activities, predictable and symmetrical is *easier for a child*, not lazier. |
-| Serif banned | We use serif deliberately for story and rhyme text: it is a reading surface, not a dashboard. |
-| "Deepest OLED black `#050505`" | Too harsh. Warm near-black, and it warms further through the sleep gradient. |
+## 5. Checklist before finishing any UI change
 
-## 3. Non-negotiables specific to this app
-
-- **Night-first.** There is no light theme. The palette warms and dims through
-  the evening via the sleep gradient; nothing may fight that.
-- **Tap targets ≥ 44px**, and ≥ 56px for anything a three-year-old uses.
-- **Works at 390px.** Always check there first, not at desktop width.
-- **The mascot carries emotion.** Eyebrows and eye shape do the work — a face
-  without brows reads as blank. Every screen state should pick a mood.
-- **No streaks, XP, timers or leaderboards anywhere.** Not a visual rule but it
-  constrains the visual language: no progress bars that imply falling behind.
-
-## 4. Checklist before finishing any UI change
-
-1. Does it collapse to one column under 480px?
-2. Are all tap targets ≥ 44px?
-3. Is every animated property `transform` or `opacity`?
-4. Does `prefers-reduced-motion` disable it?
-5. Does it still read in wind-down, when the screen is dimmed and warmed?
-6. `npm run smoke` — does it still render without console errors at 390px?
+1. Two columns at 390px, not one?
+2. Every tap target ≥ 44px?
+3. Every animated property `transform` or `opacity`?
+4. `prefers-reduced-motion` handled — gentler, not deleted?
+5. Every `:hover` inside `@media (hover: hover) and (pointer: fine)`?
+6. Still readable in wind-down, dimmed and warmed?
+7. `npm test` green and `npm run smoke` clean at 390px?
+8. What did you *not* verify without a phone? Say so.

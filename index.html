@@ -2,9 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#070a16" />
-    <meta name="color-scheme" content="dark" />
+    <!-- interactive-widget: the Android software keyboard shrinks the layout
+         viewport instead of sliding over it, so 100dvh reacts to it the way
+         iOS already does. Never user-scalable=no: inputs are 16px instead. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <!-- Overwritten at runtime by useTheme with the active palette's ground
+         colour. These two are the pre-hydration values only. -->
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#070a16" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fdf7ee" />
+    <meta name="color-scheme" content="light dark" />
     <meta
       name="description"
       content="Lumi & the Sleepy Worlds - offline-first personalised bedtime stories for children, built to end the evening rather than extend it."

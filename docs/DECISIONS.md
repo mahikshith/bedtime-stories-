@@ -190,3 +190,40 @@ Activity lists were vertical rows a tired parent scrolled past. Short sets are
 now two-across `.tiles` grids; long ones are horizontal `.shelf` rows grouped by
 something meaningful (Lumi originals vs the old favourites, just-right vs other
 ages). A tile peeking past the gutter is the affordance for "there is more".
+
+### D27 — UI craft comes from the installed skills, not from this repo *(session 5)*
+
+`.claude/skills/` vendors ten skills from
+[emilkowalski/skills](https://github.com/emilkowalski/skills) (MIT, commit
+`85e8e23`): `animate`, `mobile-native`, `apple-design`, `emil-design-eng`,
+`animation-vocabulary`, `find-animation-opportunities`, `improve-animations`,
+`review-animations`, `prototype`, `pick-ui-library`. They are the authority on
+general craft. `lumi-ui` was rewritten to hold **only** the kid-specific
+overrides — emoji as the primary label, generous press feedback, saturated
+colour, big type — each with the reason it diverges, so a later session does not
+"correct" them back.
+
+Three upstream skills were skipped: `animate-expo` (React Native, not our
+runtime), `write-swift` (Capacitor generates the iOS shell; we author no Swift),
+`ask-sonner` (a dependency we will never add).
+
+This replaces the earlier Payoss-derived rules, at the user's instruction.
+
+### D28 — The mobile platform layer is pinned by tests *(session 5)*
+
+`src/__tests__/mobile.test.ts` pins the fixes that do not reproduce in a desktop
+browser and are invisible in a screenshot: `viewport-fit=cover`,
+`interactive-widget=resizes-content`, no `user-scalable=no`, a `theme-color` per
+colour scheme, the killed tap highlight, `touch-action: manipulation`, 16px
+inputs, `overscroll-behavior`, `100dvh`, safe-area padding, and the motion
+tokens. Precedent is `privacy.test.ts`: a correctness property nobody can see is
+a property that gets silently reverted.
+
+### D29 — Verifiable Parental Consent is not required, because we do not collect *(session 5)*
+
+Gemini's roadmap recommended credit-card VPC. Rejected: VPC is triggered by
+*collection*, and building card-based consent would require a payment processor
+and a server, creating the obligation it claims to discharge. The parental gate
+stays an age screen. Reasoning in full in `docs/ROADMAP-REVIEW.md` §1.1. A
+lawyer should confirm the no-collection position in writing before submission —
+that is a review, not a build.

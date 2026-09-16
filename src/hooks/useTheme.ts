@@ -21,9 +21,21 @@ export function useTheme(themeId: string): void {
     root.style.colorScheme = theme.mode === 'day' ? 'light' : 'dark';
     root.dataset.theme = theme.id;
 
+    /*
+     * The status bar and the WebView's own chrome take their colour from
+     * theme-color, not from the page. Left at the one hardcoded midnight value
+     * in index.html, all three light palettes rendered a black bar above a
+     * cream app. Both media-scoped tags are retargeted, because which one wins
+     * depends on the OS setting rather than on the palette the parent picked.
+     */
+    const bars = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
+    const previous = [...bars].map((bar) => bar.content);
+    for (const bar of bars) bar.content = theme.tokens.ink900;
+
     return () => {
       for (const name of Object.keys(vars)) root.style.removeProperty(name);
       delete root.dataset.theme;
+      bars.forEach((bar, i) => { bar.content = previous[i]; });
     };
   }, [themeId]);
 }
