@@ -195,11 +195,24 @@ export function RhymePlayer({ rhyme: raw, profile, onExit }: RhymePlayerProps) {
                 <span className="rhyme__who">{companion.name}</span>
               )}
               {isCurrent
-                ? tokens.map((t, w) => (
-                    <span key={w} className={`rhyme__word${w === wordIndex ? ' rhyme__word--on' : ''}`}>
-                      {t.text}{' '}
-                    </span>
-                  ))
+                ? tokens.map((t, w) => {
+                    // The answer is appended to the line the moment it is
+                    // revealed, so the last token is a fresh mount and its
+                    // entrance runs once. Everything before it is already on
+                    // screen and must not move.
+                    const justRevealed = Boolean(c) && revealed && w === tokens.length - 1;
+                    return (
+                      <span
+                        key={w}
+                        className={
+                          `rhyme__word${w === wordIndex ? ' rhyme__word--on' : ''}` +
+                          (justRevealed ? ' rhyme__word--reveal' : '')
+                        }
+                      >
+                        {t.text}{' '}
+                      </span>
+                    );
+                  })
                 : <span>{shown} </span>}
               {isCurrent && c && !revealed && (
                 <button className="rhyme__blank" onClick={reveal} aria-label="Reveal the word">

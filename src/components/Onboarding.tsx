@@ -25,17 +25,25 @@ export function Onboarding() {
 
   return (
     <div className="page">
-      {step === 'welcome' && <Welcome onNext={() => setStep('gate')} />}
-      {step === 'gate' && <ParentGate onPass={() => setStep('paywall')} />}
-      {step === 'paywall' && (
-        <Paywall
-          variant="offer"
-          onStartTrial={() => { startTrial(); setStep('child'); }}
-          onBought={() => setStep('child')}
-        />
-      )}
-      {step === 'child' && <ChildSetup onDone={() => setStep('pin')} />}
-      {step === 'pin' && <PinSetup />}
+      {/*
+        Keyed on the step so each one remounts and replays its entrance. The
+        five steps share one .page, so without this the first screen animates in
+        and the next four teleport — on the one flow a parent only ever sees
+        once.
+      */}
+      <div className="step-in" key={step}>
+        {step === 'welcome' && <Welcome onNext={() => setStep('gate')} />}
+        {step === 'gate' && <ParentGate onPass={() => setStep('paywall')} />}
+        {step === 'paywall' && (
+          <Paywall
+            variant="offer"
+            onStartTrial={() => { startTrial(); setStep('child'); }}
+            onBought={() => setStep('child')}
+          />
+        )}
+        {step === 'child' && <ChildSetup onDone={() => setStep('pin')} />}
+        {step === 'pin' && <PinSetup />}
+      </div>
     </div>
   );
 }

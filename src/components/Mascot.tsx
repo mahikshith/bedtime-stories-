@@ -253,14 +253,27 @@ export function Mascot({
             the face reads as worried; negative lifts the outer end for cheerful.
           */}
           <g fill="#06857a">
-            <rect
-              x={EYE.lx - 19} y={72 + f.browY} width="38" height="9" rx="4.5"
-              transform={`rotate(${f.browRot} ${EYE.lx} ${76 + f.browY})`}
-            />
-            <rect
-              x={EYE.rx - 19} y={72 + f.browY} width="38" height="9" rx="4.5"
-              transform={`rotate(${-f.browRot * f.browAsym} ${EYE.rx} ${76 + f.browY})`}
-            />
+            {/*
+              Geometry is static and the mood is carried entirely by a CSS
+              transform, so the brows can be transitioned between moods.
+              Previously y and the rotate origin both moved with browY inside an
+              SVG transform attribute — the same mix of attribute geometry and
+              CSS origin that once displaced the wings, and impossible to
+              interpolate cleanly. transform-box: fill-box puts the origin at
+              each rect's own centre, which is where the old rotate() pivoted.
+            */}
+            <g
+              className="lumi__brow"
+              style={{ transform: `translateY(${f.browY}px) rotate(${f.browRot}deg)` }}
+            >
+              <rect x={EYE.lx - 19} y={72} width="38" height="9" rx="4.5" />
+            </g>
+            <g
+              className="lumi__brow"
+              style={{ transform: `translateY(${f.browY}px) rotate(${-f.browRot * f.browAsym}deg)` }}
+            >
+              <rect x={EYE.rx - 19} y={72} width="38" height="9" rx="4.5" />
+            </g>
           </g>
 
           {/* beak — opens downward so the head shape is never broken */}

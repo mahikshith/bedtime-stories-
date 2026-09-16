@@ -336,6 +336,43 @@ input, textarea, select { font-size: 16px; }
 
 .story__text em { font-style: italic; color: var(--amber-300); }
 
+/*
+ * Screen entrance.
+ *
+ * Each pillar is a separate mount under .app, so a fresh .page element appears
+ * on every navigation and this runs without a key. It exists because the
+ * CONTENTS already animated: .tile floats in on a stagger over a header that
+ * had snapped, which read as half-finished rather than calm.
+ */
+.page {
+  animation: screen-in var(--dur-mid) var(--ease-out) both;
+}
+
+/*
+ * Onboarding keeps one .page and swaps the step inside it, so the step needs
+ * its own entrance. It is also the one place in the app at the rare/first-time
+ * tier, which is where the delight budget actually lives — hence the longer
+ * stagger on whatever it contains.
+ */
+.step-in {
+  animation: screen-in var(--dur-mid) var(--ease-out) both;
+}
+
+.step-in .tile { animation-delay: calc(var(--i, 0) * 60ms); }
+
+@keyframes screen-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Gentler, not gone: the fade still says "this is new", the travel doesn't. */
+  @keyframes screen-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+}
+
 .story__page {
   animation: fadeUp var(--dur-slow) var(--ease-soft) both;
   display: flex;
@@ -433,6 +470,28 @@ input, textarea, select { font-size: 16px; }
 }
 
 .lumi__head { transform-origin: 50% 80%; }
+
+/*
+ * Moods cut between nine faces. Transitioning the two parts that are pure CSS
+ * transforms — the brows and the head tilt — turns a cut into an expression
+ * changing its mind, which is most of what the character is for.
+ *
+ * Not the eyes: .lumi__eyes runs an infinite blink on `transform`, and a
+ * transition on the same property fights the keyframes. Not the beak either —
+ * its shape is a `d` path, and `d` interpolation is not dependable in WebKit.
+ */
+.lumi__brow {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.lumi__head { transition: transform var(--dur-fast) var(--ease-out); }
+
+@media (prefers-reduced-motion: reduce) {
+  /* The face still changes; it just stops travelling to get there. */
+  .lumi__brow, .lumi__head { transition: none; }
+}
 
 .lumi__eyes {
   transform-origin: center;
@@ -681,7 +740,29 @@ input, textarea, select { font-size: 16px; }
   transition: opacity var(--dur-mid) var(--ease-soft);
 }
 
-.rhyme__word { transition: color var(--dur-fast), text-shadow var(--dur-fast); }
+.rhyme__word { transition: color var(--dur-fast) var(--ease-out), text-shadow var(--dur-fast) var(--ease-out); }
+
+/*
+ * The blank pulses to ask for an answer, then the answer used to appear with no
+ * bridge — no payoff on the one beat of the rhyme where the child is being
+ * asked to do something. inline-block so the span can take a transform.
+ */
+.rhyme__word--reveal {
+  display: inline-block;
+  animation: word-reveal var(--dur-fast) var(--ease-out) both;
+}
+
+@keyframes word-reveal {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes word-reveal {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+}
 
 /* The karaoke highlight: a pre-reader follows the colour, not the text. */
 .rhyme__word--on {
@@ -733,7 +814,17 @@ input, textarea, select { font-size: 16px; }
   overflow: hidden;
 }
 
+/*
+ * A crayon, not a paint bucket. 120ms deliberately undercuts the 140ms press
+ * budget: a child fills shapes in fast runs, and anything slower would still be
+ * settling when the next tap lands.
+ */
 .colour__art { display: block; width: 100%; height: auto; }
+.colour__art path { transition: fill 120ms var(--ease-out); }
+
+@media (prefers-reduced-motion: reduce) {
+  .colour__art path { transition: none; }
+}
 
 .colour__crayon {
   width: 40px;
