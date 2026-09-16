@@ -1290,3 +1290,83 @@ input, textarea, select { font-size: 16px; }
 }
 
 .shelf__count { font-size: 0.74rem; color: var(--text-low); }
+
+/* ---------- Juice: shared feedback primitives ---------- */
+
+/*
+ * Squash and stretch.
+ *
+ * The oldest trick in character animation and the cheapest way to make a flat
+ * SVG read as a physical object. Applied on a success beat, never on a press —
+ * press already has its own 140ms scale and two overlapping scales fight.
+ *
+ * It overshoots, which the animate skill reserves for playful interactions.
+ * This is a game for a five-year-old, so it qualifies; nothing outside
+ * .juice-* may use this curve.
+ */
+.juice-pop {
+  animation: juice-pop 420ms var(--ease-out) both;
+}
+
+@keyframes juice-pop {
+  0%   { transform: scale(1, 1); }
+  28%  { transform: scale(1.18, 0.86); }
+  56%  { transform: scale(0.94, 1.08); }
+  78%  { transform: scale(1.03, 0.98); }
+  100% { transform: scale(1, 1); }
+}
+
+/* A miss. Same budget, no reward shape, and nothing that reads as a scolding. */
+.juice-wobble {
+  animation: juice-wobble 420ms var(--ease-out) both;
+}
+
+@keyframes juice-wobble {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(-4deg); }
+  75%      { transform: rotate(4deg); }
+}
+
+/*
+ * Particle burst.
+ *
+ * Each spark is one absolutely-positioned span animating transform and opacity
+ * only, so a burst costs no layout. --a is its angle and --d its distance, set
+ * inline by the caller, which keeps the whole effect in CSS with no per-frame
+ * JavaScript.
+ */
+.sparks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+}
+
+.spark {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--amber-400);
+  animation: spark-fly 620ms var(--ease-out) both;
+}
+
+@keyframes spark-fly {
+  from { transform: rotate(var(--a, 0deg)) translateY(0) scale(1); opacity: 1; }
+  to   { transform: rotate(var(--a, 0deg)) translateY(calc(var(--d, 60px) * -1)) scale(0.2); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * Gentler, not gone. The success beat still reads, but nothing travels and
+   * nothing overshoots — which is the whole of what the setting is asking for.
+   */
+  .juice-pop, .juice-wobble { animation: none; }
+  .spark { animation: spark-fade 300ms var(--ease-out) both; }
+
+  @keyframes spark-fade {
+    from { opacity: 0.9; }
+    to   { opacity: 0; }
+  }
+}

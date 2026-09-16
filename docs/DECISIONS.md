@@ -262,3 +262,62 @@ returning frames and every sample reads as silence, so the voice games show a
 dead meter with the microphone permission granted. WKWebView also suspends on
 background, so unlocking once is not enough — arming is re-set on `statechange`
 and on `visibilitychange` rather than latched.
+
+### D33 — Bedtime is one product inside an all-day app *(session 6, user correction)*
+
+Earlier sessions reasoned as though the whole app were a bedtime app, and
+rejected mechanics on that basis. Wrong: the day arc runs 05:00–18:00 as wake
+and play, and those hours get **full-strength game design** — progression
+ladders, collectibles, streaks, tilt and motion games, juice. Only wind-down
+(18:00–05:00) is calm by design. `CLAUDE.md` now says so at the top, because
+this misreading recurred across three sessions.
+
+### D34 — Engagement mechanics are in; five specific pressure mechanics are out *(session 6, user decision)*
+
+The user asked for sticky, engaging games and reaffirmed it after the trade-off
+was put to them. Building: mastery ladders (`levels`, 1–5), a rolling star
+count, a streak, the Nest collection (hats, props, ambient sounds), and juice.
+
+`PlayState` deliberately withholds the pressure mechanics, and each is a design
+decision rather than an omission: **stars never decrease**, **levels never
+regress** after a bad run, a **broken streak restarts at 1 rather than 0**
+because the day you come back is itself day one, and the Nest is **mementos,
+not currency** — no shop, no spend, nothing ever taken away. Streaks are shown
+as a warm fact, never as something at risk.
+
+The reasoning that separates habit from hostage is commercial, not moral: we
+sell a one-time purchase, so growth runs through parent word-of-mouth, and the
+parent's verdict forms when they take the phone away.
+
+### D35 — `Entitlement` leaves room for a subscription *(session 6, user instruction)*
+
+`monthly` and `annual` are declared and seated at 4, with an
+`entitlementExpires` field and `isLifetime()` / `isLapsed()` helpers. Neither is
+sellable yet — the decision is deferred — but the cost of leaving room now is a
+union member, and the cost of not doing so is a storage migration on every
+installed device later. `isLapsed` **fails closed** on a recurring tier with no
+expiry: a wiped receipt must not become a free subscription. Store-managed
+subscriptions validate on-device via StoreKit and Play Billing, so this stays
+backend-free.
+
+### D36 — Game audio is synthesised, never bundled *(session 6)*
+
+`engine/gameAudio.ts`. Oscillators and filtered noise only: zero audio bytes in
+the bundle, and a chime can be retuned at runtime. Pitches come from a
+pentatonic scale so **any two notes played together are consonant** — that is
+what makes it safe to fire feedback on every single touch. Voices are capped at
+12 (a child mashing a bubble field otherwise clips into distortion and strands
+nodes on a cheap phone), and everything routes through `audioUnlock` because an
+unresumed iOS context plays nothing at all, silently.
+
+### D37 — Motion input is real, and scoped *(session 6, user instruction)*
+
+`hooks/useDeviceTilt.ts`. Tilt, gyro and motion games are in. The hook **never
+requests permission from an effect** — iOS 13+ rejects `requestPermission()`
+outside a user gesture, which would leave it dead on every iPhone and working in
+Chrome. A game calls `request()` from a button press. Readings land in a ref and
+are drained inside the game's own animation frame, because `deviceorientation`
+fires at 60Hz (120Hz on ProMotion) and setState-per-event survives no physics
+sim. Smoothing is frame-rate independent, or the same game feels different on
+two phones in the same room. Every motion game ships a touch fallback: the
+sensor can be absent, the prompt refused, or the parent simply unwilling.

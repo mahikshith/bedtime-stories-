@@ -1,10 +1,16 @@
 # Lumi & the Sleepy Worlds — working notes
 
-One offline-first app for a household of children under 11: **rhymes, stories,
-colouring, letters**. Vite + React 18 + TypeScript PWA, Capacitor-wrappable for
-Play Store. No backend, no accounts, no analytics.
+One offline-first **all-day** app for a household of children under 11:
+**rhymes, games, create, learn, stories**. Vite + React 18 + TypeScript PWA,
+Capacitor-wrapped for both stores. No backend, no accounts, no analytics.
 
-**Branch:** `claude/bedtime-stories-app-6vk9be` · **Tests:** `npm test` (217)
+**Bedtime is ONE product inside the app, not the app.** The day arc runs
+05:00–18:00 as wake and play; those hours get full-strength game design —
+progression ladders, collectibles, streaks, tilt and motion games, juice. Only
+wind-down (18:00–05:00) is calm by design. Do not apply bedtime constraints to
+the daytime app; that mistake was made repeatedly in earlier sessions.
+
+**Branch:** `claude/bedtime-stories-app-6vk9be` · **Tests:** `npm test` (233)
 **End goal:** ship to the **App Store and Google Play**. See `docs/STORE-READINESS.md`.
 
 ---
@@ -75,7 +81,9 @@ src/
   wind-down 18–5. Wind-down stops *offering* lively pillars; it never locks them.
   Five pillars: rhymes, games, create, learn, stories.
 - **Monetisation**: free to install, `TRIAL_SESSIONS` nights free, then a hard
-  paywall. A night is one calendar day, not one app open.
+  paywall. A night is one calendar day, not one app open. **A subscription tier
+  is a live possibility the user will decide on later** — keep `Entitlement`
+  extensible and never hardcode "one payment, forever" into logic or copy.
 - **Games** grade by their own `minAge`/`maxAge`, not profile bands. Voice games
   reward hitting a target level, not maximum volume, and syllable mode requires
   one vocal burst per beat so a shout cannot fake a long word.

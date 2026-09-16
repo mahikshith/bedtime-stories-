@@ -50,7 +50,82 @@ export const EMPTY_PROGRESS: ChildProgress = {
   games: [],
 };
 
-export type Entitlement = 'none' | 'trial' | 'solo' | 'family';
+/**
+ * What the household has bought.
+ *
+ * `monthly` and `annual` are declared but not yet sellable — the decision on a
+ * subscription tier is deferred, and the cost of leaving room for it now is a
+ * union member and an expiry field. The cost of NOT leaving room is a storage
+ * migration on every installed device later. Nothing may hardcode "one payment,
+ * forever" in logic or in copy; ask `isLifetime()` instead.
+ */
+export type Entitlement = 'none' | 'trial' | 'solo' | 'family' | 'monthly' | 'annual';
+
+/**
+ * Game progression and the Nest.
+ *
+ * Deliberately device-level rather than per-child: siblings share a phone, and
+ * a hat that vanishes when your brother's profile is picked is a fight, not a
+ * feature.
+ *
+ * What this holds and what it does NOT hold is the design:
+ *  - `levels` is a mastery ladder. Difficulty that rises with skill is game
+ *    design and it is why a child comes back.
+ *  - `nest` is mementos. A hat is a thing you did, kept — it is not a currency,
+ *    there is no shop, and nothing is ever taken away.
+ *  - `stars` is a rolling count used to unlock the next Nest item, and it never
+ *    decreases. There is no lifetime leaderboard and nothing to fall behind on.
+ *  - `streak` counts consecutive days played, and is shown as a warm fact
+ *    ("three days in a row!"), never as something at risk. No loss framing, no
+ *    "don't break it", no countdown — that is the line between a habit and a
+ *    hostage.
+ */
+export interface PlayState {
+  /** gameId -> highest level reached, 1-5. */
+  levels: Record<string, number>;
+  /** Monotonic. Spends unlock Nest items but never subtract. */
+  stars: number;
+  /** Consecutive calendar days with any play. */
+  streak: number;
+  /** ISO date the streak last advanced. */
+  streakDay: string | null;
+  nest: {
+    hats: string[];
+    wearing: string | null;
+    props: string[];
+    sounds: string[];
+  };
+}
+
+export const EMPTY_PLAY: PlayState = {
+  levels: {},
+  stars: 0,
+  streak: 0,
+  streakDay: null,
+  nest: { hats: [], wearing: null, props: [], sounds: [] },
+};
+
+/** Tiers that never lapse. The others carry an `entitlementExpires`. */
+const LIFETIME: Entitlement[] = ['solo', 'family'];
+
+export function isLifetime(tier: Entitlement): boolean {
+  return LIFETIME.includes(tier);
+}
+
+/**
+ * True when a recurring tier has lapsed.
+ *
+ * Store-managed subscriptions are validated by StoreKit and Play Billing on the
+ * device, so this stays backend-free; the expiry is whatever the last receipt
+ * check wrote. A missing expiry on a recurring tier is treated as lapsed rather
+ * than as forever, because failing closed is the safer default.
+ */
+export function isLapsed(s: AppState, now = Date.now()): boolean {
+  if (isLifetime(s.entitlement) || s.entitlement === 'none' || s.entitlement === 'trial') {
+    return false;
+  }
+  return (s.entitlementExpires ?? 0) <= now;
+}
 
 /**
  * Nights in the free trial.
@@ -76,6 +151,9 @@ export const SEATS: Record<Entitlement, number> = {
   trial: 1,
   solo: 1,
   family: 4,
+  // A subscription is a household product or it is not worth selling.
+  monthly: 4,
+  annual: 4,
 };
 
 export interface AppState {
@@ -91,6 +169,10 @@ export interface AppState {
   trialSessions: number;
   /** ISO date of the last counted session, so one evening counts once. */
   lastSessionDay: string | null;
+  /** Epoch ms. Only meaningful for recurring tiers; see `isLapsed`. */
+  entitlementExpires?: number;
+  /** Cross-child, device-level game state. See `GameProgress`. */
+  play: PlayState;
   settings: Settings;
   history: { id: string; title: string; worldId: string; profileId: string; at: number }[];
 }
@@ -106,6 +188,7 @@ export const INITIAL_STATE: AppState = {
   sparks: 0,
   trialSessions: 0,
   lastSessionDay: null,
+  play: EMPTY_PLAY,
   parentPinHash: null,
   settings: {
     theme: DEFAULT_THEME,
@@ -327,6 +410,66 @@ export function markGamePlayed(profileId: string, gameId: string): void {
   patchProgress(profileId, (p) =>
     p.games.includes(gameId) ? p : { ...p, games: [...p.games, gameId] },
   );
+}
+
+/**
+ * Merges over EMPTY_PLAY so an install that predates this field — or a later
+ * field added to it — reads as a full object instead of undefined. Same reason
+ * `progressFor` does it: additive state must never need a storage-key bump.
+ */
+export function playState(s: AppState = getState()): PlayState {
+  const stored = s.play ?? EMPTY_PLAY;
+  return { ...EMPTY_PLAY, ...stored, nest: { ...EMPTY_PLAY.nest, ...stored.nest } };
+}
+
+function patchPlay(fn: (p: PlayState) => PlayState): void {
+  setState((s) => ({ ...s, play: fn(playState(s)) }));
+}
+
+/** Highest level reached in a game, 1-5. Never regresses. */
+export function gameLevel(gameId: string, s: AppState = getState()): number {
+  return playState(s).levels[gameId] ?? 1;
+}
+
+/**
+ * Records a level cleared and the stars it earned.
+ *
+ * Levels only ever go up. A child who has a bad night does not get demoted —
+ * that is the difference between a mastery ladder and a punishment.
+ */
+export function clearLevel(gameId: string, level: number, stars = 1): void {
+  patchPlay((p) => ({
+    ...p,
+    levels: { ...p.levels, [gameId]: Math.max(p.levels[gameId] ?? 1, Math.min(5, level + 1)) },
+    stars: p.stars + Math.max(0, stars),
+  }));
+}
+
+/**
+ * Advances the streak once per calendar day.
+ *
+ * A gap resets it to 1, not to 0, because the day you come back is itself day
+ * one. Nothing in the UI may present this as something to protect.
+ */
+export function countPlayDay(today = new Date().toISOString().slice(0, 10)): void {
+  patchPlay((p) => {
+    if (p.streakDay === today) return p;
+    const yesterday = new Date(new Date(today).getTime() - 86_400_000).toISOString().slice(0, 10);
+    return { ...p, streak: p.streakDay === yesterday ? p.streak + 1 : 1, streakDay: today };
+  });
+}
+
+/** Adds a Nest item. Idempotent, and nothing is ever removed. */
+export function earnNestItem(kind: 'hats' | 'props' | 'sounds', id: string): void {
+  patchPlay((p) =>
+    p.nest[kind].includes(id)
+      ? p
+      : { ...p, nest: { ...p.nest, [kind]: [...p.nest[kind], id] } },
+  );
+}
+
+export function wearHat(id: string | null): void {
+  patchPlay((p) => ({ ...p, nest: { ...p.nest, wearing: id } }));
 }
 
 export function markLetterMet(profileId: string, letter: string): void {

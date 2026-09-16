@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Mascot } from '../Mascot';
+import { playChime, playRun, playThud } from '../../engine/gameAudio';
+import { clearLevel, gameLevel } from '../../state/store';
 import { RHYMES } from '../../content/rhymes';
 import { buildRhymeIndex, buildRhymeQuestion, wordsRhyme } from '../../engine/rhyme';
 import { Narrator, isNarrationSupported } from '../../engine/narration';
@@ -53,13 +55,25 @@ export function RhymeRace({ onExit }: { onExit: () => void }) {
   function choose(option: string) {
     if (picked) return;
     setPicked(option);
-    if (wordsRhyme(option, question!.target, INDEX)) setScore((s) => s + 1);
+    const right = wordsRhyme(option, question!.target, INDEX);
+    if (right) {
+      setScore((s) => s + 1);
+      // Each correct answer climbs the scale, so a run of them is an ascending
+      // phrase rather than the same ping five times.
+      playChime({ step: score + 1, velocity: 0.8 });
+    } else {
+      // A wrong answer is a soft, low sound, never a buzzer: there is no fail
+      // state here and the audio must not invent one.
+      playThud({ velocity: 0.35 });
+    }
   }
 
   function next() {
     setPicked(null);
     if (round + 1 >= ROUNDS) {
       setRound(ROUNDS);
+      playRun(Math.max(2, score), { step: 2, velocity: 0.7 });
+      clearLevel('rhyme-race', gameLevel('rhyme-race'), score);
       return;
     }
     setRound((r) => r + 1);
