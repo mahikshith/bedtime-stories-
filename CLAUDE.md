@@ -108,6 +108,13 @@ CI runs typecheck, test, build and the browser smoke on every push and PR
 (`.github/workflows/ci.yml`). The smoke scripts exit non-zero on any page or
 console error, so a green CI run means the app actually loaded and worked.
 
+**To push without spending a CI run**, put `[skip ci]` in the commit subject.
+GitHub honours it on push and pull_request events, so the run is never queued
+rather than queued-and-cancelled. Use it for docs, notes and work-in-progress
+commits; drop it on the commit you actually want verified. Nothing else is
+needed — never disable the workflow, because a disabled workflow is one nobody
+remembers to turn back on.
+
 ## Conventions
 
 - Comments explain **why**, never what. Match surrounding density.
