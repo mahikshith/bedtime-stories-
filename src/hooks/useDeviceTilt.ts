@@ -26,6 +26,16 @@ export interface Tilt {
   x: number;
   /** Front/back, -1..1, calibrated for a phone held at a natural angle. */
   y: number;
+  /**
+   * Which way the phone is pointing, 0..1 around the circle.
+   *
+   * `alpha`, the third axis, and a different gesture from the other two: the
+   * phone held flat and turned like a wheel rather than leaned. Absolute rather
+   * than a delta, and it wraps — consumers must compare with a shortest-way
+   * subtraction, never a plain one, or a dial jumps a whole turn every time it
+   * crosses north.
+   */
+  spin: number;
 }
 
 interface IosOrientationEvent {
@@ -55,7 +65,7 @@ export function useDeviceTilt(options: { damping?: number } = {}) {
     !supported() ? 'unsupported' : needsPrompt() ? 'prompt' : 'granted',
   );
 
-  const tilt = useRef<Tilt>({ x: 0, y: 0 });
+  const tilt = useRef<Tilt>({ x: 0, y: 0, spin: 0 });
   const listening = useRef(false);
   const mounted = useRef(true);
   const lastEvent = useRef(0);
@@ -74,10 +84,13 @@ export function useDeviceTilt(options: { damping?: number } = {}) {
        * twice as fast on a 120Hz phone as on a 60Hz one, so the same game
        * feels different on two devices in the same room.
        */
-      const alpha = 1 - Math.pow(1 - damping, dt / 16.67);
+      const k = 1 - Math.pow(1 - damping, dt / 16.67);
       tilt.current = {
-        x: tilt.current.x + (targetX - tilt.current.x) * alpha,
-        y: tilt.current.y + (targetY - tilt.current.y) * alpha,
+        x: tilt.current.x + (targetX - tilt.current.x) * k,
+        y: tilt.current.y + (targetY - tilt.current.y) * k,
+        // Not smoothed, and deliberately: smoothing a wrapping value averages
+        // 0.99 and 0.01 to 0.5, which points the phone due south once per turn.
+        spin: ((event.alpha ?? 0) / 360 + 1) % 1,
       };
     },
     [damping],

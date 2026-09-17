@@ -139,3 +139,60 @@
   .lumi__beak { transform: translateX(calc(var(--turn) * 5px)); }
   .lumi--hop .lumi__cast { animation: none; }
 }
+
+/* ---- Star Dial ----------------------------------------------------------
+   Lives here rather than in global.css only to keep two parallel workstreams
+   out of the same file; it belongs with the games on the next tidy-up. */
+
+.stardial {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  box-shadow: var(--clay-shadow);
+  touch-action: none;
+}
+
+.stardial__marker { fill: var(--amber-300); }
+
+.stardial__track {
+  fill: none;
+  stroke: var(--glass-border);
+  stroke-width: 1.4;
+}
+
+.stardial__fill {
+  fill: none;
+  stroke: var(--mint-400);
+  stroke-width: 3;
+  stroke-linecap: round;
+  /* No transition: the offset is written every frame from the hold timer, and
+     a transition would lag behind the thing it is meant to be reporting. */
+}
+
+/* An unfound star is a dim star, not dim TEXT. Borrowing a text token put
+   near-black circles on a near-black sky. */
+.stardial__star circle {
+  fill: #9fb4d8;
+  opacity: 0.55;
+  transition: fill var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+}
+
+.stardial__star.is-target circle {
+  opacity: 1;
+  fill: var(--amber-300);
+  filter: drop-shadow(0 0 4px var(--amber-400));
+}
+
+.stardial__star.is-found circle {
+  opacity: 1;
+  fill: var(--mint-400);
+  filter: drop-shadow(0 0 5px var(--mint-400));
+}
+
+.stardial__count {
+  fill: #9fb4d8;
+  font-size: 9px;
+  font-weight: 700;
+}

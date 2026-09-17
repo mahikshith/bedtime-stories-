@@ -17,6 +17,7 @@ import { StardustTilt } from './components/games/StardustTilt';
 import { MoonPool } from './components/games/MoonPool';
 import { FireflyAir } from './components/games/FireflyAir';
 import { EchoCave } from './components/games/EchoCave';
+import { StarDial } from './components/games/StarDial';
 import { WakeTheAnimal } from './components/games/WakeTheAnimal';
 import { LettersLab } from './components/LettersLab';
 import { ParentZone } from './components/ParentZone';
@@ -63,6 +64,7 @@ function PlayGame({
   if (game.id === 'moon-pool') return <MoonPool profile={profile} onExit={onExit} />;
   if (game.id === 'firefly-air') return <FireflyAir profile={profile} onExit={onExit} />;
   if (game.id === 'echo-cave') return <EchoCave profile={profile} onExit={onExit} />;
+  if (game.id === 'star-dial') return <StarDial profile={profile} onExit={onExit} />;
   return (
     <LumisLeap
       profile={profile}

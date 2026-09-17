@@ -108,6 +108,37 @@ require('fs').mkdirSync(OUT, { recursive: true });
   console.log('ECHO_RESULT', JSON.stringify(heading));
   console.log('COMPANION_VISIBLE', await page.locator('.companion__body').count());
 
+  await page.getByRole('button', { name: /Games/ }).first().click();
+  await page.waitForTimeout(400);
+
+  // ---- Star Dial: drag the sky round, then hold still ----
+  await page.getByRole('button', { name: /Star Dial/ }).click();
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: `${OUT}/j-stardial.png`, fullPage: true });
+  const dialBox = await page.locator('svg.stardial').boundingBox();
+  const cx = dialBox.x + dialBox.width / 2;
+  const cy = dialBox.y + dialBox.height / 2;
+  const R = dialBox.width * 0.38;
+  /*
+   * Level 1 has three stars at 0, 1/3 and 2/3, and wants the one at 1/3. To put
+   * it under the fixed marker the dial has to turn BACK a third of a turn, not
+   * forward: turning forward parks the star at 2/3 there instead, which is a
+   * star, just not the one asked for.
+   */
+  await page.mouse.move(cx, cy - R);
+  await page.mouse.down();
+  for (let i = 1; i <= 24; i += 1) {
+    const a = -Math.PI / 2 - (i / 24) * (2 * Math.PI / 3);
+    await page.mouse.move(cx + Math.cos(a) * R, cy + Math.sin(a) * R);
+    await page.waitForTimeout(16);
+  }
+  await page.mouse.up();
+  // Long enough for the dial to stop coasting AND then be held still.
+  await page.waitForTimeout(2600);
+  await page.screenshot({ path: `${OUT}/k-stardial-held.png`, fullPage: true });
+  const found = await page.locator('.stardial__star.is-found').count();
+  console.log('STARS_FOUND', found);
+
   console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'NO PAGE ERRORS');
   await browser.close();
   if (errors.length) process.exit(1);
