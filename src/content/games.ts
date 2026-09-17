@@ -23,7 +23,7 @@ export type GameSkill =
   | 'turn-taking'
   | 'confidence';
 
-export type GameInput = 'voice' | 'touch';
+export type GameInput = 'voice' | 'touch' | 'motion';
 
 export interface Game {
   id: string;
@@ -128,7 +128,46 @@ export const GAMES: Game[] = [
     minAge: 5,
     maxAge: 11,
     skills: ['listening'],
-    input: 'touch',
+    input: 'motion',
+    loud: false,
+    together: false,
+    status: 'playable',
+  },
+  {
+    id: 'moon-pool',
+    title: 'Moon Pool',
+    blurb: 'Rock the phone in time with the moon and float the glow-seeds up to the ledge.',
+    emoji: '\u{1F311}',
+    minAge: 5,
+    maxAge: 11,
+    skills: ['listening'],
+    input: 'motion',
+    loud: false,
+    together: false,
+    status: 'playable',
+  },
+  {
+    id: 'firefly-air',
+    title: 'Firefly Air',
+    blurb: 'Wave the phone like a fan and float a seed of light up through the rings.',
+    emoji: '\u2728',
+    minAge: 4,
+    maxAge: 11,
+    skills: ['confidence', 'listening'],
+    input: 'motion',
+    loud: true,
+    together: false,
+    status: 'playable',
+  },
+  {
+    id: 'echo-cave',
+    title: 'Echo Cave',
+    blurb: 'The cave taps a rhythm. Clap it, say it, or tap it back.',
+    emoji: '\u{1F573}\uFE0F',
+    minAge: 3,
+    maxAge: 10,
+    skills: ['listening', 'turn-taking', 'syllables'],
+    input: 'voice',
     loud: false,
     together: false,
     status: 'playable',

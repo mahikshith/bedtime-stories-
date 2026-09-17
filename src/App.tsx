@@ -14,6 +14,9 @@ import { LanternBreath } from './components/games/LanternBreath';
 import { LumisLeap } from './components/games/LumisLeap';
 import { RhymeRace } from './components/games/RhymeRace';
 import { StardustTilt } from './components/games/StardustTilt';
+import { MoonPool } from './components/games/MoonPool';
+import { FireflyAir } from './components/games/FireflyAir';
+import { EchoCave } from './components/games/EchoCave';
 import { WakeTheAnimal } from './components/games/WakeTheAnimal';
 import { LettersLab } from './components/LettersLab';
 import { ParentZone } from './components/ParentZone';
@@ -56,7 +59,10 @@ function PlayGame({
   if (game.id === 'lantern-breath') return <LanternBreath profile={profile} onExit={onExit} />;
   if (game.id === 'rhyme-race') return <RhymeRace onExit={onExit} />;
   if (game.id === 'wake-the-animal') return <WakeTheAnimal onExit={onExit} />;
-  if (game.id === 'stardust-tilt') return <StardustTilt onExit={onExit} />;
+  if (game.id === 'stardust-tilt') return <StardustTilt profile={profile} onExit={onExit} />;
+  if (game.id === 'moon-pool') return <MoonPool profile={profile} onExit={onExit} />;
+  if (game.id === 'firefly-air') return <FireflyAir profile={profile} onExit={onExit} />;
+  if (game.id === 'echo-cave') return <EchoCave profile={profile} onExit={onExit} />;
   return (
     <LumisLeap
       profile={profile}

@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Mascot } from '../Mascot';
+import { CompanionSprite, cheerFor } from '../CompanionSprite';
 import { useDeviceTilt } from '../../hooks/useDeviceTilt';
 import { MARBLE_R, buildField, isComplete, step, type Field } from '../../engine/tiltPhysics';
 import { playChime, playRun, playThud } from '../../engine/gameAudio';
 import { clearLevel, gameLevel } from '../../state/store';
+import { currentMode } from '../../engine/dayArc';
+import type { ChildProfile } from '../../engine/types';
 
 /**
  * Stardust Tilt — roll a sleep-pearl home by tipping the phone.
@@ -18,8 +21,15 @@ import { clearLevel, gameLevel } from '../../state/store';
  *    orientation event fires faster than React can usefully re-render.
  *  - **No fail state.** A sleeper nudges the pearl onward rather than back.
  */
-export function StardustTilt({ onExit }: { onExit: () => void }) {
-  const level = gameLevel('stardust-tilt');
+export function StardustTilt({ profile, onExit }: { profile: ChildProfile; onExit: () => void }) {
+  /*
+   * Held in state, not read from the store on every render. `clearLevel` bumps
+   * the stored level the instant a round is won, so a screen that derives the
+   * level from the store re-renders the WON board labelled with the next level
+   * — and any board built from it changes underneath the child while they are
+   * still being congratulated for the last one.
+   */
+  const [level, setLevel] = useState(() => gameLevel('stardust-tilt'));
   const tilt = useDeviceTilt();
 
   const [field, setField] = useState<Field>(() => buildField(level));
@@ -32,7 +42,9 @@ export function StardustTilt({ onExit }: { onExit: () => void }) {
   const last = useRef(0);
   const wonRef = useRef(false);
 
-  const restart = useCallback((next: number) => {
+  const restart = useCallback(() => {
+    const next = gameLevel('stardust-tilt');
+    setLevel(next);
     const fresh = buildField(next);
     live.current = fresh;
     wonRef.current = false;
@@ -147,7 +159,13 @@ export function StardustTilt({ onExit }: { onExit: () => void }) {
         />
       </svg>
 
-      <div className="row" style={{ justifyContent: 'center' }}>
+      <div className="row" style={{ justifyContent: 'center', gap: 'var(--sp-3)' }}>
+        <CompanionSprite
+          companionId={profile.companionId}
+          mood={won ? 'cheering' : currentMode() === 'winddown' ? 'sleeping' : 'watching'}
+          cheer={won ? 1 : 0}
+          says={won ? cheerFor(profile.companionId, level) : null}
+        />
         <Mascot size={110} mood={won ? 'proud' : 'curious'} autoHop={won} />
       </div>
 
@@ -163,7 +181,7 @@ export function StardustTilt({ onExit }: { onExit: () => void }) {
       {won && (
         <button
           className="btn btn--primary btn--block"
-          onClick={() => restart(gameLevel('stardust-tilt'))}
+          onClick={restart}
         >
           {level >= 5 ? 'Roll it again' : 'Next level'}
         </button>

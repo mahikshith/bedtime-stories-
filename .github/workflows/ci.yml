@@ -98,6 +98,7 @@ jobs:
           node scripts/walkthrough.cjs
           node scripts/pillars-shot.cjs
           node scripts/games-shot.cjs
+          node scripts/motion-shot.cjs
 
       - name: Upload screenshots
         if: always()

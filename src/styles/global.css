@@ -1419,3 +1419,200 @@ input, textarea, select { font-size: 16px; }
    * smoothing it. Physics owns position; CSS owns everything else.
    */
 }
+
+/* ---- Moon Pool ---------------------------------------------------------- */
+
+.moonpool {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  box-shadow: var(--clay-shadow);
+  touch-action: none;
+  overflow: hidden;
+}
+
+.moonpool__water {
+  fill: rgba(126, 211, 255, 0.34);
+  stroke: var(--mint-400);
+  stroke-width: 0.7;
+  stroke-linejoin: round;
+  /*
+   * No transition on `d`. The surface is recomputed every frame; a transition
+   * would chase the simulation and smear the wave instead of smoothing it.
+   * Physics owns the shape, CSS owns everything else.
+   */
+}
+
+.moonpool__seed {
+  fill: var(--amber-300);
+  filter: drop-shadow(0 0 5px var(--amber-400));
+}
+
+.moonpool__ledge {
+  fill: rgba(126, 231, 168, 0.28);
+  stroke: var(--mint-400);
+  stroke-width: 0.8;
+}
+
+.moonpool__guide {
+  stroke: var(--mint-400);
+  stroke-width: 0.6;
+  stroke-dasharray: 2 2.5;
+  opacity: 0.5;
+}
+
+/*
+ * The moon is the tuition, not decoration: it swings at the pool's own period
+ * so a child can copy it. Reduced motion shortens the swing rather than
+ * stopping it, because stopping it removes the only hint the game gives.
+ */
+.moonpool__moon {
+  fill: var(--amber-200, #ffe9c2);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: moon-swing var(--dur-slow) var(--ease-in-out) infinite alternate;
+  filter: drop-shadow(0 0 7px rgba(255, 224, 168, 0.65));
+}
+
+@keyframes moon-swing {
+  from { transform: translateX(-26px); }
+  to   { transform: translateX(26px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes moon-swing {
+    from { transform: translateX(-9px); }
+    to   { transform: translateX(9px); }
+  }
+}
+
+/* ---- Firefly Air -------------------------------------------------------- */
+
+.airfield {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  box-shadow: var(--clay-shadow);
+  touch-action: none;
+  overflow: hidden;
+}
+
+.airfield__ring {
+  fill: none;
+  stroke: var(--violet-400);
+  stroke-width: 1.6;
+  stroke-dasharray: 4 3;
+  opacity: 0.7;
+  transition: opacity var(--dur-fast) var(--ease-out), stroke var(--dur-fast) var(--ease-out);
+}
+
+.airfield__ring.is-passed {
+  stroke: var(--mint-400);
+  stroke-dasharray: none;
+  opacity: 1;
+}
+
+.airfield__flyer {
+  fill: var(--amber-300);
+  filter: drop-shadow(0 0 8px var(--amber-400));
+  /* Position is written every frame by the simulation; a transition here would
+     lag the physics rather than smooth it. */
+}
+
+/* ---- Echo Cave ---------------------------------------------------------- */
+
+.echocave {
+  display: flex;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) 0;
+}
+
+.echocave__beat {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--glass-border);
+  background: var(--glass-bg);
+  transition: transform var(--dur-press) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+/* Generous, not subtle: this is the feedback a four-year-old reads the game by. */
+.echocave__beat.is-calling {
+  transform: scale(1.35);
+  background: var(--amber-300);
+}
+
+.echocave__beat.is-echoed {
+  background: var(--mint-400);
+}
+
+.echocave__drum {
+  min-height: 72px;
+  font-size: var(--fs-lg, 1.125rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .echocave__beat.is-calling { transform: scale(1.12); }
+}
+
+/* ---- The companion ------------------------------------------------------ */
+
+.companion {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.companion__body {
+  display: inline-block;
+  line-height: 1;
+  /* Idle bob. Small enough to read as breathing rather than as an animation. */
+  animation: companion-bob 3.4s var(--ease-in-out) infinite alternate;
+  transform-origin: 50% 90%;
+}
+
+.companion[data-mood='sleeping'] .companion__body {
+  animation-duration: 6s;
+  opacity: 0.72;
+  filter: saturate(0.7);
+}
+
+.companion[data-mood='cheering'] .companion__body {
+  animation-duration: 1.1s;
+}
+
+.companion__says {
+  font-size: var(--fs-sm, 0.875rem);
+  color: var(--text-lo);
+}
+
+@keyframes companion-bob {
+  from { transform: translateY(0) rotate(-2deg); }
+  to   { transform: translateY(-5px) rotate(2deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes companion-bob {
+    from { transform: translateY(0); }
+    to   { transform: translateY(-2px); }
+  }
+}
+
+.airfield__ground {
+  fill: rgba(126, 231, 168, 0.22);
+  stroke: var(--mint-400);
+  stroke-width: 0.7;
+}
+
+.airfield__gusts line {
+  stroke: var(--text-lo);
+  stroke-width: 0.8;
+  stroke-linecap: round;
+  stroke-dasharray: 6 5;
+}

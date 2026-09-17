@@ -107,7 +107,15 @@ function GameTile({
       meta={`Ages ${game.minAge}\u2013${game.maxAge}${planned ? ' \u00b7 soon' : ''}`}
       dimmed={dimmed}
       disabled={planned}
-      badge={game.input === 'voice' ? <span aria-label="Uses the microphone">🎤</span> : undefined}
+      badge={
+        game.input === 'voice' ? (
+          <span aria-label="Uses the microphone">🎤</span>
+        ) : game.input === 'motion' ? (
+          // Worth flagging: a parent deciding in a waiting room wants to know
+          // this one asks a child to wave a phone around before they tap it.
+          <span aria-label="Uses movement">📳</span>
+        ) : undefined
+      }
       onClick={() => onPick(game)}
     />
   );
