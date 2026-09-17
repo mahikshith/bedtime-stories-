@@ -346,3 +346,122 @@ drawing bugs found by looking rather than by testing: the star crown rendered
 through the crest before the rule existed, and the nightcap's tail and pom were
 drawn above `y=0`, outside the `-6 0 252 244` viewBox, so the cap looked bitten
 off with nothing erroring.
+
+### D40 — Moon Pool is a height field, not SPH *(session 7)*
+
+`engine/waterPhysics.ts`. The source documents asked for a particle fluid. A few
+thousand neighbour-searched particles at 60fps on a five-year-old Android was
+never a claim to make on a child's device, and it was never tested. A shallow-
+water height field — a row of columns with a flow rate across each boundary —
+sloshes, has a real resonant period, and costs a few hundred additions a frame.
+What it gives up is splashing sideways, and that is all.
+
+Three failures, each found by measurement rather than by eye:
+
+1. **The integrator was pumping energy in.** Updating heights in the same sweep
+   that reads them gives the loop a direction: water crossing left-to-right sees
+   heights a half-step newer than water crossing right-to-left. It does not look
+   like a bug, it looks like a tsunami arriving a second after a child tips the
+   phone. Fixed with a staggered leapfrog — every flow from the heights as they
+   stand, and only then is any water moved.
+2. **It rang at 3Hz.** The fundamental period is `2 * COLUMNS / sqrt(SPREAD)`,
+   and the peak first measured was grid-scale ringing, not sloshing at all.
+   SPREAD is now set so the period lands near 1.2s, a walking rhythm, and a
+   viscosity term damps by curvature so the grid-scale fizz dies in a sixth of a
+   second while the slosh loses nothing.
+3. **Sustained resonance ran one end dry.** A linear height field has no wave
+   breaking, so it accepts energy indefinitely. Quadratic drag — the shape
+   turbulent loss actually takes — caps it above the highest ledge.
+
+The moon swinging above the pool is driven by the same constant the water is, and
+a test pins the advertised period against the simulation's measured one. If they
+drift, the moon becomes a liar and the game becomes unlearnable.
+
+### D41 — A steady current, because rocking a basin moves nothing *(session 7)*
+
+Floating debris in a rocked basin bobs in place; net horizontal travel is
+second-order and tiny. A game built on advection alone strands the seed mid-pool
+however well the child plays. The pool is pulled moonward instead, which makes
+*arrival* a matter of time and the *lift* a matter of timing. The skill on offer
+is the timing, and it is a real one. Coupling is also turned well down: at full
+strength a good slosh flings the seed into the far wall and parks it there — the
+game punishing the child for doing the one thing it asked.
+
+### D42 — Firefly Air moves the air, not the thing *(session 7)*
+
+Waving a phone does not move an object on screen; it moves air, and the air moves
+the object. The puff outlives the wave that made it, so the game is anticipation
+rather than mashing. `useDeviceShake` reads `DeviceMotionEvent`, a **separate**
+iOS permission from `DeviceOrientationEvent` — granting one grants nothing about
+the other. Gravity is subtracted with a slow-following baseline, because
+`acceleration` is null on a great many Android browsers and the 1g in
+`accelerationIncludingGravity` otherwise reads as a permanent 9.8. The reading
+decays on *read* as well as on event: `devicemotion` simply stops firing on some
+devices when the phone is still, latching the last wave on forever.
+
+### D43 — Star Dial does not coast *(session 7)*
+
+Momentum made it unplayable: a deliberate drag onto a star slid forty-six degrees
+past it, every time. It is also wrong for the real control — there is no release
+to coast from when the dial mirrors where a phone is pointing. The dial goes
+exactly where it is put and stays. The speed it tracks is a *measurement*, kept
+so that sweeping through the right angle at speed does not count as aiming at it.
+
+Angles are in turns, not degrees or radians: it removes every `% 360` from the
+call sites and makes shortest-way-round a subtraction. `alpha` is deliberately
+**not** smoothed — smoothing a value that wraps averages 0.99 and 0.01 to 0.5 and
+points the phone due south once per revolution.
+
+### D44 — Echo Cave listens for when, never for what *(session 7)*
+
+The voice game for a child who will not perform. The microphone supplies an
+amplitude and the game finds the moments it went up; a rhythm is timing, and
+timing is all that is taken. A tap on the glass echoes just as well as a clap,
+and the cave cannot tell the difference — which is also the mic-less fallback.
+
+Onsets are reported at the burst's *attack*, not at its confirmation, or every
+clap drifts late by however many frames confirmation took. Echoes are scored on
+gaps normalised by their own total, so thinking first and clapping briskly both
+still count. The first patterns used a long beat one and a half times the short
+one and a flat even clap scored inside tolerance against them: there was no shape
+there to hear. They are 2:1 now — a quarter note against a half note, the
+coarsest rhythmic distinction there is and the first children reproduce.
+
+### D45 — Lumi is a rig, and reflected light is the whole trick *(session 7)*
+
+A lit form goes highlight, midtone, **core shadow**, then a band of reflected
+light at the very edge where the surface turns away and picks light back up off
+its surroundings. Leave that last band out and the silhouette goes dead flat at
+the rim, which is what separates a sticker from an illustration.
+
+A stroked rim light is not a substitute: a stroke straddles its path, and on a
+body this close to a circle it traces the whole outline, which the eye reads as a
+glass bubble drawn around her. Clipping it to the silhouette did not help. The
+reflected light belongs in the body gradient.
+
+She turns by parallax — the beak furthest, then the eyes, the crest least, and
+the receding eye narrows. And she is alive when nobody is asking: breathing,
+weight shifts, glances and blinks, as pure functions of a clock in
+`components/mascot/life.ts`, written to CSS custom properties inside an animation
+frame. React never renders for it.
+
+Two traps worth naming. `t % (3.1 + sin(t) * 1.4)` looks like an uneven blink and
+is not — the divisor moves as `t` does, so the remainder jumps rather than
+sweeping, and it fired 73 blinks a minute instead of 18; warp the clock under a
+fixed schedule instead. And neutral defaults belong on `:root`, never on `.lumi`:
+a custom property set on an element beats one inherited from an ancestor, so
+every mascot pinned itself to neutral and ignored any pose set above it.
+
+### D46 — A pressable control has a side *(session 7)*
+
+`--sink` is both the travel of a pressed face and the depth of the lip it rests
+on, deliberately the same number: set them independently and the face either
+stops short of the shell or punches through it, and neither reads as a button
+being pushed. The solid unblurred edge under a button is the *side* of the key —
+blur it and it becomes a shadow and the control goes flat again. Elevation is
+always a pair, a tight contact shadow plus a wide ambient one, both tinted with
+the background hue, because a grey shadow on an indigo page reads as dirt.
+
+Tiles sink rather than scale: scaling shrinks the shadow along with the tile,
+which reads as moving *away* from the viewer rather than being pressed into the
+page.
