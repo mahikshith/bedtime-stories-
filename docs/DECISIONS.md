@@ -321,3 +321,28 @@ fires at 60Hz (120Hz on ProMotion) and setState-per-event survives no physics
 sim. Smoothing is frame-rate independent, or the same game feels different on
 two phones in the same room. Every motion game ships a touch fallback: the
 sensor can be absent, the prompt refused, or the parent simply unwilling.
+
+### D38 — The Nest shows its locks, and never hides them *(session 6)*
+
+`content/nest.ts` + `components/NestStudio.tsx`. Ten items across hats, nest
+furnishings and ambient sounds, each appearing at a star threshold. Stars are a
+count of what has been done, so the shelf only ever grows — a test walks 0..60
+and asserts the unlocked count never falls.
+
+A locked item shows **what it is and what it costs**, rather than a silhouette
+with a question mark. A goal is legitimate; a mystery box is a different
+mechanic. There is no shop and nothing is ever spent, which is why the screen
+can end with "Stars only ever go up" as a plain statement of fact.
+
+The first threshold is 3 stars, reachable in one game. An empty shelf teaches a
+child that the shelf is empty.
+
+### D39 — A hat replaces the crest rather than fighting it *(session 6)*
+
+Hats are drawn inside `.lumi__head`, so they inherit each mood's head tilt for
+free. Hats that sit on top of the head (acorn cap, nightcap, star crown, petal
+wreath) hide the crest; goggles ride the forehead and leave it visible. Two
+drawing bugs found by looking rather than by testing: the star crown rendered
+through the crest before the rule existed, and the nightcap's tail and pom were
+drawn above `y=0`, outside the `-6 0 252 244` viewBox, so the cap looked bitten
+off with nothing erroring.

@@ -9,6 +9,7 @@ import { RhymeList } from './components/RhymeList';
 import { RhymePlayer } from './components/RhymePlayer';
 import { ColourStudio } from './components/ColourStudio';
 import { GameArcade } from './components/GameArcade';
+import { NestStudio } from './components/NestStudio';
 import { LanternBreath } from './components/games/LanternBreath';
 import { LumisLeap } from './components/games/LumisLeap';
 import { RhymeRace } from './components/games/RhymeRace';
@@ -44,6 +45,7 @@ type Screen =
   | 'letters'
   | 'games'
   | 'game'
+  | 'nest'
   | 'parent'
   | 'privacy';
 
@@ -208,8 +210,11 @@ export default function App() {
             setScreen('game');
           }}
           onExit={() => setScreen('today')}
+          onOpenNest={() => setScreen('nest')}
         />
       )}
+
+      {screen === 'nest' && <NestStudio onExit={() => setScreen('games')} />}
 
       {screen === 'game' && game && (
         <PlayGame game={game} profile={profile} onExit={() => setScreen('games')} />

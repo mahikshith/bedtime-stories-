@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { playChime } from '../../engine/gameAudio';
 import { Mascot } from '../Mascot';
 import { useVoiceMeter } from '../../hooks/useVoiceMeter';
 import { detectBreath } from '../../engine/voiceMeter';
@@ -53,7 +54,12 @@ export function LanternBreath({ profile, onExit }: { profile: ChildProfile; onEx
       window.setTimeout(() => {
         const breath = detectBreath(meter.drain());
         if (breath.isBreath) {
-          setLit((n) => Math.max(0, n - 1));
+          setLit((n) => {
+            const left = Math.max(0, n - 1);
+            // Descending, so the room audibly settles rather than celebrates.
+            playChime({ step: left, velocity: 0.5, calm: true });
+            return left;
+          });
           setPhase('blown');
         } else {
           // Never a failure, only a hint. A shout is the wrong shape, not a loss.

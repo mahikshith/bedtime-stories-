@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { playChime } from '../../engine/gameAudio';
 import { Mascot } from '../Mascot';
 import { useVoiceMeter } from '../../hooks/useVoiceMeter';
 
@@ -25,7 +26,13 @@ export function WakeTheAnimal({ onExit }: { onExit: () => void }) {
   useEffect(() => {
     if (loud && !awake) {
       setAwake(true);
-      setWoken((n) => n + 1);
+      setWoken((n) => {
+        // Climbs with each animal, so a run of them is a little tune. Gated on
+        // the awake transition, not on `loud`, or a held shout retriggers it
+        // every frame.
+        playChime({ step: n + 1, velocity: 0.75 });
+        return n + 1;
+      });
     }
     if (!loud && awake) {
       const t = window.setTimeout(() => {

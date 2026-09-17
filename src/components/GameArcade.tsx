@@ -1,5 +1,6 @@
 import { GAMES, gamesForBand, isGameEncouraged, type Game } from '../content/games';
 import { MascotBuddy } from './MascotBuddy';
+import { playState } from '../state/store';
 import { Tile } from './Tile';
 import { currentMode } from '../engine/dayArc';
 import type { ChildProfile } from '../engine/types';
@@ -8,6 +9,7 @@ interface GameArcadeProps {
   profile: ChildProfile;
   onPick: (game: Game) => void;
   onExit: () => void;
+  onOpenNest: () => void;
 }
 
 /**
@@ -17,7 +19,8 @@ interface GameArcadeProps {
  * a four-year-old with an older sibling may well want the harder one, and a
  * parent should not have to fight the app about it.
  */
-export function GameArcade({ profile, onPick, onExit }: GameArcadeProps) {
+export function GameArcade({ profile, onPick, onExit, onOpenNest }: GameArcadeProps) {
+  const stars = playState().stars;
   const fitted = gamesForBand(profile.ageBand);
   const rest = GAMES.filter((g) => !fitted.includes(g));
   const winddown = currentMode() === 'winddown';
@@ -26,6 +29,9 @@ export function GameArcade({ profile, onPick, onExit }: GameArcadeProps) {
     <div className="page">
       <header className="row row--between">
         <button className="btn btn--sm btn--ghost" onClick={onExit}>&larr; Today</button>
+        <button className="btn btn--sm btn--ghost" onClick={onOpenNest}>
+          <span aria-hidden="true">&#11088;</span> {stars} &middot; Nest
+        </button>
         <span className="badge">Ages {profile.ageBand}</span>
       </header>
 

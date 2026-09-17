@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { playChime, playThud } from '../../engine/gameAudio';
 import { Mascot } from '../Mascot';
 import { useVoiceMeter } from '../../hooks/useVoiceMeter';
 import { countSyllables, scoreAttempt, targetForWord } from '../../engine/voiceMeter';
@@ -68,7 +69,15 @@ export function LumisLeap({ profile, mode, onExit }: LumisLeapProps) {
     setPeak(result.peak);
     setBursts(result.bursts);
     setSuccess(result.landed);
-    if (result.landed) setLanded((n) => n + 1);
+    if (result.landed) {
+      setLanded((n) => {
+        playChime({ step: n + 1, velocity: 0.8 });
+        return n + 1;
+      });
+    } else {
+      // Never a buzzer. Missing a platform costs nothing but another go.
+      playThud({ velocity: 0.3 });
+    }
     setPhase('result');
   }, [meter, mode, syllables, targetLevel]);
 

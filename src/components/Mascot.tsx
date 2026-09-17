@@ -23,6 +23,8 @@ interface MascotProps {
   hopping?: boolean;
   /** Hop on a timer without an external driver. */
   autoHop?: boolean;
+  /** A Nest hat id. Drawn over the crest, so a hat covers it rather than clashing. */
+  hat?: string | null;
   title?: string;
 }
 
@@ -121,6 +123,7 @@ export function Mascot({
   action = 'idle',
   hopping = false,
   autoHop = false,
+  hat = null,
   title = 'Lumi',
 }: MascotProps) {
   const autoHopping = useAutoHop(autoHop && mood !== 'sleepy');
@@ -212,12 +215,20 @@ export function Mascot({
 
         {/* head and body are one silhouette, which is what makes it readable small */}
         <g className="lumi__head" style={{ transform: `rotate(${f.tilt}deg)` }}>
-          {/* crest — the signature that survives being shrunk to an icon */}
-          <g className="lumi__crest">
-            <path d="M104 50 C88 30 88 14 97 4 C109 13 112 32 110 50 Z" fill="url(#lumi-crest)" />
-            <path d="M120 46 C112 22 119 4 130 0 C139 13 133 32 127 46 Z" fill="url(#lumi-crest)" />
-            <path d="M136 52 C139 31 150 17 160 16 C161 31 152 44 143 54 Z" fill="url(#lumi-crest)" />
-          </g>
+          {/*
+            The crest is the signature that survives being shrunk to an icon, so
+            it only ever gives way to a hat that actually sits where it sits.
+            Goggles ride the forehead and leave it alone.
+          */}
+          {!hidesCrest(hat) && (
+            <g className="lumi__crest">
+              <path d="M104 50 C88 30 88 14 97 4 C109 13 112 32 110 50 Z" fill="url(#lumi-crest)" />
+              <path d="M120 46 C112 22 119 4 130 0 C139 13 133 32 127 46 Z" fill="url(#lumi-crest)" />
+              <path d="M136 52 C139 31 150 17 160 16 C161 31 152 44 143 54 Z" fill="url(#lumi-crest)" />
+            </g>
+          )}
+
+          <Hat id={hat} />
 
           <path
             d="M120 38 C170 38 202 80 202 130 C202 182 168 212 120 212 C72 212 38 182 38 130 C38 80 70 38 120 38 Z"
@@ -305,4 +316,90 @@ export function Mascot({
       )}
     </svg>
   );
+}
+
+/**
+ * Nest hats.
+ *
+ * Drawn in the mascot's own coordinate space and rendered inside `.lumi__head`,
+ * so a hat inherits the mood's head tilt for free and never has to be told
+ * about it. Each sits around y 0-60 with the head centred on x 120.
+ *
+ * Deliberately flat shapes rather than gradients: a hat has to read at 110px in
+ * a shelf tile, where a soft gradient turns to mud.
+ */
+/** Hats worn on top of the head, as opposed to on the forehead. */
+const CREST_COVERING = new Set(['acorn-cap', 'nightcap', 'star-crown', 'petal-wreath']);
+
+function hidesCrest(hat: string | null): boolean {
+  return hat !== null && CREST_COVERING.has(hat);
+}
+
+function Hat({ id }: { id: string | null }) {
+  if (!id) return null;
+
+  if (id === 'acorn-cap') {
+    return (
+      <g aria-hidden="true">
+        <path d="M60 52 C60 16 180 16 180 52 Z" fill="#a4652f" />
+        <ellipse cx="120" cy="52" rx="62" ry="9" fill="#8b5426" />
+        <rect x="113" y="4" width="14" height="20" rx="7" fill="#6d4120" />
+      </g>
+    );
+  }
+
+  if (id === 'nightcap') {
+    return (
+      <g aria-hidden="true">
+        {/*
+          The whole cap stays inside the mascot viewBox (-6 0 252 244). An
+          earlier version put the tail and pom above y=0, where they were
+          silently clipped — the cap looked bitten off and nothing errored.
+        */}
+        <path d="M60 54 C64 16 118 6 158 12 C182 15 198 14 206 13 C190 28 152 39 122 45 C102 49 76 52 60 54 Z" fill="#5b6bd6" />
+        <path d="M60 54 C64 24 108 14 140 16 C118 26 92 40 78 54 Z" fill="#6b7ae4" />
+        <circle cx="207" cy="14" r="13" fill="#fdf6ec" />
+        <ellipse cx="120" cy="54" rx="64" ry="11" fill="#fdf6ec" />
+      </g>
+    );
+  }
+
+  if (id === 'star-crown') {
+    return (
+      <g aria-hidden="true" fill="#ffcf8f">
+        <path d="M62 54 L74 18 L96 42 L120 8 L144 42 L166 18 L178 54 Z" />
+        <circle cx="120" cy="6" r="7" fill="#fff3d6" />
+        <circle cx="74" cy="16" r="5" fill="#fff3d6" />
+        <circle cx="166" cy="16" r="5" fill="#fff3d6" />
+      </g>
+    );
+  }
+
+  if (id === 'goggles') {
+    // Pushed up on the forehead, so they never cover the eyes — the eyes are
+    // where every mood is read.
+    return (
+      <g aria-hidden="true">
+        <rect x="46" y="34" width="148" height="13" rx="6" fill="#6d4120" />
+        <circle cx="84" cy="34" r="25" fill="#3b2a1a" />
+        <circle cx="156" cy="34" r="25" fill="#3b2a1a" />
+        <circle cx="84" cy="34" r="17" fill="#9ff0d4" opacity="0.85" />
+        <circle cx="156" cy="34" r="17" fill="#9ff0d4" opacity="0.85" />
+      </g>
+    );
+  }
+
+  if (id === 'petal-wreath') {
+    const petals = [62, 84, 106, 134, 156, 178];
+    return (
+      <g aria-hidden="true">
+        <path d="M58 50 C70 24 170 24 182 50" stroke="#2f8f5b" strokeWidth="9" fill="none" strokeLinecap="round" />
+        {petals.map((x, i) => (
+          <circle key={x} cx={x} cy={i % 2 ? 30 : 36} r="13" fill={i % 2 ? '#ff8fb1' : '#ffd6e3'} />
+        ))}
+      </g>
+    );
+  }
+
+  return null;
 }
