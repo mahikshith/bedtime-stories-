@@ -122,7 +122,9 @@ input, textarea, select { font-size: 16px; }
   border-radius: var(--r-lg);
   backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
-  box-shadow: var(--clay-shadow);
+  /* Contact shadow + ambient, plus the lit top edge. One blurred shadow reads
+     as a drop shadow; this reads as an object resting on the page. */
+  box-shadow: var(--lift-2), var(--bezel-hi);
   overflow: hidden;
 }
 
@@ -170,14 +172,31 @@ input, textarea, select { font-size: 16px; }
   padding: 13px 22px;
   font-weight: 650;
   letter-spacing: -0.01em;
-  box-shadow: var(--clay-shadow);
-  transition: transform var(--dur-press) var(--ease-out), background var(--dur-fast) var(--ease-out);
+  /*
+   * Three layers, and the order matters: the solid edge underneath is the SIDE
+   * of the key, then the ambient shadow it casts, then the lit top edge. A
+   * button with only a blurred shadow is a rectangle floating over the page;
+   * one with a solid side is an object standing on it.
+   */
+  box-shadow: 0 var(--sink) 0 var(--edge), var(--lift-1), var(--bezel-hi);
+  transition: transform var(--dur-press) var(--ease-out),
+    box-shadow var(--dur-press) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   min-height: 46px;
+  margin-bottom: var(--sink);
 }
 
-.btn:active { transform: translateY(2px) scale(0.985); }
+/*
+ * Pressed, it travels exactly the height of its own side and bottoms out.
+ * The margin below is that same distance, so the layout never shifts when it
+ * does — the button is the only thing that moves.
+ */
+.btn:active:not(:disabled) {
+  transform: translateY(var(--sink));
+  box-shadow: 0 0 0 var(--edge), var(--lift-1), var(--bezel-hi);
+}
 .btn:disabled { opacity: 0.42; cursor: not-allowed; }
 .btn:focus-visible { outline: 3px solid var(--amber-400); outline-offset: 3px; }
 
@@ -185,11 +204,23 @@ input, textarea, select { font-size: 16px; }
   background: linear-gradient(165deg, var(--amber-300), var(--amber-500));
   color: var(--on-accent);
   border-color: rgba(255, 255, 255, 0.45);
+  /* A warm control needs a warm side; the neutral edge reads as a gap. */
+  box-shadow: 0 var(--sink) 0 var(--edge-accent), var(--lift-2), var(--bezel-hi);
 }
 
-.btn--ghost { background: transparent; box-shadow: none; }
+.btn--primary:active:not(:disabled) {
+  box-shadow: 0 0 0 var(--edge-accent), var(--lift-1), var(--bezel-hi);
+}
+
+.btn--ghost {
+  background: transparent;
+  box-shadow: none;
+  margin-bottom: 0;
+}
+.btn--ghost:active:not(:disabled) { box-shadow: none; transform: scale(0.96); }
 .btn--block { width: 100%; justify-content: center; }
-.btn--sm { padding: 8px 15px; min-height: 38px; font-size: 0.86rem; }
+/* 44px is the floor, not a suggestion — the shell walk measures it. */
+.btn--sm { padding: 10px 15px; min-height: 44px; font-size: 0.86rem; }
 
 /* ---------- Chips ---------- */
 
@@ -201,9 +232,16 @@ input, textarea, select { font-size: 16px; }
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  transition: transform var(--dur-press) var(--ease-out), background var(--dur-fast) var(--ease-out);
+  box-shadow: var(--lift-1), var(--bezel-hi);
+  transition: transform var(--dur-press) var(--ease-out),
+    box-shadow var(--dur-press) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
   min-height: 42px;
 }
+
+/* Unmissable on purpose: a four-year-old's sense of "did it hear me" is
+   cruder than an adult's, and this is the house override on press feedback. */
+.chip:active { transform: scale(0.96); box-shadow: var(--bezel-hi); }
 
 .chip[aria-pressed='true'] {
   background: linear-gradient(165deg, rgba(255, 224, 180, 0.95), rgba(242, 166, 90, 0.9));
@@ -1169,20 +1207,36 @@ input, textarea, select { font-size: 16px; }
   .tiles, .tiles--roomy { grid-template-columns: 1fr; }
 }
 
-/* Outer shell of the nested enclosure. */
+/*
+ * Outer shell of the nested enclosure.
+ *
+ * The extra bottom padding is the lip the face rests on, and it is exactly
+ * `--sink`, because that is how far the face travels when pressed. Set them
+ * independently and the face either stops short of the shell or punches
+ * through it, and neither reads as a button being pushed.
+ */
 .tile {
   padding: 5px;
+  padding-bottom: calc(5px + var(--sink));
   border-radius: var(--r-xl);
   border: 1px solid var(--glass-border);
   background: var(--glass-bg);
-  box-shadow: var(--clay-shadow);
-  transition: transform var(--dur-press) var(--ease-out), opacity var(--dur-mid) var(--ease-out);
-  animation: tile-in var(--dur-mid) var(--ease-soft) both;
+  box-shadow: var(--lift-2), var(--bezel-hi);
+  transition: box-shadow var(--dur-press) var(--ease-out),
+    opacity var(--dur-mid) var(--ease-out);
+  animation: tile-in var(--dur-mid) var(--ease-out) both;
   animation-delay: calc(var(--i, 0) * 45ms);
   text-align: center;
 }
 
-.tile:active:not(:disabled) { transform: scale(0.97); }
+/*
+ * The shell stays put and the FACE sinks into it.
+ *
+ * Scaling the whole tile instead shrinks the shadow with it, which reads as the
+ * tile moving away from the viewer rather than being pushed into the page.
+ */
+.tile:active:not(:disabled) { box-shadow: var(--lift-1), var(--bezel-hi); }
+.tile:active:not(:disabled) .tile__inner { transform: translateY(var(--sink)); }
 .tile:focus-visible { outline: 3px solid var(--amber-400); outline-offset: 3px; }
 .tile:disabled { cursor: not-allowed; }
 
@@ -1202,9 +1256,13 @@ input, textarea, select { font-size: 16px; }
   min-height: 148px;
   border-radius: calc(var(--r-xl) - 5px);
   background: var(--glass-bg-strong);
-  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  /* A lit top edge and a thick dark bottom one. Together they give a flat fill
+     a top and a bottom, which is the whole difference between a rectangle and
+     something with a thickness. */
+  box-shadow: var(--bezel-hi), var(--bezel-lo);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+  transition: transform var(--dur-press) var(--ease-out);
 }
 
 .tile__orb {
@@ -1214,9 +1272,13 @@ input, textarea, select { font-size: 16px; }
   display: grid;
   place-items: center;
   font-size: 1.7rem;
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(0, 0, 0, 0.22);
   border: 1px solid var(--glass-border);
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.18);
+  /* A well the emoji sits in: dark at the top where the rim overhangs, with a
+     lit lower edge where light bounces back off the floor of it. */
+  box-shadow:
+    inset 0 3px 7px rgba(0, 0, 0, 0.42),
+    inset 0 -2px 0 rgba(255, 255, 255, 0.12);
 }
 
 .tile__title {
@@ -1234,12 +1296,26 @@ input, textarea, select { font-size: 16px; }
 
 .tile__meta { font-size: 0.7rem; color: var(--text-low); }
 
+/*
+ * The "this one uses the microphone / uses movement" mark.
+ *
+ * It was a 0.72rem emoji tucked in the corner, which on a phone is a grey
+ * speck — unreadable as either symbol, and it is the one thing on the tile a
+ * parent is scanning for. Given a disc of its own it reads at a glance.
+ */
 .tile__badge {
   position: absolute;
-  top: 8px;
-  right: 10px;
-  font-size: 0.72rem;
-  color: var(--mint-400);
+  top: 7px;
+  right: 7px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.82rem;
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--bezel-hi);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -99,8 +99,8 @@ export const PILLARS: Record<Pillar, PillarSpec> = {
   games: {
     id: 'games',
     label: 'Games',
-    blurb: 'Say the word out loud and make Lumi hop.',
-    emoji: '🎤',
+    blurb: 'Say it, tilt it, rock it, wave it.',
+    emoji: '🎮',
   },
 };
 

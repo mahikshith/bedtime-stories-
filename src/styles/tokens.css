@@ -78,6 +78,14 @@
    */
   --sink: 5px;
 
+  /*
+   * The bottom edge a pressable control stands on — the side of the key, not a
+   * shadow. Solid and untinted by blur, because an edge that blurs reads as a
+   * shadow and the control goes flat again.
+   */
+  --edge: rgba(4, 8, 26, 0.5);
+  --edge-accent: rgba(150, 82, 12, 0.85);
+
   /* Geometry — generous radii read as "soft toy", not "enterprise dashboard" */
   --r-sm: 14px;
   --r-md: 22px;
