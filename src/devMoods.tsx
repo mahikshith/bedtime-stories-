@@ -1,15 +1,44 @@
+import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Mascot, type Mood, type Action } from './components/Mascot';
 import './styles/tokens.css';
 import './styles/global.css';
 import './styles/mascot.css';
 
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+
 const MOODS: Mood[] = ['happy','excited','curious','proud','encouraging','oops','awake','soft','sleepy'];
 const ACTIONS: Action[] = ['idle','walk','fly','spin'];
+
+/**
+ * A stage for capturing motion.
+ *
+ * The mood sheet shows poses; nothing in a still frame can tell you whether a
+ * hop has anticipation or whether a revolve goes all the way round. This drives
+ * one large Lumi from buttons so a script can fire a gesture and screenshot the
+ * frames that follow.
+ */
+function Stage() {
+  const [hop, setHop] = useState(false);
+  const [action, setAction] = useState<Action>('idle');
+  return (
+    <div className="glass" style={{ padding: 16, borderRadius: 24, textAlign: 'center' }}>
+      <div id="stage" style={{ height: 300, display: 'grid', placeItems: 'center' }}>
+        <Mascot size={280} mood="happy" hopping={hop} action={action} autoHop={false} />
+      </div>
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+        <button id="do-hop" onClick={() => { setHop(false); setTimeout(() => setHop(true), 16); }}>hop</button>
+        <button id="do-spin" onClick={() => { setAction('idle'); setTimeout(() => setAction('spin'), 16); }}>spin</button>
+        <button id="do-fly" onClick={() => setAction(action === 'fly' ? 'idle' : 'fly')}>cheer</button>
+      </div>
+    </div>
+  );
+}
 
 function Sheet() {
   return (
     <div style={{ padding: 20, display: 'grid', gap: 22 }}>
+      <Stage />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
         {MOODS.map((m) => (
           <div key={m} className="glass" style={{ padding: 10, textAlign: 'center', borderRadius: 22 }}>
@@ -24,15 +53,16 @@ function Sheet() {
         at fixed values of --turn so the parallax can actually be checked.
       */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
-        {[-1, -0.5, 0, 0.5, 1].map((turn) => (
+        {[0, 0.125, 0.25, 0.5, 0.75].map((turn) => (
           <div
             key={turn}
             className="glass"
             style={{
               padding: 10, textAlign: 'center', borderRadius: 22,
-              ['--turn' as string]: String(turn),
-              ['--eye-l' as string]: String(1 - Math.max(0, -turn) * 0.34),
-              ['--eye-r' as string]: String(1 - Math.max(0, turn) * 0.34),
+              ['--feat-x' as string]: String(Math.sin(turn * Math.PI * 2) * 26),
+              ['--feat-squeeze' as string]: String(Math.max(0.12, Math.abs(Math.cos(turn * Math.PI * 2)))),
+              ['--face-op' as string]: String(clamp01((Math.cos(turn * Math.PI * 2) + 0.18) / 0.36)),
+              ['--back-op' as string]: String(clamp01((-Math.cos(turn * Math.PI * 2) + 0.18) / 0.36)),
             }}
           >
             <Mascot size={130} mood="happy" alive={false} />

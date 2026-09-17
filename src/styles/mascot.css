@@ -1,143 +1,200 @@
 /*
  * Lumi's rig.
  *
- * Loaded after global.css, so anything here that shares a selector with the
- * older mascot rules wins. The pose arrives as custom properties written by
- * `useMascotLife` inside its own animation frame — `--turn`, `--lean`, `--nod`,
- * `--breath`, `--lid`, and one squash factor per eye. Nothing in this file is
- * driven by React.
+ * Every value here arrives as a custom property written by `useMascotRig`
+ * inside its own animation frame. There is not one keyframe in this file, and
+ * that is the point: a keyframe cannot overshoot, cannot be interrupted
+ * mid-flight, and cannot lag behind the part it hangs off. Springs do all
+ * three, and those three are most of what "alive" means.
  *
- * Every value below is a `transform` or an `opacity`. Nothing here triggers
- * layout, which is what lets a 200px character animate continuously on a phone
- * that is also running a physics simulation.
+ * Everything below animates `transform` or `opacity` and nothing else, which is
+ * what lets a 200px character run continuously on a phone that is also running
+ * a water simulation.
  */
 
 /*
- * Neutral defaults live on :root, NOT on `.lumi`.
+ * Neutral defaults on :root, NOT on `.lumi`.
  *
- * Declaring them on `.lumi` looks equivalent and is not: a custom property set
- * on an element beats one inherited from its ancestors, so every mascot would
- * pin itself to the neutral pose and quietly ignore any pose set further up the
- * tree. The turn sheet rendered five identical birds before this moved.
+ * A custom property set on an element beats one inherited from its ancestors,
+ * so declaring these on `.lumi` would pin every mascot to neutral and silently
+ * ignore any pose set further up the tree. That cost an afternoon once.
  */
 :root {
-  --turn: 0;
-  --lean: 0;
-  --nod: 0;
-  --breath: 0.5;
-  --lid: 1;
-  --eye-l: 1;
-  --eye-r: 1;
+  --lift: 0;
+  --squash: 1;
+  --stretch: 1;
+  --body-rot: 0;
+  --head-rot: 0;
+  --crest-rot: 0;
+  --tail-rot: 0;
+  --wing-l: 0;
+  --wing-r: 0;
+  --lids: 1;
+  --beak: 0.12;
+  --grounded: 1;
+  --feat-x: 0;
+  --feat-squeeze: 1;
+  --face-op: 1;
+  --back-op: 0;
+  --depth: 1;
+  --gaze-x: 0;
+  --gaze-y: 0;
+}
+
+.lumi { overflow: visible; }
+
+/*
+ * The whole character. Squash is volume-preserving — it widens by exactly as
+ * much as it flattens — because a character that squashes without widening has
+ * been scaled rather than deformed, and the eye reads that as a bug rather than
+ * as weight.
+ */
+.lumi__rig {
+  transform-box: fill-box;
+  transform-origin: 50% 96%;
+  transform:
+    translateY(calc(var(--lift) * 1px))
+    scale(var(--stretch), var(--squash))
+    rotate(calc(var(--body-rot) * 1deg));
 }
 
 /*
- * Depth order, in parallax amounts. The beak is nearest the viewer and travels
- * furthest; the crest sits behind the skull and barely moves. Getting this
- * ordering wrong does not look subtly off — it looks like the face is sliding
- * around on the front of the head, which it is.
+ * The ground shadow answers the hop instead of travelling with it: it spreads
+ * and fades as she rises. Nothing else on screen says how far off the floor she
+ * is, so without this a hop is just a character sliding upward.
  */
+.lumi__cast {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  transform: scale(calc(0.55 + var(--grounded) * 0.45));
+  opacity: calc(0.12 + var(--grounded) * 0.3);
+}
+
+/* ---- the chain: each part hangs off the one before it ---- */
+
 .lumi__head {
   transform-box: fill-box;
-  transform-origin: 50% 82%;
+  transform-origin: 50% 88%;
+  transform: rotate(calc(var(--head-rot) * 1deg));
 }
 
 .lumi__crest {
   transform-box: fill-box;
   transform-origin: 50% 100%;
-  transform: translateX(calc(var(--turn) * 5px)) rotate(calc(var(--turn) * 5deg));
+  transform: rotate(calc(var(--crest-rot) * 1deg)) translateX(calc(var(--feat-x) * 0.35px));
 }
 
-.lumi__belly {
+.lumi__tail {
+  transform-box: fill-box;
+  transform-origin: 8% 60%;
+  transform: rotate(calc(var(--tail-rot) * 1deg));
+}
+
+.lumi__wing--near {
+  transform-box: fill-box;
+  transform-origin: 8% 22%;
+  transform: rotate(calc(var(--wing-r) * 1deg));
+  /* As she turns away, the near wing goes behind her. */
+  opacity: calc(0.35 + var(--face-op) * 0.65);
+}
+
+.lumi__wing--far {
+  transform-box: fill-box;
+  transform-origin: 92% 22%;
+  transform: rotate(calc(var(--wing-l) * -1deg));
+}
+
+.lumi__feet {
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+  transform: translateX(calc(var(--feat-x) * 0.12px));
+}
+
+/* ---- the revolve ---- */
+
+/*
+ * The face swings round a cylinder rather than sliding across a plane: its
+ * horizontal offset is a sine of the turn and its foreshortening a cosine, both
+ * computed in JS and handed over as numbers. Past a quarter turn it is pointing
+ * away and the back of the head takes over.
+ */
+.lumi__face {
   transform-box: fill-box;
   transform-origin: 50% 50%;
-  transform: translateX(calc(var(--turn) * 7px));
+  transform: translateX(calc(var(--feat-x) * 1px)) scaleX(var(--feat-squeeze));
+  opacity: var(--face-op);
 }
 
-.lumi__blush {
+.lumi__back {
   transform-box: fill-box;
-  transform: translateX(calc(var(--turn) * 10px));
+  transform-origin: 50% 50%;
+  opacity: var(--back-op);
 }
 
 .lumi__eyes {
   transform-box: fill-box;
-  transform: translateX(calc(var(--turn) * 12px)) translateY(calc(var(--nod) * 3px));
+  transform-origin: 50% 50%;
+  transform: scaleY(var(--lids));
+}
+
+/* Eyes point where she is looking; the pupil moves inside the socket, which is
+   a different motion from the head turning and has to read as one. */
+.lumi__pupil {
+  transform-box: fill-box;
+  transform: translate(calc(var(--gaze-x) * 1px), calc(var(--gaze-y) * 1px));
 }
 
 .lumi__beak {
   transform-box: fill-box;
-  transform-origin: 50% 20%;
-  transform: translateX(calc(var(--turn) * 15px)) translateY(calc(var(--nod) * 4px));
+  transform-origin: 50% 12%;
 }
 
-.lumi__spec {
+.lumi__beak-lower {
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+  /* Opens downward, so the head's silhouette is never broken. */
+  transform: translateY(calc(var(--beak) * 9px)) scaleY(calc(0.4 + var(--beak) * 1.4));
+}
+
+.lumi__sparkle {
   transform-box: fill-box;
   transform-origin: 50% 50%;
-  /* The highlight belongs to the light, not to the head: it slides the OTHER
-     way as she turns, because the lamp does not turn with her. */
-  transform: translateX(calc(var(--turn) * -9px));
+  opacity: calc(var(--face-op) * 0.9);
 }
 
-/* Eyes narrow as the head turns away from them. */
-.lumi__eye {
+.lumi__zzz {
   transform-box: fill-box;
-  transform-origin: 50% 50%;
-}
-.lumi__eye--l { transform: scaleX(var(--eye-l)) scaleY(var(--lid)); }
-.lumi__eye--r { transform: scaleX(var(--eye-r)) scaleY(var(--lid)); }
-
-/*
- * The body follows the head, at about a third of the angle and a beat behind.
- * A head and body that turn together are a single rigid object; the lag is
- * what makes it read as a neck.
- */
-.lumi__rig {
-  transform-box: fill-box;
-  transform-origin: 50% 94%;
-  transform:
-    rotate(calc(var(--lean) * 2.6deg))
-    translateX(calc(var(--turn) * 3px))
-    /* Breathing: a squash, never a scale-up. Growing on the inhale makes her
-       swell toward the viewer, which is not what breathing looks like. */
-    scaleY(calc(1 - var(--breath) * 0.018))
-    scaleX(calc(1 + var(--breath) * 0.012));
+  animation: lumi-zzz 3.4s var(--ease-in-out) infinite;
 }
 
-/* The ground shadow answers the hop rather than riding along with it. */
-.lumi__cast {
-  transform-box: fill-box;
-  transform-origin: 50% 50%;
-  transform: scaleX(calc(1 + var(--breath) * 0.03));
-  transition: none;
-}
-
-.lumi--hop .lumi__cast { animation: lumi-cast 820ms var(--ease-out); }
-
-@keyframes lumi-cast {
-  0%   { transform: scale(1);            opacity: 0.4; }
-  38%  { transform: scale(0.72, 0.6);    opacity: 0.18; }
-  70%  { transform: scale(1.06, 1.05);   opacity: 0.45; }
-  100% { transform: scale(1);            opacity: 0.4; }
+@keyframes lumi-zzz {
+  0%, 100% { opacity: 0.25; transform: translateY(2px); }
+  50%      { opacity: 1;    transform: translateY(-4px); }
 }
 
 /*
  * Reduced motion: gentler, never deleted.
  *
- * The idle loop is still written every frame — the hook does not know about the
- * media query — so this scales the result down to almost nothing rather than
- * switching it off. She still breathes and still blinks, because a mascot
- * frozen mid-pose reads as a crash rather than as calm.
+ * The rig keeps running — it does not know about the media query — so this
+ * scales the result down rather than switching it off. She still breathes,
+ * blinks and looks around, because a mascot frozen mid-pose reads as a crash
+ * rather than as calm.
  */
 @media (prefers-reduced-motion: reduce) {
   .lumi__rig {
-    transform: scaleY(calc(1 - var(--breath) * 0.01));
+    transform:
+      translateY(calc(var(--lift) * 0.25px))
+      scale(
+        calc(1 + (var(--stretch) - 1) * 0.3),
+        calc(1 + (var(--squash) - 1) * 0.3)
+      );
   }
   .lumi__crest,
-  .lumi__belly,
-  .lumi__blush,
-  .lumi__spec { transform: none; }
-  .lumi__eyes { transform: translateX(calc(var(--turn) * 4px)); }
-  .lumi__beak { transform: translateX(calc(var(--turn) * 5px)); }
-  .lumi--hop .lumi__cast { animation: none; }
+  .lumi__tail,
+  .lumi__wing--near,
+  .lumi__wing--far { transform: none; }
+  .lumi__face { transform: translateX(calc(var(--feat-x) * 0.35px)); }
+  .lumi__zzz { animation: none; opacity: 0.8; }
 }
 
 /* ---- Star Dial ----------------------------------------------------------
