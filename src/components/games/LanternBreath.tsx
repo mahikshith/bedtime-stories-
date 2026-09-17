@@ -3,6 +3,7 @@ import { playChime } from '../../engine/gameAudio';
 import { Mascot } from '../Mascot';
 import { useVoiceMeter } from '../../hooks/useVoiceMeter';
 import { detectBreath } from '../../engine/voiceMeter';
+import { BREATH_LEVEL, pressSamples } from '../../engine/pressMeter';
 import { recordSettledNight, useAppState } from '../../state/store';
 import type { ChildProfile } from '../../engine/types';
 
@@ -38,6 +39,24 @@ export function LanternBreath({ profile, onExit }: { profile: ChildProfile; onEx
   const [countdown, setCountdown] = useState(IN_BREATH);
   const [nudge, setNudge] = useState<string | null>(null);
   const timers = useRef<number[]>([]);
+  /*
+   * Touch mode: no microphone, so the child holds the screen for as long as
+   * they breathe out. The press is converted to the level stream a breath would
+   * have produced and scored by exactly the same `detectBreath`, so the rule
+   * that a breath must be long AND gentle still decides it — a stab is still
+   * too short, and there is still no way to win by shouting.
+   */
+  const [touch, setTouch] = useState(false);
+  /*
+   * Mirrored in a ref because `startBlow` is read through a callback that was
+   * created before the switch. Calling `breatheIn()` in the same tick as
+   * `setTouch(true)` runs the version of `startBlow` that still believes there
+   * is a microphone, so it schedules the listening timer, drains an empty meter
+   * four seconds later and reports that it did not feel a breath — while the
+   * child is still holding the screen.
+   */
+  const touchRef = useRef(false);
+  const pressedAt = useRef(0);
 
   const clear = useCallback(() => {
     timers.current.forEach((t) => window.clearTimeout(t));
@@ -46,33 +65,33 @@ export function LanternBreath({ profile, onExit }: { profile: ChildProfile; onEx
 
   useEffect(() => clear, [clear]);
 
+  /** Shared by both inputs, so the outcome cannot drift between them. */
+  const judge = useCallback((breath: ReturnType<typeof detectBreath>) => {
+    if (breath.isBreath) {
+      setLit((n) => {
+        const left = Math.max(0, n - 1);
+        // Descending, so the room audibly settles rather than celebrates.
+        playChime({ step: left, velocity: 0.5, calm: true });
+        return left;
+      });
+    } else {
+      // Never a failure, only a hint. A shout is the wrong shape, not a loss.
+      setNudge(
+        breath.frames === 0
+          ? 'Lumi did not feel a breath. Try a long, soft one.'
+          : 'A bit longer and softer — like blowing a dandelion.',
+      );
+    }
+    setPhase('blown');
+  }, []);
+
   const startBlow = useCallback(() => {
-    meter.drain();
     setPhase('blow');
     setNudge(null);
-    timers.current.push(
-      window.setTimeout(() => {
-        const breath = detectBreath(meter.drain());
-        if (breath.isBreath) {
-          setLit((n) => {
-            const left = Math.max(0, n - 1);
-            // Descending, so the room audibly settles rather than celebrates.
-            playChime({ step: left, velocity: 0.5, calm: true });
-            return left;
-          });
-          setPhase('blown');
-        } else {
-          // Never a failure, only a hint. A shout is the wrong shape, not a loss.
-          setNudge(
-            breath.frames === 0
-              ? 'Lumi did not hear a breath. Try a long, soft one.'
-              : 'A bit longer and softer — like blowing a dandelion.',
-          );
-          setPhase('blown');
-        }
-      }, 4200),
-    );
-  }, [meter]);
+    if (touchRef.current) return; // The child's press ends this turn, not a timer.
+    meter.drain();
+    timers.current.push(window.setTimeout(() => judge(detectBreath(meter.drain())), 4200));
+  }, [meter, touch, judge]);
 
   const breatheIn = useCallback(() => {
     setPhase('breathe-in');
@@ -128,17 +147,32 @@ export function LanternBreath({ profile, onExit }: { profile: ChildProfile; onEx
     );
   }
 
-  if (meter.state === 'denied' || meter.state === 'unsupported' || meter.state === 'unavailable') {
+  /*
+   * No microphone is not the end of the game.
+   *
+   * This screen used to be a wall — "Lumi can't hear right now" and a button
+   * back to the menu — which meant a refused permission, a device without a
+   * microphone, or an embedded page where `getUserMedia` is blocked outright
+   * all made the app's one calming game unplayable. The breathing is the point;
+   * the microphone was only ever how we noticed it.
+   */
+  if (!touch && (meter.state === 'denied' || meter.state === 'unsupported' || meter.state === 'unavailable')) {
     return (
       <div className="page stack">
         <Mascot size={148} mood="soft" />
         <section className="glass stack" style={{ padding: 'var(--sp-4)' }}>
           <h1 className="h1">Lumi can&rsquo;t hear right now.</h1>
           <p className="muted">
-            You can still do this together without the app: breathe in while you count to four,
-            then blow out for as long as you can. Five times.
+            That&rsquo;s alright &mdash; you can hold the screen instead. Breathe out for as long
+            as you can while you hold it, and let go when you run out.
           </p>
-          <button className="btn btn--primary btn--block" onClick={onExit}>Back to games</button>
+          <button
+            className="btn btn--primary btn--block"
+            onClick={() => { touchRef.current = true; setTouch(true); breatheIn(); }}
+          >
+            Hold the screen instead
+          </button>
+          <button className="btn btn--ghost btn--block" onClick={onExit}>Back to games</button>
         </section>
       </div>
     );
@@ -185,7 +219,7 @@ export function LanternBreath({ profile, onExit }: { profile: ChildProfile; onEx
             <h1 className="h1 breath__count">{countdown || 'now blow'}</h1>
           </>
         )}
-        {phase === 'blow' && (
+        {phase === 'blow' && !touch && (
           <>
             <p className="eyebrow">Blow</p>
             <h1 className="h1">Long and soft&hellip;</h1>
@@ -194,10 +228,40 @@ export function LanternBreath({ profile, onExit }: { profile: ChildProfile; onEx
             </div>
           </>
         )}
+        {phase === 'blow' && touch && (
+          <>
+            <p className="eyebrow">Blow</p>
+            <h1 className="h1">Hold, and breathe out&hellip;</h1>
+            {/*
+              Press and release rather than tap. The held duration is turned
+              into the level stream a breath would have made and scored by the
+              same detector, so holding briefly still does not count — the rule
+              that a breath has to be sustained is not relaxed for touch.
+            */}
+            <button
+              className="btn btn--primary btn--block breath__hold"
+              onPointerDown={() => { pressedAt.current = performance.now(); }}
+              onPointerUp={() => {
+                if (!pressedAt.current) return;
+                const held = (performance.now() - pressedAt.current) / 1000;
+                pressedAt.current = 0;
+                judge(detectBreath(pressSamples(held, BREATH_LEVEL)));
+              }}
+              onPointerLeave={() => {
+                if (!pressedAt.current) return;
+                const held = (performance.now() - pressedAt.current) / 1000;
+                pressedAt.current = 0;
+                judge(detectBreath(pressSamples(held, BREATH_LEVEL)));
+              }}
+            >
+              Hold me while you breathe out
+            </button>
+          </>
+        )}
         {phase === 'blown' && (
           <>
             <h1 className="h1">{nudge ? 'Nearly' : 'One out.'}</h1>
-            <p className="muted">{nudge ?? 'Lovely. Let&rsquo;s do the next one.'}</p>
+            <p className="muted">{nudge ?? 'Lovely. Let\u2019s do the next one.'}</p>
           </>
         )}
         {state.settings.dimming && <p className="tiny">The room gets darker each time.</p>}

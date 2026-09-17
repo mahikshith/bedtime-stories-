@@ -38,6 +38,19 @@ function Stage() {
 function Sheet() {
   return (
     <div style={{ padding: 20, display: 'grid', gap: 22 }}>
+      {/* Colour variants, side by side. Colour is a taste call, and showing
+          four is faster than guessing once. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+        {['ember', 'plum', 'berry', 'cocoa'].map((skin) => (
+          <div key={skin} className="glass" style={{ padding: 10, textAlign: 'center', borderRadius: 22 }}>
+            <div className={skin === 'ember' ? '' : `skin-${skin}`}>
+              <Mascot size={150} mood="happy" skin={skin === 'ember' ? undefined : (skin as never)} />
+            </div>
+            <div style={{ color: 'var(--text-lo)', fontSize: 15 }}>{skin}</div>
+          </div>
+        ))}
+      </div>
+
       <Stage />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
         {MOODS.map((m) => (

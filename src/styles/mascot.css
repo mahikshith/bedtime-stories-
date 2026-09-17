@@ -41,7 +41,150 @@
   --gaze-y: 0;
 }
 
-.lumi { overflow: visible; }
+
+/* ---- Lumi's colours -----------------------------------------------------
+ *
+ * Every one of these is consumed by a gradient stop in the SVG, so the whole
+ * creature recolours from here and no path is ever touched. A ramp needs five
+ * steps because a lit form has five: the lit face, the light mid, the body
+ * colour, the core shadow where it turns away, and then the bounce — which has
+ * to be BRIGHTER than the core or the silhouette goes flat at the edge.
+ *
+ * The default is Ember. The alternates are real alternatives, not tints: warm
+ * against cool, and each one sits on the app's indigo differently.
+ */
+
+.lumi {
+  overflow: visible;
+
+  /* Ember — warm apricot, the light she is named for, made of fur. */
+  --fur-lit: #ffe2b8;
+  --fur-hi: #ffb877;
+  --fur-mid: #ff9248;
+  --fur-core: #d95f22;
+  --fur-deep: #a8410f;
+  --fur-bounce: #ff8a45;
+
+  --belly-lit: #fff6e2;
+  --belly-mid: #ffe0ae;
+  --belly-deep: #f7c07a;
+  --belly-edge: #e0a05c;
+
+  --ear-lit: #ffd0dc;
+  --ear-mid: #ff92ad;
+  --ear-deep: #e05b7e;
+
+  --muzzle: #f5cf9a;
+  --muzzle-lit: #fff0d6;
+  --nose: #8c3a1a;
+  --line: #4a2113;
+  --brow: #a8481f;
+  --blush: #ff7d8f;
+  --paw: #ffc38a;
+  --paw-deep: #c8763c;
+
+  --glow-core: #fff2c4;
+  --glow-mid: #ffcf6a;
+  --shade: #3b1405;
+}
+
+/* Plum — deep violet fur with a buttermilk front. Cool, but never cold. */
+.lumi--plum {
+  --fur-lit: #e6d4ff;
+  --fur-hi: #b98cf5;
+  --fur-mid: #9560e0;
+  --fur-core: #6a35b5;
+  --fur-deep: #47217e;
+  --fur-bounce: #9a63e6;
+
+  --belly-lit: #fff8e8;
+  --belly-mid: #ffe9bd;
+  --belly-deep: #f0cb90;
+  --belly-edge: #d6ab72;
+
+  --ear-lit: #ffd4e6;
+  --ear-mid: #ff8ab8;
+  --ear-deep: #cf4f86;
+
+  --muzzle: #e4cdf5;
+  --muzzle-lit: #fbf1ff;
+  --nose: #52246b;
+  --line: #2d1240;
+  --brow: #5c2a8c;
+  --blush: #ff7ab0;
+  --paw: #d9b9f7;
+  --paw-deep: #8a5cc4;
+
+  --glow-core: #fff0c8;
+  --glow-mid: #ffc95e;
+  --shade: #1e0836;
+}
+
+/* Berry — raspberry, the most saturated of the four. */
+.lumi--berry {
+  --fur-lit: #ffd6e6;
+  --fur-hi: #ff8ab4;
+  --fur-mid: #f2568c;
+  --fur-core: #c22a63;
+  --fur-deep: #8d1745;
+  --fur-bounce: #f75f95;
+
+  --belly-lit: #fff7ec;
+  --belly-mid: #ffe4c4;
+  --belly-deep: #f7c497;
+  --belly-edge: #e0a578;
+
+  --ear-lit: #ffe0c2;
+  --ear-mid: #ffb072;
+  --ear-deep: #dd7b39;
+
+  --muzzle: #f7c6d6;
+  --muzzle-lit: #fff0f5;
+  --nose: #7a1436;
+  --line: #43091f;
+  --brow: #a01e4e;
+  --blush: #ff6f8a;
+  --paw: #ffc0a2;
+  --paw-deep: #cc6b47;
+
+  --glow-core: #fff3cf;
+  --glow-mid: #ffd070;
+  --shade: #3a0618;
+}
+
+/* Cocoa — warm brown with a gold front. The quietest, and the one that reads
+   best on the three light palettes. */
+.lumi--cocoa {
+  --fur-lit: #f3dcc0;
+  --fur-hi: #c99a68;
+  --fur-mid: #a7743f;
+  --fur-core: #7a4c22;
+  --fur-deep: #543114;
+  --fur-bounce: #ad7c48;
+
+  --belly-lit: #fff6de;
+  --belly-mid: #ffd98e;
+  --belly-deep: #eeb14f;
+  --belly-edge: #cf9134;
+
+  --ear-lit: #ffd7d0;
+  --ear-mid: #f0958a;
+  --ear-deep: #c25c52;
+
+  --muzzle: #e8cba6;
+  --muzzle-lit: #fff3df;
+  --nose: #4e2b10;
+  --line: #2f1908;
+  --brow: #6b4018;
+  --blush: #f08a7a;
+  --paw: #efc48d;
+  --paw-deep: #a9763c;
+
+  --glow-core: #fff0bf;
+  --glow-mid: #ffc84e;
+  --shade: #2a1505;
+}
+
 
 /*
  * The whole character. Squash is volume-preserving — it widens by exactly as
@@ -78,7 +221,7 @@
   transform: rotate(calc(var(--head-rot) * 1deg));
 }
 
-.lumi__crest {
+.lumi__ears {
   transform-box: fill-box;
   transform-origin: 50% 100%;
   transform: rotate(calc(var(--crest-rot) * 1deg)) translateX(calc(var(--feat-x) * 0.35px));
@@ -90,7 +233,7 @@
   transform: rotate(calc(var(--tail-rot) * 1deg));
 }
 
-.lumi__wing--near {
+.lumi__arm--near {
   transform-box: fill-box;
   transform-origin: 8% 22%;
   transform: rotate(calc(var(--wing-r) * 1deg));
@@ -98,7 +241,7 @@
   opacity: calc(0.35 + var(--face-op) * 0.65);
 }
 
-.lumi__wing--far {
+.lumi__arm--far {
   transform-box: fill-box;
   transform-origin: 92% 22%;
   transform: rotate(calc(var(--wing-l) * -1deg));
@@ -144,16 +287,31 @@
   transform: translate(calc(var(--gaze-x) * 1px), calc(var(--gaze-y) * 1px));
 }
 
-.lumi__beak {
-  transform-box: fill-box;
-  transform-origin: 50% 12%;
-}
-
-.lumi__beak-lower {
+/* The mouth opens rather than a beak: the same channel, a softer shape. */
+.lumi__mouth {
   transform-box: fill-box;
   transform-origin: 50% 0%;
-  /* Opens downward, so the head's silhouette is never broken. */
-  transform: translateY(calc(var(--beak) * 9px)) scaleY(calc(0.4 + var(--beak) * 1.4));
+  transform: scaleY(calc(0.55 + var(--beak) * 1.9));
+}
+
+/* Ears take the follow-through, which is most of why they read as soft. */
+.lumi__tuft {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transform: rotate(calc(var(--crest-rot) * 1.4deg)) translateX(calc(var(--feat-x) * 0.3px));
+}
+
+/* The lantern inside her breathes, very slowly. It is the one thing in the
+   drawing that is allowed to pulse, because it is a light and lights do. */
+.lumi__lantern {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: lumi-lantern 4.6s var(--ease-in-out) infinite alternate;
+}
+
+@keyframes lumi-lantern {
+  from { opacity: 0.72; transform: scale(0.94); }
+  to   { opacity: 1;    transform: scale(1.06); }
 }
 
 .lumi__sparkle {
@@ -189,10 +347,11 @@
         calc(1 + (var(--squash) - 1) * 0.3)
       );
   }
-  .lumi__crest,
+  .lumi__ears,
+  .lumi__tuft,
   .lumi__tail,
-  .lumi__wing--near,
-  .lumi__wing--far { transform: none; }
+  .lumi__arm--near,
+  .lumi__arm--far { transform: none; }
   .lumi__face { transform: translateX(calc(var(--feat-x) * 0.35px)); }
   .lumi__zzz { animation: none; opacity: 0.8; }
 }

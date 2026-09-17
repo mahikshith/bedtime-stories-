@@ -12,7 +12,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "mascot": "node scripts/mascot-shot.cjs",
-    "smoke": "node scripts/walkthrough.cjs && node scripts/pillars-shot.cjs && node scripts/games-shot.cjs && node scripts/motion-shot.cjs",
+    "smoke": "node scripts/walkthrough.cjs && node scripts/pillars-shot.cjs && node scripts/games-shot.cjs && node scripts/motion-shot.cjs && node scripts/nomic-walk.cjs",
     "android:sync": "npm run build && npx cap sync android",
     "android:open": "npx cap open android",
     "ios:sync": "npm run build && npx cap sync ios",

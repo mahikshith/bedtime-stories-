@@ -20,8 +20,11 @@ export function WakeTheAnimal({ onExit }: { onExit: () => void }) {
   const [index, setIndex] = useState(0);
   const [awake, setAwake] = useState(false);
   const [woken, setWoken] = useState(0);
+  /** Tapping stands in for noise when there is no microphone. */
+  const [touch, setTouch] = useState(false);
+  const [poked, setPoked] = useState(false);
 
-  const loud = meter.level > 0.3;
+  const loud = touch ? poked : meter.level > 0.3;
 
   useEffect(() => {
     if (loud && !awake) {
@@ -43,7 +46,7 @@ export function WakeTheAnimal({ onExit }: { onExit: () => void }) {
     }
   }, [loud, awake]);
 
-  if (meter.state === 'idle') {
+  if (!touch && meter.state === 'idle') {
     return (
       <div className="page stack">
         <header className="row row--between">
@@ -68,14 +71,24 @@ export function WakeTheAnimal({ onExit }: { onExit: () => void }) {
     );
   }
 
-  if (meter.state === 'denied' || meter.state === 'unsupported' || meter.state === 'unavailable') {
+  /*
+   * Without a microphone the game becomes a tapping game, and loses nothing
+   * worth keeping: the point is that a two-year-old does something and an
+   * animal reacts, not which sense they used to do it.
+   */
+  if (!touch && (meter.state === 'denied' || meter.state === 'unsupported' || meter.state === 'unavailable')) {
     return (
       <div className="page stack">
         <Mascot size={148} mood="soft" />
         <section className="glass stack" style={{ padding: 'var(--sp-4)' }}>
           <h1 className="h1">Lumi can&rsquo;t hear right now.</h1>
-          <p className="muted">A grown-up can switch the microphone back on in settings.</p>
-          <button className="btn btn--primary btn--block" onClick={onExit}>Pick another game</button>
+          <p className="muted">
+            That&rsquo;s alright &mdash; you can wake them with a tap instead.
+          </p>
+          <button className="btn btn--primary btn--block" onClick={() => setTouch(true)}>
+            Wake them by tapping
+          </button>
+          <button className="btn btn--ghost btn--block" onClick={onExit}>Pick another game</button>
         </section>
       </div>
     );
@@ -89,15 +102,39 @@ export function WakeTheAnimal({ onExit }: { onExit: () => void }) {
       </header>
 
       <div className="wake" aria-live="polite">
-        <div className={`wake__animal${awake ? ' wake__animal--awake' : ''}`}>
-          <span aria-hidden="true">{SLEEPERS[index]}</span>
-        </div>
+        {touch ? (
+          /* The animal itself is the button. A two-year-old aims at the thing
+             they want to poke, not at a control underneath it. */
+          <button
+            type="button"
+            className={`wake__animal wake__animal--tappable${awake ? ' wake__animal--awake' : ''}`}
+            aria-label={awake ? 'They are awake' : 'Tap to wake them'}
+            onPointerDown={() => {
+              setPoked(true);
+              window.setTimeout(() => setPoked(false), 400);
+            }}
+          >
+            <span aria-hidden="true">{SLEEPERS[index]}</span>
+          </button>
+        ) : (
+          <div className={`wake__animal${awake ? ' wake__animal--awake' : ''}`}>
+            <span aria-hidden="true">{SLEEPERS[index]}</span>
+          </div>
+        )}
         <p className="h1" style={{ textAlign: 'center' }}>
-          {awake ? 'You woke them up!' : meter.state === 'live' ? 'Shhh… they&rsquo;re asleep.' : 'Listening…'}
+          {awake
+            ? 'You woke them up!'
+            : touch
+              ? 'Shhh\u2026 tap to wake them.'
+              : meter.state === 'live'
+                ? 'Shhh\u2026 they\u2019re asleep.'
+                : 'Listening\u2026'}
         </p>
-        <div className="leap__meter leap__meter--wide" aria-hidden="true">
-          <div className="leap__fill" style={{ height: `${Math.round(meter.level * 100)}%` }} />
-        </div>
+        {!touch && (
+          <div className="leap__meter leap__meter--wide" aria-hidden="true">
+            <div className="leap__fill" style={{ height: `${Math.round(meter.level * 100)}%` }} />
+          </div>
+        )}
       </div>
     </div>
   );

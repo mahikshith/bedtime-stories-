@@ -99,6 +99,7 @@ jobs:
           node scripts/pillars-shot.cjs
           node scripts/games-shot.cjs
           node scripts/motion-shot.cjs
+          node scripts/nomic-walk.cjs
 
       - name: Upload screenshots
         if: always()

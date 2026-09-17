@@ -1692,3 +1692,21 @@ input, textarea, select { font-size: 16px; }
   stroke-linecap: round;
   stroke-dasharray: 6 5;
 }
+
+/* The hold target in Lantern Breath's touch path. Big, because a child is
+   holding it for several seconds with their whole hand, not a fingertip. */
+.breath__hold {
+  min-height: 92px;
+  font-size: 1.05rem;
+}
+
+/* The animal is the button in the tap path: a child aims at the thing they
+   want to poke, not at a control underneath it. */
+.wake__animal--tappable {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  transition: transform var(--dur-press) var(--ease-out);
+}
+
+.wake__animal--tappable:active { transform: scale(0.92); }

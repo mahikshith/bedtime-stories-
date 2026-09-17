@@ -3,6 +3,7 @@ import { playChime, playThud } from '../../engine/gameAudio';
 import { Mascot } from '../Mascot';
 import { useVoiceMeter } from '../../hooks/useVoiceMeter';
 import { countSyllables, scoreAttempt, targetForWord } from '../../engine/voiceMeter';
+import { pressSamples, tapSamples } from '../../engine/pressMeter';
 import { wordsForAge, type WordCard } from '../../content/games';
 import { makeRng, pick } from '../../engine/rng';
 import type { ChildProfile } from '../../engine/types';
@@ -58,10 +59,18 @@ export function LumisLeap({ profile, mode, onExit }: LumisLeapProps) {
   }, [words]);
 
   const listenTimer = useRef<number | undefined>(undefined);
+  /*
+   * Touch mode. In leap mode a held press stands in for a big voice; in
+   * syllable mode each tap is one beat, which is the same demand the voice
+   * version makes — one burst per syllable — expressed with a finger.
+   */
+  const [touch, setTouch] = useState(false);
+  const pressedAt = useRef(0);
+  const taps = useRef(0);
 
-  const evaluate = useCallback(() => {
+  const evaluate = useCallback((levels?: number[]) => {
     const result = scoreAttempt({
-      levels: meter.drain(),
+      levels: levels ?? meter.drain(),
       mode,
       syllables,
       target: targetLevel,
@@ -82,12 +91,14 @@ export function LumisLeap({ profile, mode, onExit }: LumisLeapProps) {
   }, [meter, mode, syllables, targetLevel]);
 
   const listen = useCallback(() => {
-    meter.drain();
     setPhase('listening');
+    taps.current = 0;
     window.clearTimeout(listenTimer.current);
+    if (touch) return; // The child's press ends the turn, not a timer.
+    meter.drain();
     // A fixed window keeps the turn short and the rhythm brisk for a small child.
-    listenTimer.current = window.setTimeout(evaluate, 2600);
-  }, [meter, evaluate]);
+    listenTimer.current = window.setTimeout(() => evaluate(), 2600);
+  }, [meter, evaluate, touch]);
 
   useEffect(() => () => window.clearTimeout(listenTimer.current), []);
 
@@ -135,7 +146,7 @@ export function LumisLeap({ profile, mode, onExit }: LumisLeapProps) {
     );
   }
 
-  if (meter.state === 'unsupported' || meter.state === 'denied' || meter.state === 'unavailable') {
+  if (!touch && (meter.state === 'unsupported' || meter.state === 'denied' || meter.state === 'unavailable')) {
     return (
       <div className="page stack">
         <Mascot size={148} mood="soft" />
@@ -149,10 +160,13 @@ export function LumisLeap({ profile, mode, onExit }: LumisLeapProps) {
                 : 'This device has no microphone available.'}
           </p>
           <p className="tiny">
-            The voice games need it to measure how loud you are. Every other part of the app works
-            without it.
+            The voice version measures how loud you are. You can play it with your hands instead,
+            and it asks for exactly the same thing.
           </p>
-          <button className="btn btn--primary btn--block" onClick={onExit}>Pick another game</button>
+          <button className="btn btn--primary btn--block" onClick={() => { setTouch(true); setPhase('ready'); }}>
+            {mode === 'syllable' ? 'Tap the beats instead' : 'Hold to leap instead'}
+          </button>
+          <button className="btn btn--ghost btn--block" onClick={onExit}>Pick another game</button>
         </section>
       </div>
     );
@@ -230,14 +244,54 @@ export function LumisLeap({ profile, mode, onExit }: LumisLeapProps) {
         {phase === 'ready' && (
           <button
             className="btn btn--primary btn--block"
-            disabled={meter.state !== 'live'}
+            disabled={!touch && meter.state !== 'live'}
             onClick={listen}
           >
-            {meter.state === 'live' ? "I'm ready" : 'One moment…'}
+            {touch || meter.state === 'live' ? "I'm ready" : 'One moment…'}
           </button>
         )}
 
-        {listening && <p className="h2">Go on then — say it!</p>}
+        {listening && !touch && <p className="h2">Go on then — say it!</p>}
+
+        {listening && touch && mode === 'leap' && (
+          /*
+             Hold, don't tap. The held duration becomes the level stream a voice
+             would have made, so the same `scoreAttempt` decides it and a longer
+             word still needs a bigger effort — the demand is not softened
+             because the input changed.
+           */
+          <button
+            className="btn btn--primary btn--block breath__hold"
+            onPointerDown={() => { pressedAt.current = performance.now(); }}
+            onPointerUp={() => {
+              if (!pressedAt.current) return;
+              const held = (performance.now() - pressedAt.current) / 1000;
+              pressedAt.current = 0;
+              evaluate(pressSamples(Math.min(2.5, held)));
+            }}
+          >
+            Hold to make Lumi leap
+          </button>
+        )}
+
+        {listening && touch && mode === 'syllable' && (
+          <>
+            <p className="h2">One tap per beat: {card.word}</p>
+            <button
+              className="btn btn--primary btn--block breath__hold"
+              onPointerDown={() => {
+                taps.current += 1;
+                setBursts(taps.current);
+                playChime({ step: taps.current, velocity: 0.6 });
+              }}
+            >
+              Tap a beat
+            </button>
+            <button className="btn btn--ghost btn--block" onClick={() => evaluate(tapSamples(taps.current))}>
+              That&rsquo;s all of them
+            </button>
+          </>
+        )}
 
         {phase === 'result' && (
           <>

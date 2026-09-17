@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useId } from 'react';
 import { useMascotRig } from './mascot/useMascotRig';
 import type { Gesture } from './mascot/rig';
 
@@ -28,6 +28,11 @@ interface MascotProps {
   hat?: string | null;
   /** Idle life. Off gives a still frame for a screenshot or an icon. */
   alive?: boolean;
+  /**
+   * Colour scheme. Ember is the default; the rest are real alternatives rather
+   * than tints, and each sits on the app's indigo differently.
+   */
+  skin?: 'plum' | 'berry' | 'cocoa';
   title?: string;
 }
 
@@ -93,6 +98,7 @@ export function Mascot({
   autoHop = false,
   hat = null,
   alive = true,
+  skin,
   title = 'Lumi',
 }: MascotProps) {
   const f = FACES[mood];
@@ -120,10 +126,29 @@ export function Mascot({
 
   const shut = f.eyeOpen <= 0.2;
 
+  /*
+   * Gradient ids have to be unique per instance.
+   *
+   * Every Mascot emits its own <defs>, and `url(#lu-head)` resolves against the
+   * WHOLE document — so the browser hands every mascot on the page the first
+   * one's gradients. Four colour variants rendered side by side all came out
+   * the colour of whichever was mounted first, and nothing errored. `useId`
+   * returns a value containing colons, which are legal in an id but awkward
+   * in a url(), so it is reduced to word characters.
+   */
+  const uid = `lu${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  const g = (name: string) => `${uid}-${name}`;
+  const url = (name: string) => `url(#${g(name)})`;
+
   return (
     <svg
       ref={ref}
-      className={`lumi lumi--${action}${mood === 'sleepy' ? ' lumi--asleep' : ''}`}
+      className={[
+        'lumi',
+        `lumi--${action}`,
+        skin ? `lumi--${skin}` : '',
+        mood === 'sleepy' ? 'lumi--asleep' : '',
+      ].filter(Boolean).join(' ')}
       width={size}
       height={size}
       viewBox="0 0 240 252"
@@ -132,210 +157,198 @@ export function Mascot({
     >
       <defs>
         {/*
-          One ramp per volume, and every one ends BRIGHTER than its core shadow.
-          That last band is reflected light, where a surface turns away from the
-          key and picks light back up off its surroundings. Leave it out and the
-          edge of a form goes dead flat, which is the difference between a
-          drawing of a ball and a ball.
+          Every colour comes from a custom property, so the whole creature can be
+          recoloured from one place — a stylesheet, a variant class, or a theme —
+          without touching a single path. Hard-coding them into the stops is what
+          made the last two versions a rewrite to recolour instead of an edit.
+
+          Each ramp still ends BRIGHTER than its core shadow. That last band is
+          reflected light, where a surface turns away from the key and picks light
+          back up off its surroundings; leave it out and the edge of a form goes
+          dead flat.
         */}
-        <radialGradient id="lu-head" cx="34%" cy="26%" r="82%">
-          <stop offset="0%" stopColor="#a8fdf0" />
-          <stop offset="34%" stopColor="#45e6d1" />
-          <stop offset="68%" stopColor="#14bfab" />
-          <stop offset="90%" stopColor="#06786c" />
-          <stop offset="100%" stopColor="#1cc4b1" />
+        <radialGradient id={g("head")} cx="34%" cy="24%" r="84%">
+          <stop offset="0%" stopColor="var(--fur-lit)" />
+          <stop offset="34%" stopColor="var(--fur-hi)" />
+          <stop offset="68%" stopColor="var(--fur-mid)" />
+          <stop offset="90%" stopColor="var(--fur-core)" />
+          <stop offset="100%" stopColor="var(--fur-bounce)" />
         </radialGradient>
 
-        <radialGradient id="lu-body" cx="36%" cy="22%" r="86%">
-          <stop offset="0%" stopColor="#7cf2e2" />
-          <stop offset="40%" stopColor="#25d3bf" />
-          <stop offset="74%" stopColor="#0ba392" />
-          <stop offset="92%" stopColor="#046156" />
-          <stop offset="100%" stopColor="#16b6a3" />
+        <radialGradient id={g("body")} cx="36%" cy="20%" r="88%">
+          <stop offset="0%" stopColor="var(--fur-hi)" />
+          <stop offset="40%" stopColor="var(--fur-mid)" />
+          <stop offset="76%" stopColor="var(--fur-core)" />
+          <stop offset="92%" stopColor="var(--fur-deep)" />
+          <stop offset="100%" stopColor="var(--fur-bounce)" />
         </radialGradient>
 
-        <radialGradient id="lu-belly" cx="42%" cy="26%" r="78%">
-          <stop offset="0%" stopColor="#fffdf2" />
-          <stop offset="42%" stopColor="#ffec84" />
-          <stop offset="82%" stopColor="#ffc316" />
-          <stop offset="100%" stopColor="#e89b00" />
+        <radialGradient id={g("belly")} cx="42%" cy="24%" r="80%">
+          <stop offset="0%" stopColor="var(--belly-lit)" />
+          <stop offset="46%" stopColor="var(--belly-mid)" />
+          <stop offset="86%" stopColor="var(--belly-deep)" />
+          <stop offset="100%" stopColor="var(--belly-edge)" />
         </radialGradient>
 
-        <linearGradient id="lu-wing" x1="0.3" y1="0" x2="0.9" y2="1">
-          <stop offset="0%" stopColor="#5fead9" />
-          <stop offset="62%" stopColor="#12ac9b" />
-          <stop offset="100%" stopColor="#23c6b3" />
+        <radialGradient id={g("inner-ear")} cx="42%" cy="26%" r="76%">
+          <stop offset="0%" stopColor="var(--ear-lit)" />
+          <stop offset="62%" stopColor="var(--ear-mid)" />
+          <stop offset="100%" stopColor="var(--ear-deep)" />
+        </radialGradient>
+
+        <linearGradient id={g("arm")} x1="0.3" y1="0" x2="0.9" y2="1">
+          <stop offset="0%" stopColor="var(--fur-hi)" />
+          <stop offset="64%" stopColor="var(--fur-core)" />
+          <stop offset="100%" stopColor="var(--fur-bounce)" />
         </linearGradient>
 
-        <linearGradient id="lu-wing-far" x1="0.3" y1="0" x2="0.9" y2="1">
-          <stop offset="0%" stopColor="#1fae9e" />
-          <stop offset="100%" stopColor="#0a7166" />
+        <linearGradient id={g("arm-far")} x1="0.3" y1="0" x2="0.9" y2="1">
+          <stop offset="0%" stopColor="var(--fur-core)" />
+          <stop offset="100%" stopColor="var(--fur-deep)" />
         </linearGradient>
 
-        <linearGradient id="lu-crest" x1="0" y1="1" x2="0.35" y2="0">
-          <stop offset="0%" stopColor="#e03c74" />
-          <stop offset="55%" stopColor="#ff6d9b" />
-          <stop offset="100%" stopColor="#ffb9cf" />
-        </linearGradient>
+        {/* The lantern she is named for: the light is INSIDE her. */}
+        <radialGradient id={g("lantern")} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="var(--glow-core)" stopOpacity="0.95" />
+          <stop offset="42%" stopColor="var(--glow-mid)" stopOpacity="0.55" />
+          <stop offset="100%" stopColor="var(--glow-mid)" stopOpacity="0" />
+        </radialGradient>
 
-        <linearGradient id="lu-beak" x1="0.15" y1="0" x2="0.85" y2="1">
-          <stop offset="0%" stopColor="#ffd08a" />
-          <stop offset="38%" stopColor="#ff9c33" />
-          <stop offset="100%" stopColor="#ef4f26" />
-        </linearGradient>
-
-        <linearGradient id="lu-foot" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#ffab6b" />
-          <stop offset="100%" stopColor="#ef6a34" />
-        </linearGradient>
-
-        {/* The shadow the head throws down the body. This is the single most
+        {/* The shadow the head throws down the body: the single most
             load-bearing thing in the whole drawing. */}
-        <radialGradient id="lu-cast" cx="50%" cy="0%" r="86%">
-          <stop offset="0%" stopColor="#013b35" stopOpacity="0.52" />
-          <stop offset="58%" stopColor="#013b35" stopOpacity="0.16" />
-          <stop offset="100%" stopColor="#013b35" stopOpacity="0" />
+        <radialGradient id={g("cast")} cx="50%" cy="0%" r="88%">
+          <stop offset="0%" stopColor="var(--shade)" stopOpacity="0.55" />
+          <stop offset="58%" stopColor="var(--shade)" stopOpacity="0.17" />
+          <stop offset="100%" stopColor="var(--shade)" stopOpacity="0" />
         </radialGradient>
 
-        {/* Where the belly patch sits into the body. */}
-        <radialGradient id="lu-seam" cx="50%" cy="50%" r="50%">
-          <stop offset="72%" stopColor="#014139" stopOpacity="0" />
-          <stop offset="85%" stopColor="#014139" stopOpacity="0.42" />
-          <stop offset="100%" stopColor="#014139" stopOpacity="0" />
+        <radialGradient id={g("seam")} cx="50%" cy="50%" r="50%">
+          <stop offset="72%" stopColor="var(--shade)" stopOpacity="0" />
+          <stop offset="85%" stopColor="var(--shade)" stopOpacity="0.4" />
+          <stop offset="100%" stopColor="var(--shade)" stopOpacity="0" />
         </radialGradient>
 
-        <radialGradient id="lu-spec" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.62" />
+        <radialGradient id={g("spec")} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.6" />
           <stop offset="62%" stopColor="#ffffff" stopOpacity="0.12" />
           <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
         </radialGradient>
 
-        <radialGradient id="lu-blush" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#ff8ab8" stopOpacity="0.92" />
-          <stop offset="58%" stopColor="#ff8ab8" stopOpacity="0.5" />
-          <stop offset="100%" stopColor="#ff8ab8" stopOpacity="0" />
+        <radialGradient id={g("blush")} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="var(--blush)" stopOpacity="0.9" />
+          <stop offset="58%" stopColor="var(--blush)" stopOpacity="0.46" />
+          <stop offset="100%" stopColor="var(--blush)" stopOpacity="0" />
         </radialGradient>
 
-        <linearGradient id="lu-sclera" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#cfc4b4" />
+        <linearGradient id={g("sclera")} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#d6ccbe" />
           <stop offset="24%" stopColor="#fffdf7" />
           <stop offset="100%" stopColor="#fffdf7" />
         </linearGradient>
 
-        <clipPath id="lu-body-clip">
-          <ellipse cx="120" cy="170" rx="54" ry="52" />
+        <clipPath id={g("body-clip")}>
+          <ellipse cx="120" cy="178" rx="52" ry="48" />
         </clipPath>
-        <clipPath id="lu-head-clip">
-          <ellipse cx="120" cy="94" rx="68" ry="64" />
+        <clipPath id={g("head-clip")}>
+          <ellipse cx="120" cy="102" rx="66" ry="60" />
         </clipPath>
       </defs>
 
-      {/* Ground shadow. It answers the hop rather than travelling with it. */}
-      <ellipse className="lumi__cast" cx="120" cy="238" rx="56" ry="9" fill="#001f1c" />
+      <ellipse className="lumi__cast" cx="120" cy="240" rx="54" ry="9" fill="var(--shade)" />
 
       <g className="lumi__rig">
-        {/* ---- behind the body ---- */}
-        {/*
-          A tail is a solid fan of overlapping feathers, tucked UNDER the body so
-          it looks attached. Drawn as separate thin strokes it read as scratch
-          marks floating beside her — three lines are a tally, not a tail.
-        */}
+        {/* ---- behind everything ---- */}
         <g className="lumi__tail">
-          <path d="M150 178 C186 172 208 152 216 126 C222 156 206 186 172 198 Z" fill="#0a7f73" />
-          <path d="M150 184 C188 184 214 174 232 152 C230 188 202 208 166 206 Z" fill="#0c9083" />
-          <path d="M150 190 C184 196 210 196 232 186 C214 212 180 218 156 210 Z" fill="#0e9e90" />
+          <circle cx="182" cy="200" r="20" fill="var(--fur-deep)" />
+          <circle cx="180" cy="197" r="17" fill="var(--fur-core)" />
         </g>
 
-        {/*
-          Wings must OVERLAP the body. Floated out beside it they read as two
-          detached blobs — which is exactly what they did, because the body only
-          reaches x=66 and the wing started at 62.
-        */}
-        <g className="lumi__wing lumi__wing--far">
-          <path
-            d="M86 140 C52 142 30 166 34 192 C37 214 56 222 74 214 C86 208 90 176 86 140 Z"
-            fill="url(#lu-wing-far)"
-          />
+        <g className="lumi__arm lumi__arm--far">
+          <path d="M84 156 C56 154 42 176 48 198 C53 216 72 222 88 212 Z" fill={url("arm-far")} />
         </g>
 
         {/* ---- body ---- */}
         <g className="lumi__body">
-          <ellipse cx="120" cy="170" rx="54" ry="52" fill="url(#lu-body)" />
-
-          <g clipPath="url(#lu-body-clip)">
-            {/* The head's cast shadow. Clipped to the body so it lands ON it. */}
-            <ellipse cx="120" cy="118" rx="72" ry="44" fill="url(#lu-cast)" />
+          <ellipse cx="120" cy="178" rx="52" ry="48" fill={url("body")} />
+          <g clipPath={url("body-clip")}>
+            <ellipse cx="120" cy="128" rx="70" ry="42" fill={url("cast")} />
           </g>
-
-          <ellipse cx="120" cy="180" rx="46" ry="44" fill="url(#lu-seam)" />
-          <ellipse cx="120" cy="180" rx="36" ry="35" fill="url(#lu-belly)" />
-          <ellipse cx="104" cy="160" rx="16" ry="11" fill="url(#lu-spec)" transform="rotate(-28 104 160)" />
+          <ellipse cx="120" cy="186" rx="42" ry="40" fill={url("seam")} />
+          <ellipse cx="120" cy="186" rx="33" ry="32" fill={url("belly")} />
+          {/* The lantern mark. She is not carrying the light, she is the light. */}
+          <ellipse className="lumi__lantern" cx="120" cy="186" rx="26" ry="25" fill={url("lantern")} />
+          <ellipse cx="106" cy="166" rx="13" ry="9" fill={url("spec")} transform="rotate(-28 106 166)" />
         </g>
 
         {/* ---- feet, in front of the body ---- */}
-        {/* Three toes each, at a size that survives a 24px tile. */}
-        <g className="lumi__feet" fill="url(#lu-foot)">
-          <rect x="98" y="206" width="10" height="14" rx="5" />
-          <rect x="132" y="206" width="10" height="14" rx="5" />
-          <path d="M103 218 L86 232 L99 232 Z" />
-          <path d="M103 218 L103 234 L108 234 L108 218 Z" />
-          <path d="M103 218 L120 232 L107 232 Z" />
-          <path d="M137 218 L120 232 L133 232 Z" />
-          <path d="M137 218 L137 234 L142 234 L142 218 Z" />
-          <path d="M137 218 L154 232 L141 232 Z" />
+        <g className="lumi__feet">
+          <ellipse cx="98" cy="222" rx="19" ry="12" fill="var(--paw-deep)" />
+          <ellipse cx="142" cy="222" rx="19" ry="12" fill="var(--paw-deep)" />
+          <ellipse cx="97" cy="220" rx="17" ry="10.5" fill="var(--paw)" />
+          <ellipse cx="141" cy="220" rx="17" ry="10.5" fill="var(--paw)" />
         </g>
 
-        {/* ---- near wing, overlapping the body edge ---- */}
-        <g className="lumi__wing lumi__wing--near">
-          {/* Its own contact shadow, offset toward the light's opposite. Without
-              one the wing is a decal lying flat on the body. */}
+        {/* ---- near arm, overlapping the body edge ---- */}
+        <g className="lumi__arm lumi__arm--near">
           <path
-            d="M154 140 C188 142 210 166 206 192 C203 214 184 222 166 214 C154 208 150 176 154 140 Z"
-            fill="#04564d"
+            d="M156 156 C184 154 198 176 192 198 C187 216 168 222 152 212 Z"
+            fill="var(--fur-deep)"
             transform="translate(3 4)"
           />
-          <path
-            d="M154 140 C188 142 210 166 206 192 C203 214 184 222 166 214 C154 208 150 176 154 140 Z"
-            fill="url(#lu-wing)"
-          />
+          <path d="M156 156 C184 154 198 176 192 198 C187 216 168 222 152 212 Z" fill={url("arm")} />
         </g>
 
-        {/* ---- head, in front of everything ---- */}
+        {/* ---- head ---- */}
         <g className="lumi__head">
           {/*
-            Three feathers of different lengths, all swept the same way. Equal
-            and symmetrical they read as rabbit ears; raked back they read as a
-            crest, and the sweep also gives the follow-through something to show.
+            Ears, not a crest. They are the silhouette: the single fastest way
+            to say "this is not a bird" at any size, and they are soft enough to
+            take the follow-through the rig gives them.
           */}
-          <g className="lumi__crest">
-            <path d="M102 42 C88 26 82 12 90 4 C102 12 108 28 110 44 Z" fill="url(#lu-crest)" />
-            <path d="M119 38 C112 16 116 -2 128 -6 C138 8 133 26 127 42 Z" fill="url(#lu-crest)" />
-            <path d="M134 44 C140 26 152 14 163 16 C162 32 150 42 141 48 Z" fill="url(#lu-crest)" />
+          <g className="lumi__ears">
+            <g transform="rotate(-16 74 56)">
+              <ellipse cx="74" cy="52" rx="27" ry="40" fill="var(--fur-core)" />
+              <ellipse cx="74" cy="52" rx="26" ry="39" fill={url("head")} />
+              <ellipse cx="76" cy="56" rx="14" ry="24" fill={url("inner-ear")} />
+            </g>
+            <g transform="rotate(16 166 56)">
+              <ellipse cx="166" cy="52" rx="27" ry="40" fill="var(--fur-core)" />
+              <ellipse cx="166" cy="52" rx="26" ry="39" fill={url("head")} />
+              <ellipse cx="164" cy="56" rx="14" ry="24" fill={url("inner-ear")} />
+            </g>
+          </g>
+
+          <g className="lumi__tuft">
+            <path d="M112 50 C106 30 110 16 120 12 C130 18 128 34 124 50 Z" fill="var(--fur-hi)" />
+            <path d="M126 52 C130 36 140 26 149 26 C148 40 138 50 130 56 Z" fill="var(--fur-mid)" />
           </g>
 
           <Hat id={hat} />
 
-          <ellipse cx="120" cy="94" rx="68" ry="64" fill="url(#lu-head)" />
-          <g clipPath="url(#lu-head-clip)">
-            <ellipse cx="74" cy="52" rx="34" ry="24" fill="url(#lu-spec)" transform="rotate(-24 74 52)" />
+          <ellipse cx="120" cy="102" rx="66" ry="60" fill={url("head")} />
+          <g clipPath={url("head-clip")}>
+            <ellipse cx="78" cy="62" rx="32" ry="22" fill={url("spec")} transform="rotate(-24 78 62)" />
           </g>
 
-          {/* The back of the head, shown as she comes round. No face on it —
-              that absence IS the effect. */}
           <g className="lumi__back">
-            <ellipse cx="120" cy="94" rx="68" ry="64" fill="url(#lu-head)" />
-            <ellipse cx="120" cy="104" rx="30" ry="24" fill="#0a8d7f" opacity="0.45" />
+            <ellipse cx="120" cy="102" rx="66" ry="60" fill={url("head")} />
+            <ellipse cx="120" cy="112" rx="28" ry="22" fill="var(--fur-core)" opacity="0.5" />
           </g>
 
-          {/* Everything that swings round the cylinder of the head. */}
           <g className="lumi__face">
             <g className="lumi__blush">
-              <ellipse cx="66" cy="118" rx="18" ry="11" fill="url(#lu-blush)" opacity={f.blush} />
-              <ellipse cx="174" cy="118" rx="18" ry="11" fill="url(#lu-blush)" opacity={f.blush} />
+              <ellipse cx="68" cy="124" rx="18" ry="11" fill={url("blush")} opacity={f.blush} />
+              <ellipse cx="172" cy="124" rx="18" ry="11" fill={url("blush")} opacity={f.blush} />
+            </g>
+
+            {/* A muzzle, a nose and a mouth — nothing that could be a beak. */}
+            <g className="lumi__muzzle">
+              <ellipse cx="120" cy="128" rx="32" ry="24" fill="var(--muzzle)" />
+              <ellipse cx="120" cy="124" rx="30" ry="21" fill="var(--muzzle-lit)" />
             </g>
 
             {shut ? (
-              <g stroke="#0d3a37" strokeWidth="6" fill="none" strokeLinecap="round">
+              <g stroke="var(--line)" strokeWidth="6" fill="none" strokeLinecap="round">
                 <path d={lid(EYE.lx, f.closed)} />
                 <path d={lid(EYE.rx, f.closed)} />
               </g>
@@ -346,10 +359,10 @@ export function Mascot({
                     <ellipse
                       cx={cx} cy={EYE.cy}
                       rx={EYE.rx_} ry={EYE.ry * f.eyeOpen}
-                      fill="url(#lu-sclera)"
+                      fill={url("sclera")}
                     />
                     <g className="lumi__pupil">
-                      <circle cx={cx} cy={EYE.cy} r="13" fill="#0d3a37" />
+                      <circle cx={cx} cy={EYE.cy} r="13" fill="var(--line)" />
                       <circle cx={cx - 5} cy={EYE.cy - 6} r="5.5" fill="#fff" />
                       <circle cx={cx + 5} cy={EYE.cy + 5} r="2.4" fill="#fff" opacity="0.85" />
                     </g>
@@ -358,43 +371,48 @@ export function Mascot({
               </g>
             )}
 
-            <g fill="#06857a">
+            <g fill="var(--brow)">
               <g
                 className="lumi__brow"
                 style={{ transform: `translateY(${f.brow}px) rotate(${f.browRot}deg)` }}
               >
-                <rect x={EYE.lx - 19} y={54} width="38" height="9" rx="4.5" />
+                <rect x={EYE.lx - 19} y={60} width="38" height="9" rx="4.5" />
               </g>
               <g
                 className="lumi__brow"
                 style={{ transform: `translateY(${f.brow}px) rotate(${-f.browRot * f.browAsym}deg)` }}
               >
-                <rect x={EYE.rx - 19} y={54} width="38" height="9" rx="4.5" />
+                <rect x={EYE.rx - 19} y={60} width="38" height="9" rx="4.5" />
               </g>
             </g>
 
-            <g className="lumi__beak">
-              <path d="M100 122 L140 122 L120 148 Z" fill="url(#lu-beak)" />
-              {/* The lit top ridge. A beak is a wedge; a flat one is a triangle. */}
-              <path d="M100 122 L140 122 L131 129 L109 129 Z" fill="#ffdcae" opacity="0.6" />
-              <path className="lumi__beak-lower" d="M104 129 L136 129 L120 152 Z" fill="#b93317" />
+            <g className="lumi__snout">
+              <path d="M110 118 Q120 112 130 118 Q120 129 110 118 Z" fill="var(--nose)" />
+              <path
+                className="lumi__mouth"
+                d="M120 127 Q112 137 104 130 M120 127 Q128 137 136 130"
+                stroke="var(--line)"
+                strokeWidth="4.5"
+                strokeLinecap="round"
+                fill="none"
+              />
             </g>
           </g>
         </g>
 
         {f.sparkle && (
-          <g className="lumi__sparkle" fill="#fff3d4">
-            <path d="M206 44 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4 Z" />
-            <path d="M28 66 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3 Z" opacity="0.7" />
+          <g className="lumi__sparkle" fill="var(--glow-core)">
+            <path d="M210 52 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4 Z" />
+            <path d="M24 74 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3 Z" opacity="0.7" />
           </g>
         )}
       </g>
 
       {mood === 'sleepy' && (
-        <g className="lumi__zzz" fill="#ffe0b4" fontWeight="700">
-          <text x="196" y="54" fontSize="19">z</text>
-          <text x="212" y="34" fontSize="14">z</text>
-          <text x="224" y="19" fontSize="10">z</text>
+        <g className="lumi__zzz" fill="var(--glow-core)" fontWeight="700">
+          <text x="198" y="56" fontSize="19">z</text>
+          <text x="214" y="36" fontSize="14">z</text>
+          <text x="226" y="21" fontSize="10">z</text>
         </g>
       )}
     </svg>
