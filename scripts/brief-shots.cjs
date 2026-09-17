@@ -81,6 +81,18 @@ const shot = (page, name, opts = {}) => page.screenshot({ path: `${OUT}/${name}.
   await page.waitForTimeout(900);
   await shot(page, '12-game');
 
+  // The motion game, and its drag fallback
+  await page.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(600);
+  await page.getByRole('button', { name: /Games/ }).first().click();
+  await page.waitForTimeout(600);
+  const tilt = page.getByText('Stardust Tilt').first();
+  if (await tilt.count()) {
+    await tilt.click();
+    await page.waitForTimeout(1000);
+    await shot(page, '12b-stardust-tilt');
+  }
+
   // Create + Learn
   await page.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' });
   await page.waitForTimeout(600);
