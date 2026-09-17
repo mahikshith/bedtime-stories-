@@ -10,7 +10,7 @@ progression ladders, collectibles, streaks, tilt and motion games, juice. Only
 wind-down (18:00–05:00) is calm by design. Do not apply bedtime constraints to
 the daytime app; that mistake was made repeatedly in earlier sessions.
 
-**Branch:** `claude/bedtime-stories-app-6vk9be` · **Tests:** `npm test` (290)
+**Branch:** `claude/bedtime-stories-app-6vk9be` · **Tests:** `npm test` (376)
 **End goal:** ship to the **App Store and Google Play**. See `docs/STORE-READINESS.md`.
 
 ---
@@ -68,15 +68,19 @@ src/
              nest.ts — Nest items; thresholds, never a currency
   engine/    generator · personalize · safety · rhyme · narration · dayArc
              voiceMeter · ttsEngine · providers · backdrop · rng · types.ts
-             audioUnlock · gameAudio (synth, no files) · tiltPhysics
+             audioUnlock · gameAudio (synth, no files)
+             tiltPhysics · waterPhysics · airPhysics · spinPhysics · rhythmEcho
   hooks/     useVoiceMeter.ts — owns the mic only while a game is mounted
-             useDeviceTilt.ts — motion; asks permission from a gesture, never an effect
+             useDeviceTilt.ts — orientation (lean + heading); asks permission
+                                from a gesture, never an effect
+             useDeviceShake.ts — motion (how hard the phone is moving)
   state/     store.ts  — localStorage only, per-child progress, seat limits
   components/ Today · RhymeList · RhymePlayer · WorldMap · StoryPlayer
               ColourStudio · LettersLab · GameArcade · NestStudio · ParentZone
               games/ LumisLeap · RhymeRace · WakeTheAnimal · LanternBreath
-                     StardustTilt
-              Mascot · MascotBuddy · Sky
+                     StardustTilt · MoonPool · FireflyAir · StarDial · EchoCave
+              Mascot (+ mascot/life.ts, the idle performance) · CompanionSprite
+              MascotBuddy · Sky
 ```
 
 - **Stories** compose from arc skeletons + per-world lexicons via a seeded RNG
@@ -91,6 +95,16 @@ src/
 - **Games** grade by their own `minAge`/`maxAge`, not profile bands. Voice games
   reward hitting a target level, not maximum volume, and syllable mode requires
   one vocal burst per beat so a shout cannot fake a long word.
+- **Motion is never required.** Four sensors, four verbs: lean (Stardust Tilt),
+  rhythm (Moon Pool), effort (Firefly Air), heading (Star Dial). Every one ships
+  a touch fallback with the same physics and the same levels, because permission
+  can be refused, the sensor can be absent, and a parent may not want the prompt.
+  Each simulation is a pure module under `engine/`, so feel is *tested* rather
+  than eyeballed on hardware none of us can reach.
+- **The mascot is a rig, not a drawing.** `components/mascot/life.ts` produces an
+  idle pose from a clock; the component writes it to CSS custom properties inside
+  an animation frame. React never renders for it. Defaults live on `:root` — put
+  them on `.lumi` and they beat inheritance and pin every mascot to neutral.
 - **Sleep gradient**: `calm` 0→1 across a story drives palette, dimming,
   narration rate, and the mascot's eyes.
 - **Rhymes**: declared `rhymeGroups` are the authority on what rhymes;
