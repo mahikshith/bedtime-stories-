@@ -1,0 +1,141 @@
+/*
+ * Lumi's rig.
+ *
+ * Loaded after global.css, so anything here that shares a selector with the
+ * older mascot rules wins. The pose arrives as custom properties written by
+ * `useMascotLife` inside its own animation frame — `--turn`, `--lean`, `--nod`,
+ * `--breath`, `--lid`, and one squash factor per eye. Nothing in this file is
+ * driven by React.
+ *
+ * Every value below is a `transform` or an `opacity`. Nothing here triggers
+ * layout, which is what lets a 200px character animate continuously on a phone
+ * that is also running a physics simulation.
+ */
+
+/*
+ * Neutral defaults live on :root, NOT on `.lumi`.
+ *
+ * Declaring them on `.lumi` looks equivalent and is not: a custom property set
+ * on an element beats one inherited from its ancestors, so every mascot would
+ * pin itself to the neutral pose and quietly ignore any pose set further up the
+ * tree. The turn sheet rendered five identical birds before this moved.
+ */
+:root {
+  --turn: 0;
+  --lean: 0;
+  --nod: 0;
+  --breath: 0.5;
+  --lid: 1;
+  --eye-l: 1;
+  --eye-r: 1;
+}
+
+/*
+ * Depth order, in parallax amounts. The beak is nearest the viewer and travels
+ * furthest; the crest sits behind the skull and barely moves. Getting this
+ * ordering wrong does not look subtly off — it looks like the face is sliding
+ * around on the front of the head, which it is.
+ */
+.lumi__head {
+  transform-box: fill-box;
+  transform-origin: 50% 82%;
+}
+
+.lumi__crest {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transform: translateX(calc(var(--turn) * 5px)) rotate(calc(var(--turn) * 5deg));
+}
+
+.lumi__belly {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  transform: translateX(calc(var(--turn) * 7px));
+}
+
+.lumi__blush {
+  transform-box: fill-box;
+  transform: translateX(calc(var(--turn) * 10px));
+}
+
+.lumi__eyes {
+  transform-box: fill-box;
+  transform: translateX(calc(var(--turn) * 12px)) translateY(calc(var(--nod) * 3px));
+}
+
+.lumi__beak {
+  transform-box: fill-box;
+  transform-origin: 50% 20%;
+  transform: translateX(calc(var(--turn) * 15px)) translateY(calc(var(--nod) * 4px));
+}
+
+.lumi__spec {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  /* The highlight belongs to the light, not to the head: it slides the OTHER
+     way as she turns, because the lamp does not turn with her. */
+  transform: translateX(calc(var(--turn) * -9px));
+}
+
+/* Eyes narrow as the head turns away from them. */
+.lumi__eye {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+.lumi__eye--l { transform: scaleX(var(--eye-l)) scaleY(var(--lid)); }
+.lumi__eye--r { transform: scaleX(var(--eye-r)) scaleY(var(--lid)); }
+
+/*
+ * The body follows the head, at about a third of the angle and a beat behind.
+ * A head and body that turn together are a single rigid object; the lag is
+ * what makes it read as a neck.
+ */
+.lumi__rig {
+  transform-box: fill-box;
+  transform-origin: 50% 94%;
+  transform:
+    rotate(calc(var(--lean) * 2.6deg))
+    translateX(calc(var(--turn) * 3px))
+    /* Breathing: a squash, never a scale-up. Growing on the inhale makes her
+       swell toward the viewer, which is not what breathing looks like. */
+    scaleY(calc(1 - var(--breath) * 0.018))
+    scaleX(calc(1 + var(--breath) * 0.012));
+}
+
+/* The ground shadow answers the hop rather than riding along with it. */
+.lumi__cast {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  transform: scaleX(calc(1 + var(--breath) * 0.03));
+  transition: none;
+}
+
+.lumi--hop .lumi__cast { animation: lumi-cast 820ms var(--ease-out); }
+
+@keyframes lumi-cast {
+  0%   { transform: scale(1);            opacity: 0.4; }
+  38%  { transform: scale(0.72, 0.6);    opacity: 0.18; }
+  70%  { transform: scale(1.06, 1.05);   opacity: 0.45; }
+  100% { transform: scale(1);            opacity: 0.4; }
+}
+
+/*
+ * Reduced motion: gentler, never deleted.
+ *
+ * The idle loop is still written every frame — the hook does not know about the
+ * media query — so this scales the result down to almost nothing rather than
+ * switching it off. She still breathes and still blinks, because a mascot
+ * frozen mid-pose reads as a crash rather than as calm.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .lumi__rig {
+    transform: scaleY(calc(1 - var(--breath) * 0.01));
+  }
+  .lumi__crest,
+  .lumi__belly,
+  .lumi__blush,
+  .lumi__spec { transform: none; }
+  .lumi__eyes { transform: translateX(calc(var(--turn) * 4px)); }
+  .lumi__beak { transform: translateX(calc(var(--turn) * 5px)); }
+  .lumi--hop .lumi__cast { animation: none; }
+}

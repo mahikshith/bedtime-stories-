@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useMascotLife } from './mascot/useMascotLife';
 
 export type Mood =
   | 'happy'
@@ -25,6 +26,12 @@ interface MascotProps {
   autoHop?: boolean;
   /** A Nest hat id. Drawn over the crest, so a hat covers it rather than clashing. */
   hat?: string | null;
+  /**
+   * Idle life: breathing, weight shifts, glances, blinks. On by default,
+   * because a mascot that only moves when spoken to is a puppet. Turn it off
+   * for a still frame — a screenshot, a print, an icon.
+   */
+  alive?: boolean;
   title?: string;
 }
 
@@ -41,6 +48,21 @@ interface MascotProps {
  * happy, worried, curious and proud between them. Everything else — eye
  * openness, pupil direction, beak opening, wing lift, head tilt — is a
  * modifier on that.
+ *
+ * **She is drawn flat and shaded round.** The trick that makes a vector
+ * character read as a solid object is not a gradient from light to dark: it is
+ * the full sequence a lit form actually has — highlight, midtone, *core
+ * shadow*, and then a band of reflected light at the very edge where the
+ * surface turns away and picks light back up off its surroundings. Leave the
+ * reflected light out and the silhouette goes dead flat at the rim, which is
+ * what separates a sticker from an illustration. On top of that sit contact
+ * occlusion where forms meet, one specular, a rim light, and a shadow on the
+ * ground that squashes when she lands.
+ *
+ * **And she turns.** `--turn` slides every feature by a different amount —
+ * the beak furthest, the eyes next, the crest least — and narrows whichever
+ * eye is going away. Parallax between parts at different depths is the whole
+ * of why a rotating flat drawing reads as a head rather than as a slide.
  *
  * Drawn inline so it ships offline, scales without artefacts, needs no image
  * pipeline, and can react to the sleep gradient.
@@ -124,9 +146,19 @@ export function Mascot({
   hopping = false,
   autoHop = false,
   hat = null,
+  alive = true,
   title = 'Lumi',
 }: MascotProps) {
   const autoHopping = useAutoHop(autoHop && mood !== 'sleepy');
+  /*
+   * `proud` and `oops` are held poses — the body is making a point, and a head
+   * wandering off mid-point undercuts it. Sleepy barely moves but never stops
+   * breathing.
+   */
+  const rig = useMascotLife(alive, {
+    energy: mood === 'sleepy' ? 0.22 : mood === 'soft' ? 0.5 : 1,
+    frozen: mood === 'proud' || mood === 'oops',
+  });
   const isHopping = hopping || autoHopping;
   const f = FACES[mood];
   const shut = f.eyeOpen <= 0.2;
@@ -147,9 +179,10 @@ export function Mascot({
         isHopping ? 'lumi--hop' : '',
         mood === 'sleepy' ? 'lumi--asleep' : '',
       ].filter(Boolean).join(' ')}
+      ref={rig}
       width={size}
       height={size}
-      viewBox="-6 0 252 244"
+      viewBox="-6 0 252 252"
       role="img"
       aria-label={title}
     >
@@ -159,25 +192,100 @@ export function Mascot({
           <stop offset="55%" stopColor="#16d8c4" stopOpacity="0.28" />
           <stop offset="100%" stopColor="#16d8c4" stopOpacity="0" />
         </radialGradient>
-        <linearGradient id="lumi-body" x1="0.25" y1="0" x2="0.8" y2="1">
-          <stop offset="0%" stopColor="#6ff3e2" />
-          <stop offset="44%" stopColor="#1fd6c1" />
-          <stop offset="100%" stopColor="#0aa694" />
+
+        {/*
+          The lit form, in the order a lit form actually goes. The last stop is
+          BRIGHTER than the one before it: that is the reflected light where the
+          surface turns away and catches its surroundings, and without it the
+          bottom edge of the silhouette reads as a cut-out.
+        */}
+        <linearGradient id="lumi-body" x1="0.16" y1="0" x2="0.84" y2="1">
+          <stop offset="0%" stopColor="#9dfcef" />
+          <stop offset="24%" stopColor="#3ae3ce" />
+          <stop offset="54%" stopColor="#12c2ae" />
+          <stop offset="80%" stopColor="#077e71" />
+          <stop offset="93%" stopColor="#12b6a4" />
+          <stop offset="100%" stopColor="#35dcc8" />
         </linearGradient>
-        <radialGradient id="lumi-belly" cx="50%" cy="34%" r="66%">
-          <stop offset="0%" stopColor="#fffbe8" />
-          <stop offset="62%" stopColor="#ffe45c" />
-          <stop offset="100%" stopColor="#ffc60a" />
+
+        {/* Contact occlusion: the shadow a form casts onto itself at its edges. */}
+        <radialGradient id="lumi-occ" cx="44%" cy="28%" r="80%">
+          <stop offset="58%" stopColor="#00322f" stopOpacity="0" />
+          <stop offset="100%" stopColor="#00322f" stopOpacity="0.42" />
         </radialGradient>
-        <linearGradient id="lumi-crest" x1="0" y1="1" x2="0" y2="0">
-          <stop offset="0%" stopColor="#ff5f8f" />
-          <stop offset="100%" stopColor="#ffa1bf" />
+
+        {/* One specular, soft and off-centre. Two would read as wet plastic. */}
+        <radialGradient id="lumi-spec" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.5" />
+          <stop offset="70%" stopColor="#ffffff" stopOpacity="0.1" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+        </radialGradient>
+
+        {/*
+          Clips the rim to the silhouette. A stroke straddles its path, so half
+          of a 5px rim sits INSIDE the body — which does not read as a lit edge,
+          it reads as a scratch curving across her. Clipped, only the inner half
+          survives and it hugs the outline the way a rim light does.
+        */}
+        <radialGradient id="lumi-belly" cx="46%" cy="30%" r="70%">
+          <stop offset="0%" stopColor="#fffdf0" />
+          <stop offset="40%" stopColor="#ffec7d" />
+          <stop offset="78%" stopColor="#ffc60a" />
+          <stop offset="100%" stopColor="#f0a800" />
+        </radialGradient>
+
+        {/* The seam where the belly sits into the body. */}
+        <radialGradient id="lumi-belly-occ" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#014f49" stopOpacity="0" />
+          <stop offset="76%" stopColor="#014f49" stopOpacity="0" />
+          <stop offset="86%" stopColor="#014f49" stopOpacity="0.4" />
+          <stop offset="100%" stopColor="#014f49" stopOpacity="0" />
+        </radialGradient>
+
+        {/*
+          A cheek has no edge. Drawn as a flat ellipse at partial alpha it reads
+          as a sticker, and a semi-transparent pink sitting over dark teal mixes
+          to grey — so this carries its own falloff and stays bright in the
+          middle rather than leaning on opacity to soften it.
+        */}
+        <radialGradient id="lumi-blush" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#ff8fbb" stopOpacity="0.95" />
+          <stop offset="55%" stopColor="#ff8fbb" stopOpacity="0.6" />
+          <stop offset="100%" stopColor="#ff8fbb" stopOpacity="0" />
+        </radialGradient>
+
+        <linearGradient id="lumi-crest" x1="0" y1="1" x2="0.3" y2="0">
+          <stop offset="0%" stopColor="#e8447a" />
+          <stop offset="55%" stopColor="#ff6f9c" />
+          <stop offset="100%" stopColor="#ffb3cb" />
         </linearGradient>
-        <linearGradient id="lumi-beak" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#ffa24a" />
-          <stop offset="100%" stopColor="#ff5f3d" />
+
+        <linearGradient id="lumi-beak" x1="0.2" y1="0" x2="0.8" y2="1">
+          <stop offset="0%" stopColor="#ffc078" />
+          <stop offset="35%" stopColor="#ff9a3c" />
+          <stop offset="100%" stopColor="#f0522c" />
+        </linearGradient>
+
+        <linearGradient id="lumi-wing" x1="0.2" y1="0" x2="0.9" y2="1">
+          <stop offset="0%" stopColor="#5ae8d6" />
+          <stop offset="65%" stopColor="#15b6a4" />
+          <stop offset="100%" stopColor="#2bd0bd" />
+        </linearGradient>
+
+        {/* Eyelid occlusion: a real eyeball is darkest where the lid overhangs. */}
+        <linearGradient id="lumi-sclera" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#d9cfc0" />
+          <stop offset="26%" stopColor="#fffdf7" />
+          <stop offset="100%" stopColor="#fffdf7" />
         </linearGradient>
       </defs>
+
+      {/*
+        The shadow on the ground. Nothing else in the drawing says how far from
+        the floor she is, so this is what makes a hop read as leaving it — it
+        widens and fades as she rises rather than travelling with her.
+      */}
+      <ellipse className="lumi__cast" cx="120" cy="238" rx="58" ry="9" fill="#00201f" opacity="0.4" />
 
       <circle className="lumi__halo" cx="120" cy="128" r="104" fill="url(#lumi-halo)" />
 
@@ -207,10 +315,18 @@ export function Mascot({
           className={`lumi__wing lumi__wing--l${f.wave ? ' lumi__wing--wave' : ''}`}
           style={{ transform: `rotate(${f.wing}deg)` }}
         >
-          <ellipse cx="34" cy="150" rx="23" ry="36" fill="#13bfae" transform="rotate(-14 34 150)" />
+          {/*
+            A wing has to show a lobe OUTSIDE the body or it reads as an ear
+            stuck on the side of the head. The dark inner edge is what separates
+            it from the body behind it, which is doing the same job a cast
+            shadow would.
+          */}
+          <ellipse cx="30" cy="152" rx="26" ry="40" fill="#05675e" transform="rotate(-16 30 152)" />
+          <ellipse cx="28" cy="150" rx="24" ry="38" fill="url(#lumi-wing)" transform="rotate(-16 28 150)" />
         </g>
         <g className="lumi__wing lumi__wing--r" style={{ transform: `rotate(${-f.wing}deg)` }}>
-          <ellipse cx="206" cy="150" rx="23" ry="36" fill="#13bfae" transform="rotate(14 206 150)" />
+          <ellipse cx="210" cy="152" rx="26" ry="40" fill="#05675e" transform="rotate(16 210 152)" />
+          <ellipse cx="212" cy="150" rx="24" ry="38" fill="url(#lumi-wing)" transform="rotate(16 212 150)" />
         </g>
 
         {/* head and body are one silhouette, which is what makes it readable small */}
@@ -230,15 +346,45 @@ export function Mascot({
 
           <Hat id={hat} />
 
-          <path
-            d="M120 38 C170 38 202 80 202 130 C202 182 168 212 120 212 C72 212 38 182 38 130 C38 80 70 38 120 38 Z"
-            fill="url(#lumi-body)"
+          <path d="M120 38 C170 38 202 80 202 130 C202 182 168 212 120 212 C72 212 38 182 38 130 C38 80 70 38 120 38 Z" fill="url(#lumi-body)" />
+          {/*
+            Three passes over the same silhouette. Separate paths rather than
+            one clever fill, because each answers a different question: where
+            the form turns away from the light, where it catches light back off
+            its surroundings, and where the key light actually lands.
+          */}
+          <path d="M120 38 C170 38 202 80 202 130 C202 182 168 212 120 212 C72 212 38 182 38 130 C38 80 70 38 120 38 Z" fill="url(#lumi-occ)" />
+          {/*
+            No stroked rim light. On a body this close to a circle a stroke
+            traces the whole outline, and the eye reads a complete bright ring
+            as a glass bubble drawn around her rather than as light catching an
+            edge. The reflected light lives in the body gradient instead, as the
+            two stops after the core shadow that climb back up in value.
+          */}
+          <ellipse
+            className="lumi__spec"
+            cx="80" cy="76" rx="34" ry="24" fill="url(#lumi-spec)"
+            transform="rotate(-26 80 76)"
           />
-          <ellipse cx="120" cy="156" rx="46" ry="46" fill="url(#lumi-belly)" />
+
+          <g className="lumi__belly">
+            <ellipse cx="120" cy="170" rx="54" ry="52" fill="url(#lumi-belly-occ)" />
+            <ellipse cx="120" cy="170" rx="42" ry="41" fill="url(#lumi-belly)" />
+          </g>
 
           {/* blush */}
-          <ellipse cx="58" cy="146" rx="15" ry="9" fill="#ff5f8f" opacity={f.blush} />
-          <ellipse cx="182" cy="146" rx="15" ry="9" fill="#ff5f8f" opacity={f.blush} />
+          {/*
+            Beside the beak: below the eyes, outside the belly, inside the
+            silhouette. There is very little room here and each of the three
+            neighbours takes it differently — tucked under the eyes the cheeks
+            disappear behind them, out at the rim they sit on the body's own
+            core shadow and turn mauve, and a warm pink over a dark teal is a
+            bruise rather than a cheek.
+          */}
+          <g className="lumi__blush">
+            <ellipse cx="74" cy="150" rx="17" ry="11" fill="url(#lumi-blush)" opacity={f.blush} />
+            <ellipse cx="166" cy="150" rx="17" ry="11" fill="url(#lumi-blush)" opacity={f.blush} />
+          </g>
 
           {/* eyes */}
           {shut ? (
@@ -248,9 +394,18 @@ export function Mascot({
             </g>
           ) : (
             <g className="lumi__eyes">
-              {[EYE.lx, EYE.rx].map((cx) => (
-                <g key={cx}>
-                  <ellipse cx={cx} cy={EYE.cy} rx={EYE.rx_} ry={EYE.ry * f.eyeOpen} fill="#fffdf7" />
+              {([['l', EYE.lx], ['r', EYE.rx]] as const).map(([side, cx]) => (
+                /*
+                 * Each eye narrows on its own as the head turns away from it,
+                 * which is the single strongest cue that this is a head and not
+                 * a picture of one sliding sideways.
+                 */
+                <g key={side} className={`lumi__eye lumi__eye--${side}`}>
+                  <ellipse
+                    cx={cx} cy={EYE.cy}
+                    rx={EYE.rx_} ry={EYE.ry * f.eyeOpen}
+                    fill="url(#lumi-sclera)"
+                  />
                   <circle cx={cx + f.pupilX} cy={EYE.cy + f.pupilY} r="13" fill="#123c3a" />
                   <circle cx={cx + f.pupilX - 5} cy={EYE.cy + f.pupilY - 6} r="5.5" fill="#fff" />
                   <circle cx={cx + f.pupilX + 5} cy={EYE.cy + f.pupilY + 5} r="2.4" fill="#fff" opacity="0.8" />
@@ -290,6 +445,8 @@ export function Mascot({
           {/* beak — opens downward so the head shape is never broken */}
           <g className="lumi__beak">
             <path d={`M100 138 L140 138 L120 ${156 - gape / 2} Z`} fill="url(#lumi-beak)" />
+            {/* The lit top ridge. A beak is a wedge; a flat one is a triangle. */}
+            <path d="M100 138 L140 138 L132 143 L108 143 Z" fill="#ffd9a8" opacity="0.55" />
             {gape > 2 && (
               <path
                 d={`M104 ${142 + gape / 2} L136 ${142 + gape / 2} L120 ${160 + gape} Z`}
