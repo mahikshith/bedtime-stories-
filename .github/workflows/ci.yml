@@ -108,3 +108,54 @@ jobs:
           name: screenshots-${{ github.sha }}
           path: screenshots
           retention-days: 14
+
+  android:
+    name: Build the Android app
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Capacitor's Android shell is Gradle, and Gradle needs a JDK. 17 is what
+      # Android Gradle Plugin 8.x requires; the runner's default is not pinned,
+      # so this is not optional.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - run: npm ci
+
+      # Builds the web app and copies it into the native shell. Without the
+      # sync the APK ships whatever `dist` happened to be committed, which is
+      # nothing — `dist` is gitignored.
+      - name: Build web and sync into the shell
+        run: npm run android:sync
+
+      - name: Assemble the APK
+        working-directory: android
+        run: ./gradlew --no-daemon assembleDebug
+
+      # A debug APK is signed with the auto-generated debug keystore, which is
+      # enough to install and play. It is deliberately NOT a release build:
+      # that needs a real signing key, and a key that lives in a repository is
+      # a key that has leaked.
+      - name: Name it after the commit
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
+             "out/lumi-${GITHUB_SHA::7}.apk"
+          ls -lh out
+
+      - name: Upload the app
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumi-android-apk-${{ github.sha }}
+          path: out/*.apk
+          retention-days: 14
+          if-no-files-found: error

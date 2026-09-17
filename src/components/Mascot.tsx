@@ -32,7 +32,7 @@ interface MascotProps {
    * Colour scheme. Ember is the default; the rest are real alternatives rather
    * than tints, and each sits on the app's indigo differently.
    */
-  skin?: 'rose' | 'plum' | 'slate';
+  skin?: 'cocoa' | 'plum' | 'slate';
   title?: string;
 }
 

@@ -41,10 +41,10 @@ function Sheet() {
       {/* Colour variants, side by side. Colour is a taste call, and showing
           four is faster than guessing once. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-        {['cocoa', 'rose', 'plum', 'slate'].map((skin) => (
+        {['rose', 'cocoa', 'plum', 'slate'].map((skin) => (
           <div key={skin} className="glass" style={{ padding: 10, textAlign: 'center', borderRadius: 22 }}>
             <div className={''}>
-              <Mascot size={150} mood="happy" skin={skin === 'cocoa' ? undefined : (skin as never)} />
+              <Mascot size={150} mood="happy" skin={skin === 'rose' ? undefined : (skin as never)} />
             </div>
             <div style={{ color: 'var(--text-lo)', fontSize: 15 }}>{skin}</div>
           </div>

@@ -57,26 +57,7 @@
 .lumi {
   overflow: visible;
 
-  /* Cocoa — warm brown and cream, the default. */
-  --fur-lit: #e2b184;
-  --fur-hi: #c68d5d;
-  --fur-mid: #a96f3f;
-  --fur-core: #7f4e26;
-  --fur-deep: #5b3617;
-  --fur-bounce: #9d6739;
-
-  --cream-lit: #fdf0d6;
-  --cream-mid: #f2ddb4;
-  --cream-deep: #dcc191;
-  --cream-edge: #c9aa77;
-
-  --nose: #4a2a12;
-  --line: #3a2110;
-  --shade: #2a1505;
-}
-
-/* Rose — dusty pink, the softest of the four. */
-.lumi--rose {
+  /* Rose — dusty pink and cream. The shipped colour. */
   --fur-lit: #f3b6ae;
   --fur-hi: #e2928a;
   --fur-mid: #cd7069;
@@ -92,6 +73,25 @@
   --nose: #6d302b;
   --line: #4a1f1b;
   --shade: #3a120f;
+}
+
+/* Cocoa — warm brown and cream. */
+.lumi--cocoa {
+  --fur-lit: #e2b184;
+  --fur-hi: #c68d5d;
+  --fur-mid: #a96f3f;
+  --fur-core: #7f4e26;
+  --fur-deep: #5b3617;
+  --fur-bounce: #9d6739;
+
+  --cream-lit: #fdf0d6;
+  --cream-mid: #f2ddb4;
+  --cream-deep: #dcc191;
+  --cream-edge: #c9aa77;
+
+  --nose: #4a2a12;
+  --line: #3a2110;
+  --shade: #2a1505;
 }
 
 /* Plum — muted violet with a buttermilk front. */
