@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Character lab</title>
+<link rel="stylesheet" href="/src/css/tokens.css"><link rel="stylesheet" href="/src/css/app.css">
+<style>body{margin:0}canvas{display:block;width:100%}</style></head>
+<body><canvas id="c"></canvas>
+<script type="module">
+import { drawCharacter, CAST, CAST_IDS, poseFor, blinkAt } from "/src/js/art/character.js";
+import { TOKENS } from "/src/js/core/palette.js";
+import { text } from "/src/js/core/draw.js";
+const c=document.getElementById("c"),W=420,H=900,dpr=2;
+c.width=W*dpr;c.height=H*dpr;c.style.height=H+"px";
+const ctx=c.getContext("2d");ctx.scale(dpr,dpr);
+ctx.fillStyle=TOKENS.ink;ctx.fillRect(0,0,W,H);
+const t=1.15;
+const label=(s,x,y)=>text(ctx,s,x,y,{size:10,color:TOKENS.textDim,weight:700});
+text(ctx,"THE CAST",210,28,{size:15,color:TOKENS.text});
+CAST_IDS.forEach((id,i)=>{
+  const x=45+i*83,y=175;
+  drawCharacter(ctx,x,y,132,{cast:id,state:"idle",t:t+i*0.4,blink:blinkAt(t,i)});
+  label(CAST[id].name,x,y+16);
+});
+text(ctx,"STATES",210,230,{size:15,color:TOKENS.text});
+const states=["idle","run","jump","fall","land","cheer","hurt","dizzy","charge","wave","float","sit"];
+states.forEach((s,i)=>{
+  const x=52+(i%4)*106, y=330+Math.floor(i/4)*175;
+  drawCharacter(ctx,x,y,128,{cast:CAST_IDS[i%5],state:s,t,power:s==="charge"?0.85:s==="land"?0.7:0,
+    airborne:(s==="jump"||s==="fall"||s==="float")?0.7:0});
+  label(s,x,y+16);
+});
+text(ctx,"ROTATION / FLIP",210,870,{size:15,color:TOKENS.text});
+for(let i=0;i<6;i++){
+  drawCharacter(ctx,40+i*70,850,74,{cast:"bolt",state:"jump",t,spin:i*(Math.PI/3),airborne:0.8,shadow:false});
+}
+</script></body></html>

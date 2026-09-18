@@ -1,0 +1,91 @@
+/*
+ * Design tokens — Duolingo visual language.
+ *
+ * Palette, radii, shadows and type ramp are lifted from the app's dark theme
+ * (see docs/DESIGN.md). Every colour in the games comes from here; no game
+ * file is allowed to hard-code a hex value.
+ */
+
+:root {
+  /* ---- Brand colours -------------------------------------------------- */
+  --feather-green: #58cc02;
+  --mask-green: #89e219;
+  --tree-frog: #58a700; /* bottom edge under feather-green */
+  --sea-sponge: #00cd9c; /* the teal used by chess/section nodes */
+  --sea-sponge-edge: #00a37d;
+
+  --macaw: #1cb0f6;
+  --whale: #1899d6; /* bottom edge under macaw */
+  --iguana: #ddf4ff;
+
+  --cardinal: #ff4b4b;
+  --fire-ant: #ea2b2b;
+
+  --bee: #ffc800;
+  --camel: #e6a800;
+  --fox: #ff9600;
+  --lion: #e08600;
+
+  --beetle: #ce82ff;
+  --humpback: #a560e8;
+
+  /* ---- Neutrals ------------------------------------------------------- */
+  --snow: #ffffff;
+  --polar: #f7f7f7;
+  --swan: #e5e5e5;
+  --hare: #afafaf;
+  --wolf: #777777;
+  --eel: #4b4b4b;
+
+  /* ---- Dark theme surfaces (the app's default look) ------------------- */
+  --ink: #131f24; /* page background */
+  --ink-raised: #202f36; /* cards, buttons at rest */
+  --ink-line: #37464f; /* 2px borders, dividers */
+  --ink-deep: #0d1519; /* under-page, modal scrim base */
+
+  --text: #f1f7fb;
+  --text-dim: #8fa3ad;
+
+  /* ---- Semantic ------------------------------------------------------- */
+  --correct: var(--feather-green);
+  --correct-soft: #202f36;
+  --wrong: var(--cardinal);
+  --xp: var(--beetle);
+  --streak: var(--fox);
+  --gem: var(--macaw);
+
+  /* ---- Geometry ------------------------------------------------------- */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 24px;
+  --r-pill: 999px;
+
+  /* The signature "chunky 3D" button: a solid colour with a darker slab
+     underneath that collapses on press. */
+  --lift: 4px;
+  --lift-lg: 6px;
+
+  /* ---- Type ----------------------------------------------------------- */
+  --font-display: "Baloo 2", "Nunito", system-ui, -apple-system, sans-serif;
+  --font-ui: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* ---- Motion --------------------------------------------------------- */
+  --pop: cubic-bezier(0.34, 1.56, 0.64, 1); /* overshoot, used for everything */
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  /* Safe areas for notched phones. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Light theme is a straight surface swap — brand colours are unchanged. */
+:root[data-theme="light"] {
+  --ink: #ffffff;
+  --ink-raised: #ffffff;
+  --ink-line: #e5e5e5;
+  --ink-deep: #f7f7f7;
+  --text: #3c3c3c;
+  --text-dim: #afafaf;
+  --correct-soft: #d7ffb8;
+}

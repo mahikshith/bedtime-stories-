@@ -1,0 +1,22 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="/src/assets/fonts.css">
+<style>body{margin:0;background:#2A86DE}canvas{display:block;width:100%}</style></head>
+<body><canvas id="c"></canvas><script type="module">
+import { drawBird, BIRDS, BIRD_IDS, birdBlink } from "/src/js/art/bird.js";
+import { text } from "/src/js/core/draw.js";
+const c=document.getElementById("c"),W=420,H=620,dpr=2;
+c.width=W*dpr;c.height=H*dpr;c.style.height=H+"px";
+const x=c.getContext("2d");x.scale(dpr,dpr);
+const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,"#3FB6F0");g.addColorStop(1,"#C4EEFF");
+x.fillStyle=g;x.fillRect(0,0,W,H);
+const t=1.05, L=(s,px,py)=>text(x,s,px,py,{size:11,color:"#0B1113",weight:800});
+text(x,"COLOURS",210,24,{size:15,color:"#0B1113"});
+BIRD_IDS.forEach((id,i)=>{const px=48+i*82,py=110;drawBird(x,px,py,74,{bird:id,state:"idle",t:t+i*0.5,blink:birdBlink(t,i)});L(BIRDS[id].name,px,py+18);});
+text(x,"STATES",210,165,{size:15,color:"#0B1113"});
+["idle","run","jump","fall","land","charge","cheer","hurt"].forEach((s,i)=>{
+  const px=56+(i%4)*104, py=260+Math.floor(i/4)*160;
+  drawBird(x,px,py,86,{bird:BIRD_IDS[i%5],state:s,t,power:s==="charge"?0.85:s==="land"?0.8:0,airborne:(s==="jump"||s==="fall")?0.7:0});
+  L(s,px,py+18);
+});
+text(x,"SPIN",210,585,{size:15,color:"#0B1113"});
+for(let i=0;i<6;i++) drawBird(x,42+i*68,600,52,{bird:"chick",state:"jump",t,spin:i*(Math.PI/3),airborne:0.9,shadow:false});
+</script></body></html>

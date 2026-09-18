@@ -1,0 +1,205 @@
+/* Shared chrome: buttons, HUD, sheets, the bits every game reuses. */
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overscroll-behavior: none;
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  /* Kids hold the device hard and drag a lot — never let the page pan. */
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+h1, h2, h3, .display { font-family: var(--font-display); font-weight: 800; letter-spacing: 0.2px; }
+
+/* ---------------------------------------------------------------- button */
+/* The chunky slab button. A darker edge sits under the face and the face
+   drops onto it when pressed, so the whole thing feels physical. */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 22px;
+  min-height: 52px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--feather-green);
+  color: var(--snow);
+  font: inherit;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 var(--lift) 0 var(--tree-frog);
+  transform: translateY(0);
+  transition: transform 80ms var(--ease), box-shadow 80ms var(--ease), filter 120ms var(--ease);
+}
+.btn:active,
+.btn[data-pressed] {
+  transform: translateY(var(--lift));
+  box-shadow: 0 0 0 var(--tree-frog);
+}
+.btn:disabled { opacity: 0.45; pointer-events: none; }
+
+.btn--blue { background: var(--macaw); box-shadow: 0 var(--lift) 0 var(--whale); }
+.btn--blue:active { box-shadow: 0 0 0 var(--whale); }
+.btn--purple { background: var(--beetle); box-shadow: 0 var(--lift) 0 var(--humpback); }
+.btn--purple:active { box-shadow: 0 0 0 var(--humpback); }
+.btn--red { background: var(--cardinal); box-shadow: 0 var(--lift) 0 var(--fire-ant); }
+.btn--red:active { box-shadow: 0 0 0 var(--fire-ant); }
+.btn--gold { background: var(--bee); color: var(--eel); box-shadow: 0 var(--lift) 0 var(--camel); }
+.btn--gold:active { box-shadow: 0 0 0 var(--camel); }
+
+/* Outlined variant — secondary actions (NUDGE / GIFT in the app). */
+.btn--ghost {
+  background: transparent;
+  color: var(--text-dim);
+  border: 2px solid var(--ink-line);
+  box-shadow: 0 var(--lift) 0 var(--ink-line);
+}
+.btn--ghost:active { box-shadow: 0 0 0 var(--ink-line); }
+
+.btn--wide { width: 100%; }
+.btn--sm { min-height: 40px; padding: 8px 16px; font-size: 14px; --lift: 3px; }
+
+/* Circular icon button (the X in a lesson, back arrows). */
+.icon-btn {
+  width: 44px; height: 44px;
+  display: grid; place-items: center;
+  border: 0; border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 26px; line-height: 1;
+  cursor: pointer;
+}
+.icon-btn:active { transform: scale(0.9); }
+
+/* ------------------------------------------------------------------ HUD */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: calc(10px + var(--safe-top)) 16px 10px;
+}
+
+/* streak / gems / xp counters */
+.stat { display: inline-flex; align-items: center; gap: 6px; font-size: 19px; font-weight: 800; }
+.stat__icon { font-size: 22px; line-height: 1; }
+.stat--streak { color: var(--streak); }
+.stat--gem { color: var(--gem); }
+.stat--xp { color: var(--xp); }
+
+/* The segmented lesson progress bar at the top of every game. */
+.progress {
+  flex: 1;
+  height: 16px;
+  border-radius: var(--r-pill);
+  background: var(--ink-line);
+  overflow: hidden;
+}
+.progress__fill {
+  height: 100%;
+  width: 0%;
+  border-radius: var(--r-pill);
+  background: var(--bee);
+  transition: width 300ms var(--ease);
+  position: relative;
+}
+/* the glossy highlight streak along the top of the fill */
+.progress__fill::after {
+  content: "";
+  position: absolute;
+  inset: 3px 6px auto 6px;
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ---------------------------------------------------------------- cards */
+.card {
+  background: var(--ink-raised);
+  border: 2px solid var(--ink-line);
+  border-radius: var(--r-lg);
+  padding: 16px;
+}
+
+/* The purple unit banner from the path screen. */
+.unit-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: var(--r-lg);
+  background: var(--beetle);
+  color: var(--snow);
+  box-shadow: 0 var(--lift) 0 var(--humpback);
+}
+.unit-banner__kicker { font-size: 13px; letter-spacing: 1.2px; opacity: 0.85; text-transform: uppercase; }
+.unit-banner__title { font-family: var(--font-display); font-size: 22px; line-height: 1.15; margin-top: 2px; }
+
+/* --------------------------------------------------------------- sheets */
+/* Bottom sheet used for results, level complete, permission prompts. */
+.sheet {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 40;
+  padding: 24px 20px calc(24px + var(--safe-bottom));
+  background: var(--ink-raised);
+  border-top: 2px solid var(--ink-line);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  transform: translateY(110%);
+  transition: transform 320ms var(--pop);
+}
+.sheet[data-open] { transform: translateY(0); }
+.sheet--correct { background: var(--correct-soft); border-top-color: var(--feather-green); }
+.sheet--wrong { background: #3b1f24; border-top-color: var(--cardinal); }
+.sheet__title { font-family: var(--font-display); font-size: 24px; margin: 0 0 6px; }
+.sheet--correct .sheet__title { color: var(--feather-green); }
+.sheet--wrong .sheet__title { color: var(--cardinal); }
+
+.scrim {
+  position: fixed; inset: 0; z-index: 30;
+  background: rgba(13, 21, 25, 0.72);
+  opacity: 0; pointer-events: none;
+  transition: opacity 240ms var(--ease);
+}
+.scrim[data-open] { opacity: 1; pointer-events: auto; }
+
+/* ---------------------------------------------------------------- stage */
+/* Full-bleed canvas host used by every game. */
+.stage { position: fixed; inset: 0; display: block; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+/* Layer that floats HUD above the canvas. */
+.overlay {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  display: flex; flex-direction: column;
+  z-index: 10;
+}
+.overlay > * { pointer-events: auto; }
+
+/* ------------------------------------------------------------ utilities */
+.row { display: flex; align-items: center; gap: 10px; }
+.col { display: flex; flex-direction: column; gap: 10px; }
+.grow { flex: 1; }
+.center { display: grid; place-items: center; }
+.muted { color: var(--text-dim); }
+.hidden { display: none !important; }
+.stack { display: grid; }
+.stack > * { grid-area: 1 / 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}

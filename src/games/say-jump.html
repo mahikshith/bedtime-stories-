@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Say &amp; Jump</title>
+<link rel="stylesheet" href="../assets/fonts.css">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<div class="stage" id="stage"></div>
+<script type="module">
+import { Engine } from "../js/core/engine.js";
+import { SayJumpScene } from "../js/games/say-jump/game.js";
+import { install as installAudio } from "../js/core/audio.js";
+import { save } from "../js/core/storage.js";
+
+installAudio();
+
+const params = new URLSearchParams(location.search);
+const level = Math.max(0, parseInt(params.get("level") ?? "0", 10) || 0);
+const band = params.get("band") || save.state.band || "mid";
+const cast = params.get("cast") || "chick";
+
+const engine = new Engine({ host: document.getElementById("stage"), width: 720, height: 1280 });
+
+const scene = new SayJumpScene({
+  levelIndex: level,
+  band,
+  cast,
+  onExit: () => { location.href = "../../index.html"; },
+  onComplete: (result) => {
+    const q = new URLSearchParams({
+      game: "say-jump", level: String(level), stars: String(result.stars),
+      got: String(result.starsGot), total: String(result.total),
+      words: String(result.words), asked: String(result.asked),
+    });
+    location.href = `../result.html?${q}`;
+  },
+});
+// Exposed so tools/playtest.mjs can inspect live game state.
+window.__scene = scene;
+window.__engine = engine;
+engine.setScene(scene);
+engine.start();
+
+// Tapping the top-left corner leaves the level.
+engine.canvas.addEventListener("pointerdown", (e) => {
+  const p = engine.toLocal(e);
+  if (p.x < engine.view.x + 74 && p.y < engine.view.y + 74) location.href = "../../index.html";
+});
+</script>
+</body>
+</html>
