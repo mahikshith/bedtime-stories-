@@ -62,14 +62,17 @@ export const THEMES = {
     particle: { kind: "feather", colors: ["#FFFFFF", "#FFE9C4", C.flame.light] },
   }),
   candy: theme("candy", "Sugar Peaks", {
-    sky: ["#FF5CB8", "#FF9AD8", "#FFD6F0"],
+    // Sky is deliberately a different family from the water below it. An
+    // earlier pass had both in mid-pink and the waterline disappeared, which
+    // hides the one thing the player must not misjudge.
+    sky: ["#8E6BFF", "#C79BFF", "#FFE2F4"],
     sunColor: "#FFF6D0",
     rays: true,
     hills: ["#B81A75", "#E02E95", "#FF56B4"],
     pillar: C.bone,
     cap: C.candy,
     accent: "#4BE3FF",
-    water: C.candy,
+    water: { light: "#FF7ACB", base: "#E01A8E", dark: "#A50F66", deep: "#6B0842" },
     prop: { leaf: C.candy, trunk: C.bone, petals: ["#FFFFFF", "#4BE3FF", C.sun.base] },
     particle: { kind: "sprinkle", colors: ["#FFFFFF", "#4BE3FF", C.sun.base, C.cherry.base] },
   }),

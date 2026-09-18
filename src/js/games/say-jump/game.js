@@ -413,7 +413,11 @@ export class SayJumpScene {
     // than the viewport should sit still rather than drift into empty sky.
     const minY = -90;
     const maxY = Math.max(minY, this.level.height - vh - 120);
-    this.cam.x = approach(this.cam.x, clamp(targetX, 0, Math.max(0, this.level.width - vw)), 6, dt);
+    // Let the camera drift left of the level's origin. Clamping at 0 parked
+    // the bird against the left edge at every level start, directly behind the
+    // voice meter.
+    const minX = -vw * 0.2;
+    this.cam.x = approach(this.cam.x, clamp(targetX, minX, Math.max(minX, this.level.width - vw)), 6, dt);
     this.cam.y = approach(this.cam.y, clamp(targetY, minY, maxY), 5, dt);
     this.cam.shake = Math.max(0, this.cam.shake - dt * 60);
   }
