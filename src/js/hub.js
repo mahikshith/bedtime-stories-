@@ -12,6 +12,7 @@ import { drawBird, BIRDS, BIRD_IDS } from "./art/bird.js";
 import { LEVELS } from "./games/say-jump/levels.js";
 import { BOARDS } from "./games/tilt-maze/levels.js";
 import { RUNS } from "./games/word-mob/levels.js";
+import { PUZZLES } from "./games/tangram/puzzles.js";
 import { install as installAudio, sfx, unlock } from "./core/audio.js";
 import { C } from "./core/palette.js";
 
@@ -47,6 +48,17 @@ const GAMES = [
     face: C.flame.base, edge: C.flame.dark,
     href: "src/games/word-mob.html",
     levels: () => RUNS.map((r) => ({ name: r.name, teaches: r.teaches })),
+  },
+  {
+    id: "tangram", title: "Tangram", icon: "🔷",
+    sub: "七巧板 — fit seven shapes together to build the picture.",
+    control: "tap", bands: ["tiny", "mid", "big"],
+    face: C.sun.base, edge: C.sun.dark,
+    href: "src/games/tangram.html",
+    levels: () => PUZZLES.map((p) => ({
+      name: p.name,
+      teaches: ["", "Match the pieces", "Fit them in", "No clues"][p.tier],
+    })),
   },
   {
     id: "echo-pop", title: "Echo Pop", icon: "🫧",

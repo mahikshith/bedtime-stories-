@@ -54,6 +54,7 @@ const NEXT = {
   "tilt-maze": "src/games/tilt-maze.html",
   "word-mob": "src/games/word-mob.html",
   "echo-pop": "src/games/echo-pop.html",
+  "tangram": "src/games/tangram.html",
 };
 
 /** Per-game result tiles, so each game reports what it actually measured. */
@@ -71,6 +72,9 @@ function tiles() {
               ["GATES", `${n("words") ?? 0}/${n("asked") ?? 0}`]];
     case "echo-pop":
       return [["FOUND", `${n("found") ?? 0}/${n("rounds") ?? 0}`]];
+    case "tangram":
+      return [["SHAPE", (n("name") ?? "").toUpperCase()],
+              ["HINTS", n("hints") ?? "0"]];
     default:
       return [];
   }

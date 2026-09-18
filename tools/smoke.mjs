@@ -33,6 +33,9 @@ const PAGES = [
   { name: "word-mob L1", url: "/src/games/word-mob.html?level=0" },
   { name: "word-mob L5", url: "/src/games/word-mob.html?level=4" },
   { name: "echo-pop",    url: "/src/games/echo-pop.html" },
+  { name: "tangram T1",  url: "/src/games/tangram.html?level=0" },
+  { name: "tangram T2",  url: "/src/games/tangram.html?level=5" },
+  { name: "tangram T3",  url: "/src/games/tangram.html?level=9" },
   { name: "result",      url: "/src/result.html?game=say-jump&level=0&stars=2&words=4&asked=5" },
 ];
 
