@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Tilt Maze</title>
+<link rel="stylesheet" href="../assets/fonts.css">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<div class="stage" id="stage"></div>
+<script type="module">
+import { Engine } from "../js/core/engine.js";
+import { TiltMazeScene } from "../js/games/tilt-maze/game.js";
+import { install as installAudio } from "../js/core/audio.js";
+
+installAudio();
+const params = new URLSearchParams(location.search);
+const level = Math.max(0, parseInt(params.get("level") ?? "0", 10) || 0);
+
+const engine = new Engine({ host: document.getElementById("stage"), width: 720, height: 1280 });
+const scene = new TiltMazeScene({
+  levelIndex: level,
+  bird: params.get("bird") || "chick",
+  onComplete: (r) => {
+    const q = new URLSearchParams({ game: "tilt-maze", level: String(level),
+      stars: String(r.stars), word: r.word, falls: String(r.falls) });
+    location.href = `../result.html?${q}`;
+  },
+});
+window.__scene = scene; window.__engine = engine;
+engine.setScene(scene);
+engine.start();
+engine.canvas.addEventListener("pointerdown", (e) => {
+  const p = engine.toLocal(e);
+  if (p.x < engine.view.x + 74 && p.y < engine.view.y + 74) location.href = "../../index.html";
+});
+</script>
+</body>
+</html>
