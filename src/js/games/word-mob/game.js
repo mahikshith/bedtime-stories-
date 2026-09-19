@@ -88,24 +88,6 @@ export class WordMobScene {
     engine.resize();
     startMusic();
 
-    const cv = engine.canvas;
-    this._pd = (e) => {
-      if (this.state === "intro") { this.state = "run"; this.stateT = 0; return; }
-      if (this.state === "done") { this.finish(); return; }
-      this.dragging = true;
-      this._grabX = engine.toLocal(e).x;
-      this._grabLead = this.leadX;
-    };
-    this._pm = (e) => {
-      if (!this.dragging) return;
-      const p = engine.toLocal(e);
-      this.targetX = clamp(this._grabLead + (p.x - this._grabX) / (ROAD_W * 0.42), -1, 1);
-    };
-    this._pu = () => { this.dragging = false; };
-    cv.addEventListener("pointerdown", this._pd);
-    window.addEventListener("pointermove", this._pm);
-    window.addEventListener("pointerup", this._pu);
-    window.addEventListener("pointercancel", this._pu);
     this._kd = (e) => {
       if (e.key === "ArrowLeft") this.targetX = clamp(this.targetX - 0.5, -1, 1);
       if (e.key === "ArrowRight") this.targetX = clamp(this.targetX + 0.5, -1, 1);
@@ -116,14 +98,29 @@ export class WordMobScene {
 
   destroy() {
     stopMusic();
-    this.engine?.canvas.removeEventListener("pointerdown", this._pd);
-    window.removeEventListener("pointermove", this._pm);
-    window.removeEventListener("pointerup", this._pu);
-    window.removeEventListener("pointercancel", this._pu);
     window.removeEventListener("keydown", this._kd);
   }
 
   /* --------------------------------------------------------------- loop */
+
+  /* Steering: grab anywhere and drag. The flock follows the finger's offset
+     rather than its absolute position, so a child can take hold of the screen
+     wherever they happen to be touching. */
+
+  down(pt) {
+    if (this.state === "intro") { this.state = "run"; this.stateT = 0; return; }
+    if (this.state === "done") { this.finish(); return; }
+    this.dragging = true;
+    this._grabX = pt.x;
+    this._grabLead = this.leadX;
+  }
+
+  move(pt) {
+    if (!this.dragging) return;
+    this.targetX = clamp(this._grabLead + (pt.x - this._grabX) / (ROAD_W * 0.42), -1, 1);
+  }
+
+  up() { this.dragging = false; }
 
   update(dt) {
     this.t += dt;

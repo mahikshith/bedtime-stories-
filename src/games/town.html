@@ -12,21 +12,14 @@
 <body>
 <div class="stage" id="stage"></div>
 <script type="module">
-import { Engine } from "../js/core/engine.js";
+import { boot } from "../js/core/boot.js";
 import { TownScene } from "../js/games/town/game.js";
-import { install as installAudio } from "../js/core/audio.js";
-import { save } from "../js/core/storage.js";
 
-installAudio();
-const params = new URLSearchParams(location.search);
-const engine = new Engine({ host: document.getElementById("stage"), width: 720, height: 1280 });
-const scene = new TownScene({ bird: params.get("bird") || save.state.bird || "chick" });
-window.__scene = scene; window.__engine = engine;
-engine.setScene(scene);
-engine.start();
-engine.canvas.addEventListener("pointerdown", (e) => {
-  const p = engine.toLocal(e);
-  if (p.x < engine.view.x + 70 && p.y < engine.view.y + 70) location.href = "../../index.html";
+boot({
+  game: "town",
+  scene: ({ bird, exit }) => new TownScene({
+    bird, onExit: exit,
+  }),
 });
 </script>
 </body>

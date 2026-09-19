@@ -34,6 +34,7 @@ export class Engine {
 
     this.scene = null;
     this.running = false;
+    this._pd = this._pm = this._pu = null;
     this.time = 0; // seconds of simulated time
     this._acc = 0;
     this._last = 0;
@@ -87,11 +88,48 @@ export class Engine {
    * scenes can own listeners and timers without leaking them.
    */
   setScene(scene) {
+    this._unbindPointer();
     this.scene?.destroy?.();
     this.scene = scene;
     scene?.enter?.(this);
+    this._bindPointer(scene);
     scene?.resize?.(this.view);
     return scene;
+  }
+
+  /**
+   * Route pointer input to whichever of `down` / `move` / `up` the scene
+   * defines, in logical coordinates.
+   *
+   * This lives here rather than in each game because it is the same eight
+   * lines every time and the cost of getting it wrong is invisible: a scene
+   * that forgets one `removeEventListener` keeps handling input after it is
+   * gone, and the symptom shows up somewhere else entirely. The engine
+   * already owns the canvas, the coordinate transform and the scene
+   * lifecycle, so it is the only place that can guarantee the unbind.
+   *
+   * `move` and `up` bind to the window on purpose: a drag that leaves the
+   * canvas — a child's finger sliding off the edge mid-drag — must still
+   * finish, or the thing they were holding stays stuck to their finger.
+   */
+  _bindPointer(scene) {
+    if (!scene?.down && !scene?.move && !scene?.up) return;
+    this._pd = (e) => scene.down?.(this.toLocal(e), e);
+    this._pm = (e) => scene.move?.(this.toLocal(e), e);
+    this._pu = (e) => scene.up?.(this.toLocal(e), e);
+    this.canvas.addEventListener("pointerdown", this._pd);
+    window.addEventListener("pointermove", this._pm);
+    window.addEventListener("pointerup", this._pu);
+    window.addEventListener("pointercancel", this._pu);
+  }
+
+  _unbindPointer() {
+    if (!this._pd) return;
+    this.canvas.removeEventListener("pointerdown", this._pd);
+    window.removeEventListener("pointermove", this._pm);
+    window.removeEventListener("pointerup", this._pu);
+    window.removeEventListener("pointercancel", this._pu);
+    this._pd = this._pm = this._pu = null;
   }
 
   start() {
@@ -134,6 +172,7 @@ export class Engine {
 
   destroy() {
     this.stop();
+    this._unbindPointer();
     this.scene?.destroy?.();
     window.removeEventListener("resize", this._onResize);
     window.removeEventListener("orientationchange", this._onResize);

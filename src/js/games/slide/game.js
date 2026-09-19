@@ -74,23 +74,11 @@ export class SlideScene {
     engine.design = { w: 720, h: 1280 };
     engine.resize();
     startMusic();
-    const cv = engine.canvas;
-    this._pd = (e) => this.down(engine.toLocal(e));
-    this._pm = (e) => this.move(engine.toLocal(e));
-    this._pu = () => this.up();
-    cv.addEventListener("pointerdown", this._pd);
-    window.addEventListener("pointermove", this._pm);
-    window.addEventListener("pointerup", this._pu);
-    window.addEventListener("pointercancel", this._pu);
     speak("Help the big block escape");
   }
 
   destroy() {
     stopMusic();
-    this.engine?.canvas.removeEventListener("pointerdown", this._pd);
-    window.removeEventListener("pointermove", this._pm);
-    window.removeEventListener("pointerup", this._pu);
-    window.removeEventListener("pointercancel", this._pu);
   }
 
   resize(view) {

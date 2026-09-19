@@ -12,30 +12,15 @@
 <body>
 <div class="stage" id="stage"></div>
 <script type="module">
-import { Engine } from "../js/core/engine.js";
+import { boot } from "../js/core/boot.js";
 import { EchoPopScene } from "../js/games/echo-pop/game.js";
-import { install as installAudio } from "../js/core/audio.js";
-import { save } from "../js/core/storage.js";
 
-installAudio();
-const params = new URLSearchParams(location.search);
-const engine = new Engine({ host: document.getElementById("stage"), width: 720, height: 1280 });
-const scene = new EchoPopScene({
-  levelIndex: 0,
-  band: params.get("band") || save.state.band || "tiny",
-  bird: params.get("bird") || "chick",
-  onComplete: (r) => {
-    const q = new URLSearchParams({ game: "echo-pop", level: "0",
-      stars: String(r.stars), found: String(r.found), rounds: String(r.rounds) });
-    location.href = `../result.html?${q}`;
-  },
-});
-window.__scene = scene; window.__engine = engine;
-engine.setScene(scene);
-engine.start();
-engine.canvas.addEventListener("pointerdown", (e) => {
-  const p = engine.toLocal(e);
-  if (p.x < engine.view.x + 74 && p.y < engine.view.y + 74) location.href = "../../index.html";
+boot({
+  game: "echo-pop",
+  band: "tiny",
+  scene: ({ band, bird, done }) => new EchoPopScene({
+    levelIndex: 0, band, bird, onComplete: done,
+  }),
 });
 </script>
 </body>

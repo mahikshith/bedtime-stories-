@@ -67,26 +67,25 @@ export class EchoPopScene {
       if (save.state.settings.speechCheck) this.voice.startRecognition();
     }
 
-    this._tap = (e) => {
-      const p = engine.toLocal(e);
-      if (this.state === "intro") { this.nextRound(); return; }
-      if (this.state === "done") { this.finish(); return; }
-      if (this.state !== "ask") return;
-      // Tapping the bird repeats the question.
-      if (p.y > engine.view.y + engine.view.h - 260) { this.askAgain(); return; }
-      for (const b of this.bubbles) {
-        if (b.popped) continue;
-        if (Math.hypot(p.x - b.x, p.y - b.y) < b.r * 1.15) { this.choose(b); return; }
-      }
-    };
-    engine.canvas.addEventListener("pointerdown", this._tap);
+  }
+
+  down(p) {
+    const view = this.engine.view;
+    if (this.state === "intro") { this.nextRound(); return; }
+    if (this.state === "done") { this.finish(); return; }
+    if (this.state !== "ask") return;
+    // Tapping the bird repeats the question.
+    if (p.y > view.y + view.h - 260) { this.askAgain(); return; }
+    for (const b of this.bubbles) {
+      if (b.popped) continue;
+      if (Math.hypot(p.x - b.x, p.y - b.y) < b.r * 1.15) { this.choose(b); return; }
+    }
   }
 
   destroy() {
     this.voice.stop();
     stopSpeaking();
     stopMusic();
-    this.engine?.canvas.removeEventListener("pointerdown", this._tap);
   }
 
   /* -------------------------------------------------------------- rounds */

@@ -145,13 +145,10 @@ export class SayJumpScene {
       if (save.state.settings.speechCheck) this.voice.startRecognition();
     }
 
-    this._pd = (e) => this.pointerDown(e);
-    this._pu = () => this.pointerUp();
-    engine.canvas.addEventListener("pointerdown", this._pd);
-    window.addEventListener("pointerup", this._pu);
-    window.addEventListener("pointercancel", this._pu);
-    this._kd = (e) => { if (e.code === "Space" && !e.repeat) this.pointerDown(e); };
-    this._ku = (e) => { if (e.code === "Space") this.pointerUp(); };
+    // Pointer input is routed by the engine; space bar mirrors it, because a
+    // laptop with no touchscreen still has to be able to play.
+    this._kd = (e) => { if (e.code === "Space" && !e.repeat) this.down(); };
+    this._ku = (e) => { if (e.code === "Space") this.up(); };
     window.addEventListener("keydown", this._kd);
     window.addEventListener("keyup", this._ku);
   }
@@ -160,9 +157,6 @@ export class SayJumpScene {
     this.voice.stop();
     stopSpeaking();
     stopMusic();
-    this.engine?.canvas.removeEventListener("pointerdown", this._pd);
-    window.removeEventListener("pointerup", this._pu);
-    window.removeEventListener("pointercancel", this._pu);
     window.removeEventListener("keydown", this._kd);
     window.removeEventListener("keyup", this._ku);
   }
@@ -243,7 +237,7 @@ export class SayJumpScene {
     this.setState("air");
   }
 
-  pointerDown(e) {
+  down() {
     // Touch fallback so the game is playable with no mic (and testable).
     if (this.state === "intro") { this.setState("walk"); return; }
     if (this.state === "done") { this.finish(); return; }
@@ -255,7 +249,7 @@ export class SayJumpScene {
     }
   }
 
-  pointerUp() {
+  up() {
     if (!this.holding) return;
     this.holding = false;
     if (this.state === "charge") this.launch(this.holdCharge, this.holdCharge > 0.3);

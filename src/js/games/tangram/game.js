@@ -100,23 +100,11 @@ export class TangramScene {
     engine.resize();
     startMusic();
 
-    const cv = engine.canvas;
-    this._pd = (e) => this.down(engine.toLocal(e));
-    this._pm = (e) => this.move(engine.toLocal(e));
-    this._pu = (e) => this.up(engine.toLocal(e));
-    cv.addEventListener("pointerdown", this._pd);
-    window.addEventListener("pointermove", this._pm);
-    window.addEventListener("pointerup", this._pu);
-    window.addEventListener("pointercancel", this._pu);
     speak(`Make the ${this.puzzle.name}`);
   }
 
   destroy() {
     stopMusic();
-    this.engine?.canvas.removeEventListener("pointerdown", this._pd);
-    window.removeEventListener("pointermove", this._pm);
-    window.removeEventListener("pointerup", this._pu);
-    window.removeEventListener("pointercancel", this._pu);
   }
 
   /* ------------------------------------------------------------- layout */

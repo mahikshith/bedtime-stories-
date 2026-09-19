@@ -86,18 +86,17 @@ export class TiltMazeScene {
     this.usingGyro = await this.tilt.requestGyro();
     this.tilt.calibrate();
 
-    this._tap = () => {
-      if (this.state === "intro") { this.state = "play"; this.stateT = 0; this.tilt.calibrate(); }
-      else if (this.state === "won") this.finish();
-    };
-    engine.canvas.addEventListener("pointerdown", this._tap);
     speak(`Find the word ${this.board.word}`);
+  }
+
+  down() {
+    if (this.state === "intro") { this.state = "play"; this.stateT = 0; this.tilt.calibrate(); }
+    else if (this.state === "won") this.finish();
   }
 
   destroy() {
     this.tilt.destroy();
     stopMusic();
-    this.engine?.canvas.removeEventListener("pointerdown", this._tap);
   }
 
   /** Board metrics depend on the viewport, so they are recomputed on resize. */
