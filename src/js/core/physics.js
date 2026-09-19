@@ -71,6 +71,12 @@ export const TUNE = {
   bufferMs: 140,          // a jump pressed just before landing still fires
   crumbleMs: 420,
   bounceSpeed: 1150,
+  // How fast you must be falling for a spring to fire. Gravity gives a body
+  // WALKING along the ground about 36px/s of downward velocity per frame and
+  // a body landing from a jump upwards of 600, so anything between the two
+  // separates "stepped on it" from "landed on it" — and the difference
+  // matters because the bird walks itself to the next word gate.
+  bounceTrigger: 260,
   conveyorSpeed: 170,
   terminalSpin: 12,
 };
@@ -83,12 +89,27 @@ export const TUNE = {
  *                          the launch height
  * @returns {{vy:number, vx:number, airtime:number}}
  */
-export function solveJump(apex, distance, gUp = TUNE.gravity, gDown = TUNE.fallGravity) {
+export function solveJump(apex, distance, gUp = TUNE.gravity, gDown = TUNE.fallGravity,
+                          drag = TUNE.airDrag) {
   const vy = -Math.sqrt(2 * gUp * apex);
   const tUp = Math.sqrt(2 * apex / gUp);
   const tDown = Math.sqrt(2 * apex / gDown);
   const airtime = tUp + tDown;
-  return { vy, vx: distance / airtime, airtime };
+  /**
+   * `vx` COMPENSATES for the air drag the body is about to feel.
+   *
+   * This file promises that a jump authored as "260 up, 560 along" travels
+   * 560 along, and the levels are built against exactly that budget. It did
+   * not: `step` bleeds `airDrag` off `vx` on every airborne frame with no
+   * input, which over a 0.87s flight costs about 120px — a fifth of the jump.
+   * So a gap the composer had proved clearable was not, and the bird clipped
+   * the face of the far ledge and slid into the water.
+   *
+   * Constant deceleration over the flight loses ½·drag·T², so putting that
+   * back into the launch makes the authored distance the real one.
+   */
+  const vx = (distance + 0.5 * drag * airtime * airtime) / airtime;
+  return { vy, vx, airtime };
 }
 
 /* -------------------------------------------------------------- body */
@@ -227,6 +248,15 @@ export class World {
     b.x += b.vx * dt;
     for (const p of this.overlapping(b.rect)) {
       if (p.kind === KIND.ONEWAY) continue;
+      // A spring is something you step ONTO, not into.
+      //
+      // Blocking horizontally made a pad sitting on a perch a wall the height
+      // of the pad, and in Spike Hop one of them sat between the spawn and
+      // the first word gate: the bird walked into it and stayed there, at
+      // full health, for the entire level. Passing through lets gravity do
+      // the rest — the Y pass below is already looking for a falling body
+      // over a bouncy, and a walking body is always falling a little.
+      if (p.kind === KIND.BOUNCY) continue;
       if (b.vx > 0) { b.x = p.x - b.w; b.vx = 0; }
       else if (b.vx < 0) { b.x = p.x + p.w; b.vx = 0; }
     }
@@ -239,7 +269,15 @@ export class World {
         // One-way tiles only catch a body that was above them last tick.
         if (p.kind === KIND.ONEWAY && prevBottom > p.y + 1) continue;
         b.y = p.y - b.h;
-        if (p.kind === KIND.BOUNCY) {
+        // A spring fires when you LAND on it, not when you walk across it.
+        //
+        // Gravity gives a walking body a small downward velocity every frame,
+        // so without a threshold the pad launched the bird on contact — and
+        // since the bird auto-walks to the next word gate, it was launched
+        // the instant it reached one, kept its forward speed, and sailed off
+        // the perch into the water. Below the threshold the pad is just a
+        // step, which is what walking over one should feel like.
+        if (p.kind === KIND.BOUNCY && b.vy > TUNE.bounceTrigger) {
           b.vy = -TUNE.bounceSpeed;
           this.onBounce?.(p, b);
           continue;
@@ -332,12 +370,30 @@ export class World {
     for (let i = 0; i < steps; i++) {
       const g = (svy > 0 ? TUNE.fallGravity : TUNE.gravity) * this.gravityScale;
       svy = Math.min(svy + g * dt, TUNE.maxFall);
+      // The same drag `step` applies, or the preview promises a reach the
+      // body does not have — which is the arc the child aims by.
+      const drop = TUNE.airDrag * dt;
+      svx = Math.abs(svx) <= drop ? 0 : svx - Math.sign(svx) * drop;
       x += svx * dt;
       y += svy * dt;
       const probe = { x: x - b.w / 2, y, w: b.w, h: b.h };
       if (svy > 0) {
+        const prevBottom = points[points.length - 1].y;
         for (const p of this.overlapping(probe)) {
-          if (p.kind === KIND.ONEWAY && points[points.length - 1].y > p.y + 2) continue;
+          /**
+           * A landing means the feet crossed the TOP edge from above.
+           *
+           * Any overlap used to count, so an arc that ran into the side of a
+           * ledge was reported as landing on it — at a point 440px below the
+           * surface. That made this function agree with a jump that, in the
+           * real world, clips the face and slides down into the water, and it
+           * is drawn on screen as the green "you land here" marker. The
+           * preview was confidently pointing at a drowning.
+           *
+           * This is the same test the one-way branch already used; it simply
+           * has to apply to every platform, not just those.
+           */
+          if (prevBottom > p.y + 2) continue;
           landing = p;
           break;
         }

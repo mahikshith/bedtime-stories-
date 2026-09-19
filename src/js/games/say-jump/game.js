@@ -55,6 +55,10 @@ const distFor = (c) => lerp(JUMP.minDist, JUMP.maxDist, c);
 /** Inverse: the charge needed to travel `d` forward. */
 const chargeForDist = (d) => clamp((d - JUMP.minDist) / (JUMP.maxDist - JUMP.minDist), 0, 1);
 
+/** Inverse: the charge needed to rise `h`, with clearance to land on top. */
+const chargeForRise = (h) =>
+  clamp((h + 46 - JUMP.minApex) / (JUMP.maxApex - JUMP.minApex), 0, 1);
+
 export class SayJumpScene {
   constructor({ levelIndex = 0, band = "mid", cast = "pip", onExit, onComplete }) {
     this.levelIndex = levelIndex;
@@ -277,7 +281,7 @@ export class SayJumpScene {
     // Read it aloud — the child has to hear the target to produce it.
     speak(this.word.word);
     // How far this specific jump needs to go, so the meter can show a target.
-    this.needCharge = chargeForDist(this.gapAhead() + 70);
+    this.needCharge = this.chargeNeeded();
   }
 
   /** The nearest landable surface in front of the bird, mover or not. */
@@ -303,6 +307,30 @@ export class SayJumpScene {
   waitingForRide() {
     const next = this.nextSurface();
     return next?.kind === KIND.MOVING && this.gapAhead() > TILE * 2.2;
+  }
+
+  /**
+   * Is something lit, flying or otherwise dangerous immediately in front?
+   *
+   * Deliberately generous about the distance — a tile and a half — because
+   * stopping ON the edge of a flame is not stopping, and a child watching the
+   * bird halt a body-length short of a jet reads it as caution rather than as
+   * the game freezing.
+   */
+  hazardAhead() {
+    const fromX = this.body.x + this.body.w;
+    const reach = TILE * 1.5;
+    for (const h of this.world.hazards) {
+      if (h.type === HAZARD.FIRE) { if (!h.lit && !h.warn) continue; }
+      else if (h.type === HAZARD.BULLET) { if (!h.flying) continue; }
+      else continue;                                   // spikes and water never stop the walk
+      const hx = h.type === HAZARD.BULLET ? h.bx : h.x;
+      const hw = h.type === HAZARD.BULLET ? TILE * 0.7 : h.w;
+      if (hx + hw < fromX || hx > fromX + reach) continue;
+      if (h.y > this.body.bottom + TILE || h.y + h.h < this.body.y - TILE) continue;
+      return true;
+    }
+    return false;
   }
 
   /** The nearest surface ahead that does not move. */
@@ -333,6 +361,55 @@ export class SayJumpScene {
     const land = this.nextSolid();
     if (!m || !land) return true;         // nothing to wait for
     return land.x - (m.x + m.w) <= 8;
+  }
+
+  /**
+   * The smallest charge whose arc actually reaches solid ground — SIMULATED.
+   *
+   * The closed form was wrong twice over, and both were fatal:
+   *
+   *   `chargeForDist` answers "how far does this jump travel before it comes
+   *   back down to the height it left from". Wherever the next surface is
+   *   HIGHER than the lip — a crumbling ledge one row up, a lift three rows
+   *   up — the arc has to arrive there long before it returns to launch
+   *   height, so the honest requirement is much larger than the formula's.
+   *   In Cracked Path the bird jumped exactly far enough to clip the left
+   *   FACE of the ledge and slide down it into the water, three hearts in a
+   *   row, having said the word correctly every time.
+   *
+   *   Adding a separate rise term and taking the larger is still wrong: the
+   *   two constraints are not independent. You need the charge that satisfies
+   *   BOTH at once, and that is a question about a trajectory, not a sum.
+   *
+   * So it asks the physics. `predictArc` already simulates the real arc
+   * against the real platforms — it is what draws the landing preview — and
+   * the smallest charge whose arc reports a landing IS the answer, including
+   * for moving platforms, one-way ledges and everything else the formula
+   * could not see.
+   *
+   * Scanned upward rather than bisected because "lands on something" is not
+   * monotonic in charge: a bigger jump can sail over the perch into the water
+   * beyond it, so the first success going up is the one we want. Throttled,
+   * because this is ~12 trajectory simulations and it is asked for every
+   * frame that the meter is on screen.
+   */
+  chargeNeeded() {
+    const now = this.t;
+    if (this._needAt != null && now - this._needAt < 0.08 && this._needVal != null) {
+      return this._needVal;
+    }
+    this._needAt = now;
+    const ground = this.body.ground;
+    let found = null;
+    for (let c = 0.08; c <= 1.0001; c += 0.08) {
+      const { landing } = this.world.predictArc(
+        this.body, apexFor(c), distFor(c), 1, { steps: 60 });
+      // Coming straight back down onto the perch you left is not a landing.
+      if (landing && landing !== ground) { found = c; break; }
+    }
+    // Nothing reaches: ask for everything, and let the cap keep it sane.
+    this._needVal = clamp(found ?? 1, 0, 1);
+    return this._needVal;
   }
 
   /** Distance from the character to the far side of the gap in front. */
@@ -424,6 +501,9 @@ export class SayJumpScene {
     if (target) {
       const reach = target.kind === KIND.MOVING ? target.w * 0.55 : target.w * 0.8 + 40;
       eff = Math.min(eff, chargeForDist(this.gapAhead() + reach));
+      // The cap is about not OVERSHOOTING, so it must never pull the jump
+      // below what it takes to get there in the first place — which for a
+      // surface above the bird is a question of height, not distance.
       eff = Math.max(eff, floor * 0.9);
     }
     return clamp(eff, 0, 1);
@@ -695,6 +775,24 @@ export class SayJumpScene {
           break;
         }
 
+        /**
+         * Wait for a flame to die down rather than walking into it.
+         *
+         * The bird walks itself between word gates, so a fire vent or a
+         * cannon ball on that path is damage the player has no way to avoid —
+         * they are not steering. Three hearts and two vents is a level that
+         * cannot be finished, however well the child reads.
+         *
+         * Only things that CYCLE are waited for. Spikes never go out, and a
+         * bird that waits for one waits for ever; those belong in gaps and are
+         * cleared by jumping, which the child does control.
+         */
+        if (dx > 14 && this.hazardAhead()) {
+          this.body.vx *= 0.7;
+          this.markSafe();
+          break;
+        }
+
         if (dx > 14) move = 1;
         else {
           this.body.vx *= 0.6;
@@ -722,7 +820,7 @@ export class SayJumpScene {
         // target can be a platform that is still travelling, and a meter
         // whose red line was measured to where it USED to be is a lie in the
         // one place the child is reading for the truth.
-        this.needCharge = chargeForDist(this.gapAhead() + 70);
+        this.needCharge = this.chargeNeeded();
         if (this.body.onGround) this.markSafe();
         break;
 
@@ -730,7 +828,7 @@ export class SayJumpScene {
         this.body.vx *= 0.7;
         // Same reason as `prompt`: the arc and the guaranteed reach are both
         // measured against this, and the target may still be moving.
-        this.needCharge = chargeForDist(this.gapAhead() + 70);
+        this.needCharge = this.chargeNeeded();
         if (this.holding) {
           // Touch fallback charges at roughly the rate a sustained word does.
           this.holdCharge = clamp(this.holdCharge + dt * 0.85, 0, 1);

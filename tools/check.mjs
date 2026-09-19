@@ -20,5 +20,8 @@ for (let i = 0; i < LEVELS.length; i++) {
     console.log(`✓ ${lvl.id.padEnd(3)} ${lvl.name.padEnd(18)} ${stats}`);
   }
 }
-console.log(`\n${LEVELS.length - bad}/${LEVELS.length} levels pass. Max jump: ${Math.round(MAX.vx * MAX.airtime)}px forward.`);
+// The REAL reach: `vx` is now drag-compensated, so vx*airtime overstates it
+// by exactly the drag loss the flight gives back.
+const reach = MAX.vx * MAX.airtime - 0.5 * 320 * MAX.airtime * MAX.airtime;
+console.log(`\n${LEVELS.length - bad}/${LEVELS.length} levels pass. Max jump: ${Math.round(reach)}px forward.`);
 process.exit(bad ? 1 : 0);
