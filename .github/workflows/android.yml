@@ -20,9 +20,13 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Deliberately NOT cancel-in-progress. Superseding a stale test run saves a
+# runner and costs nothing, but this job's artifact IS the deliverable: killing
+# it because another commit landed throws away the APK somebody was waiting to
+# install, and leaves that commit with no build at all.
 concurrency:
   group: android-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   apk:

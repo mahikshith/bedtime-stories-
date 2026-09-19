@@ -93,29 +93,51 @@ npm run verify       # prove every authored level is solvable
 npm run weigh        # what a page costs in modules, bytes and DOM nodes
 ```
 
+Both suites also run in CI (`.github/workflows/verify.yml`), so a broken level
+fails the push rather than a child. The browser tools resolve Chromium through
+`tools/browser.mjs` — `CHROMIUM_BIN`, then this container's bundled build,
+then Playwright's own — because hardcoding the container's path meant the
+whole suite worked in exactly one place.
+
 `android/` and `ios/` are committed on purpose. The manifest and the
 `Info.plist` are *source* — regenerating them would silently drop the
 microphone permission, the portrait lock and the usage strings.
 
-## Building a store artefact
+## Getting a build onto a phone
 
-Neither store build can be produced in this repo's CI container: there is no
-Android SDK and no Xcode here. Everything else is done and committed; these are
-the steps on a machine that has them.
+**An APK comes out of CI on every push.** `.github/workflows/android.yml`
+builds a debug APK and attaches it to the run; download it from the
+**Artifacts** section at the bottom of the run page, allow "install unknown
+apps" on the phone, and tap the file.
 
-**Android** — needs Android Studio (or the SDK plus JDK 21):
+That is the answer to a question worth writing down, because it was got wrong
+once: the development container this repo is worked on in has a JDK and Gradle
+but *no Android SDK*, and `dl.google.com` is blocked by its egress proxy, so
+one cannot be fetched. None of that is true of GitHub's ubuntu runners, which
+ship the SDK preinstalled. "I cannot build it here" was accurate and useless —
+CI is where it gets built.
+
+`versionCode` is stamped from the run number, since it has to increase on
+every upload and that is the only monotonic counter available without keeping
+state somewhere.
+
+### Release builds
+
+The CI artifact is a **debug** build signed with the standard debug keystore.
+It is fine for trying on real hardware and cannot go to the Play Store. A
+release build needs an upload keystore, which is a secret and does not belong
+in a repository. When that exists, put it in GitHub Actions secrets and add a
+signing config — the workflow is otherwise unchanged.
+
+Locally, on a machine that has the SDK:
 
 ```sh
 npm run sync
-cd android && ./gradlew bundleRelease        # -> app/build/outputs/bundle/release/
+cd android && ./gradlew assembleDebug       # or bundleRelease, once signed
 ```
 
-Before the first upload: create an upload keystore, put its credentials in
-`android/keystore.properties` (already gitignored via `local.properties`
-conventions — do not commit a keystore), and set `versionCode` / `versionName`
-in `android/app/build.gradle`.
-
-**iOS** — needs macOS, Xcode and an Apple Developer account:
+**iOS** needs macOS, Xcode and an Apple Developer account, so it cannot be
+built in CI on a Linux runner either:
 
 ```sh
 npm run sync
@@ -129,6 +151,9 @@ Done here:
 
 - app id `com.wordquest.kids`, display name, portrait lock, splash and status
   bar colours
+- launcher icons at all five Android densities plus the adaptive foreground
+  layer, which keeps its art inside the middle because Android only guarantees
+  the centre 66% survives whatever shape a launcher masks it to
 - icons at every size both stores ask for, plus a **maskable** variant,
   rendered from the app's own SVG by `tools/make-icons.mjs` rather than
   becoming binaries someone has to keep in step with the art
