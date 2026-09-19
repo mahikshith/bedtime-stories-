@@ -171,6 +171,48 @@ export function parseMap(src, opts = {}) {
           });
           break;
         }
+        case "F": {
+          // A vertical jet. The run of "!" above it sets how tall it reaches,
+          // so a level can have a lick of flame or a column of it.
+          used[r][c] = true;
+          let tall = 1;
+          while (r - tall >= 0 && at(c, r - tall) === "!") { used[r - tall][c] = true; tall++; }
+          hazards.push({
+            type: HAZARD.FIRE,
+            x: c * tile + tile * 0.18, y: (r - tall + 1) * tile,
+            w: tile * 0.64, h: tall * tile, pad: 8,
+            onMs: 1500, offMs: 1700, warnMs: 550,
+            // Staggered by column so a row of jets ripples instead of
+            // flashing in unison, which is both prettier and more readable.
+            phase: (c * 370) % 3200,
+            lit: false, heat: 0,
+          });
+          break;
+        }
+        case "C": {
+          // A cannon. Fires along the row it sits in; "-" to its right marks
+          // how far the shot travels before it is recycled.
+          used[r][c] = true;
+          let reach = 0;
+          while (at(c + 1 + reach, r) === "-") { used[r][c + 1 + reach] = true; reach++; }
+          hazards.push({
+            type: HAZARD.BULLET,
+            x: c * tile, y: r * tile + tile * 0.18,
+            w: tile * 0.64, h: tile * 0.64, pad: 6,
+            muzzleX: c * tile, reach: Math.max(4, reach) * tile,
+            everyMs: 2600, phase: (c * 611) % 2600,
+            flying: false, bx: 0, flash: 0,
+          });
+          break;
+        }
+        case "P": {
+          used[r][c] = true;
+          pickups.push({
+            kind: "power", x: c * tile + tile / 2, y: r * tile + tile / 2,
+            taken: false, bob: Math.random() * 6,
+          });
+          break;
+        }
         case "o": case "*": {
           used[r][c] = true;
           pickups.push({ kind: ch === "o" ? "star" : "gem", x: c * tile + tile / 2, y: r * tile + tile / 2, taken: false, bob: Math.random() * 6 });

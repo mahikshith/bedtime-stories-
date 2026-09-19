@@ -35,6 +35,19 @@ export const HAZARD = {
   WATER: "water",
   SAW: "saw",
   VOID: "void",         // below the level
+
+  /**
+   * Fire that breathes in and out.
+   *
+   * It is deliberately NOT always on. A constant flame is a wall a child has
+   * to be told about; a flame with a rhythm is a puzzle they can watch, learn
+   * and beat, and watching it is the part that feels clever. `onMs`/`offMs`
+   * carry the rhythm and `warnMs` gives the tell before it lights.
+   */
+  FIRE: "fire",
+
+  /** A cannon ball crossing the screen. Mario's cadence: slow, loud, fair. */
+  BULLET: "bullet",
 };
 
 /* ------------------------------------------------------------ tuning */

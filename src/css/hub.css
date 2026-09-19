@@ -60,7 +60,12 @@ body.hub {
   cursor: pointer;
   border-radius: 12px;
 }
-.path-toggle:hover { background: rgba(255, 255, 255, 0.05); }
+/* Touch has no hover, so a browser fakes one and leaves it applied after the
+   tap. Gated on capability rather than screen width, because tablets with
+   trackpads and laptops with touchscreens are both real. */
+@media (hover: hover) and (pointer: fine) {
+  .path-toggle:hover { background: rgba(255, 255, 255, 0.05); }
+}
 .path-toggle:active { transform: translateY(1px); }
 .path-toggle__chev { transition: transform 140ms ease; font-size: 14px; }
 .path-toggle--open .path-toggle__chev { transform: rotate(180deg); }

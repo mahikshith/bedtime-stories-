@@ -117,20 +117,36 @@ def build():
         return L.render()
 
     # ---------------------------------------------------------- world 1 --
-    # Sunny Meadow: level perches, short hops, nothing hidden.
+    # Sunny Meadow.
+    #
+    # These three were the whole first impression and they contained NOTHING
+    # but blocks and water — the player's reasonable conclusion was that every
+    # level in the game looks the same, and they were right about the only
+    # levels they had seen. The pacing rule (one new idea at a time) is still
+    # worth keeping; what was wrong was reading "one idea" as "nothing to look
+    # at". So world 1 now has things that MOVE and things that are FUN, none
+    # of which can hurt: a bouncy pad is a toy before it is a mechanic.
+    # Decoration only. The bouncy pads that were briefly here landed in the
+    # GAPS rather than on the perches, which in a level whose promise is
+    # "nothing can hurt you" is a trap: a child jumping the gap gets thrown
+    # somewhere they did not choose. Springs arrive in world 2, on ground.
     out["M1_1"] = level(54, [
         (0, 4, 7), (8, 3, 7), (15, 3, 7), (22, 3, 7), (29, 3, 7), (36, 3, 7), (43, 5, 7),
-    ], stars=(1, 2, 3, 4, 5), props=((0, "T"), (3, "f")))
+    ], stars=(1, 2, 3, 4, 5),
+       props=((0, "T"), (1, "f"), (2, "b"), (3, "f"), (4, "r"), (5, "b")))
 
-    # Steps up and down.
+    # Steps up and down — and a lift that does some of the climbing for you.
+    # A lift crossing each of two gaps: a bridge that arrives, not a hazard.
     out["M1_2"] = level(56, [
         (0, 4, 7), (8, 3, 6), (15, 3, 5), (22, 3, 6), (29, 3, 5), (36, 3, 6), (43, 5, 7),
-    ], stars=(1, 2, 3, 4, 5), props=((0, "T"),))
+    ], stars=(1, 2, 3, 4, 5), props=((0, "T"), (2, "f"), (4, "b")),
+       extras=[(4, 11, "M--"), (4, 32, "M--")])
 
-    # Tiny perches: precision over power.
+    # Tiny perches, and the first star that makes you untouchable.
     out["M1_3"] = level(58, [
         (0, 4, 7), (8, 2, 6), (15, 2, 5), (22, 2, 6), (29, 2, 5), (36, 2, 6), (43, 2, 5), (50, 5, 7),
-    ], stars=(1, 3, 5), props=((0, "b"),))
+    ], stars=(1, 3, 5), props=((0, "b"), (3, "r"), (5, "f")),
+       extras=[(4, 18, "M--"), (3, 30, "P")])
 
     # ---------------------------------------------------------- world 2 --
     # Crystal Caves: perches crumble under you.
@@ -171,6 +187,20 @@ def build():
     ], stars=(1, 3, 5), extras=[(6, 8, "IIII"), (6, 16, "IIII"), (6, 24, "IIII"),
                                 (6, 32, "IIII"), (6, 40, "IIII")])
 
+    # Fire in the cave mouths. It breathes, so it is a rhythm to read rather
+    # than a wall to be told about.
+    out["M2_4"] = level(60, [
+        (0, 4, 7), (9, 3, 6), (17, 3, 6), (25, 3, 6), (33, 3, 6), (41, 3, 6), (48, 5, 7),
+    ], stars=(1, 3, 5), extras=[(7, 13, "F"), (6, 13, "!"),
+                                (7, 29, "F"), (6, 29, "!"),
+                                (7, 45, "F"), (6, 45, "!")])
+
+    # Cannons across the gaps — the shot is slow, loud and announced.
+    out["M3_4"] = level(62, [
+        (0, 4, 7), (9, 3, 6), (18, 3, 5), (27, 3, 6), (36, 3, 5), (45, 3, 6), (52, 5, 7),
+    ], stars=(2, 4), extras=[(5, 6, "C-----"), (4, 24, "C-----"), (5, 42, "C-----"),
+                             (3, 33, "P")])
+
     # Belts and saws.
     out["M4_2"] = level(60, [
         (0, 4, 7), (9, 4, 6), (18, 4, 6), (27, 4, 6), (36, 4, 6), (44, 3, 6), (51, 5, 7),
@@ -185,6 +215,20 @@ def build():
                                    (4, 34, "V"), (5, 34, "|"),
                                    (5, 15, "%%"), (5, 30, "%%"),
                                    (6, 2, "B"), (6, 55, "B")])
+
+    # The gauntlet: everything the game has, arranged so each hazard has its
+    # own beat rather than arriving all at once.
+    out["M4_4"] = level(74, [
+        (0, 4, 7), (8, 3, 6), (16, 3, 5), (24, 3, 6), (32, 2, 5), (39, 3, 6),
+        (47, 2, 5), (54, 3, 6), (63, 5, 7),
+    ], stars=(1, 3, 5, 7), extras=[(7, 12, "F"), (6, 12, "!"),
+                                   (5, 20, "C-----"),
+                                   (4, 28, "M--"),
+                                   (7, 36, "F"), (6, 36, "!"),
+                                   (4, 43, "X--"),
+                                   (5, 51, "C-----"),
+                                   (6, 5, "B"), (6, 59, "B"),
+                                   (3, 24, "P"), (3, 47, "P")])
 
     return out
 

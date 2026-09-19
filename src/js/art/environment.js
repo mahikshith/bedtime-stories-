@@ -277,6 +277,107 @@ function scallops(ctx, x, y, w, r, color, offset, spacing) {
   ctx.fillRect(x, y + r - 1, w, r * 0.5);
 }
 
+/**
+ * A fire jet that breathes.
+ *
+ * Three things have to be legible at a glance and they are all drawn here:
+ * the VENT, which never moves and marks the danger even when it is cold; the
+ * WARNING, a swelling ember that tells a child it is about to light; and the
+ * FLAME itself. A hazard that gives no tell before it hurts is not difficulty,
+ * it is a trap, and at this age a trap just reads as the game being unfair.
+ */
+function drawFire(ctx, hz, T, t) {
+  const cx = hz.x + hz.w / 2;
+  const base = hz.y + hz.h;
+
+  // The vent, always visible.
+  fillRound(ctx, cx - hz.w * 0.62, base - 12, hz.w * 1.24, 18, 6, "#4A3325");
+  fillRound(ctx, cx - hz.w * 0.5, base - 14, hz.w, 8, 4, "#2B1C12");
+
+  if (hz.warn && hz.heat <= 0.02) {
+    ctx.save();
+    ctx.globalAlpha = 0.35 + Math.sin(t * 18) * 0.3;
+    circle(ctx, cx, base - 16, 13, "#FF8A2B");
+    ctx.restore();
+    return;
+  }
+  if (hz.heat <= 0.02) return;
+
+  const height = hz.h * hz.heat;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, hz.heat * 1.2);
+
+  // Three nested tongues, each narrower, lighter and wobbling faster.
+  const tongue = (w, hgt, col, speed, seed) => {
+    ctx.beginPath();
+    ctx.moveTo(cx - w, base - 10);
+    for (let k = 0; k <= 10; k++) {
+      const u = k / 10;
+      const sway = Math.sin(t * speed + u * 5 + seed) * w * 0.42 * u;
+      ctx.lineTo(cx - w * (1 - u) + sway, base - 10 - hgt * u);
+    }
+    for (let k = 10; k >= 0; k--) {
+      const u = k / 10;
+      const sway = Math.sin(t * speed + u * 5 + seed) * w * 0.42 * u;
+      ctx.lineTo(cx + w * (1 - u) + sway, base - 10 - hgt * u);
+    }
+    ctx.closePath();
+    ctx.fillStyle = col; ctx.fill();
+  };
+  tongue(hz.w * 0.62, height, "#FF4A16", 9, 0);
+  tongue(hz.w * 0.42, height * 0.78, "#FF9421", 12, 1.7);
+  tongue(hz.w * 0.22, height * 0.5, "#FFE05C", 15, 3.3);
+
+  // Embers lifting off the tip.
+  ctx.globalAlpha = hz.heat * 0.8;
+  for (let i = 0; i < 4; i++) {
+    const u = ((t * 0.7 + i * 0.25) % 1);
+    circle(ctx, cx + Math.sin(t * 5 + i * 2) * hz.w * 0.4,
+      base - 10 - height * (0.7 + u * 0.55), 3.4 * (1 - u), "#FFD166");
+  }
+  ctx.restore();
+}
+
+/**
+ * A cannon and its shot.
+ *
+ * Deliberately slow and deliberately loud: the barrel kicks and flashes when
+ * it fires, so the shot is announced rather than discovered on contact. The
+ * ball has a face for the same reason the star does — a thing with eyes is a
+ * character to dodge, not an abstract punishment.
+ */
+function drawCannon(ctx, hz, T, t) {
+  const bx = hz.muzzleX, by = hz.y + hz.h / 2;
+  const kick = hz.flash > 0 ? hz.flash * 34 : 0;
+
+  // Mount and barrel.
+  fillRound(ctx, bx - 22, by - 20, 30, 40, 10, "#3A4750");
+  fillRound(ctx, bx - 14 - kick, by - 13, 44, 26, 9, "#5A6B76");
+  fillRound(ctx, bx - 14 - kick, by - 13, 44, 9, 5, "#7E909C");
+
+  if (hz.flash > 0) {
+    ctx.save();
+    ctx.globalAlpha = hz.flash / 0.22;
+    circle(ctx, bx + 30 - kick, by, 20, alpha("#FFD166", 0.9));
+    circle(ctx, bx + 30 - kick, by, 11, "#FFFFFF");
+    ctx.restore();
+  }
+
+  if (!hz.flying) return;
+  const cx = hz.x + hz.w / 2, cy = by;
+  ctx.save();
+  ctx.globalAlpha = 0.28;
+  for (let i = 1; i <= 3; i++) circle(ctx, cx - i * 17, cy, 13 - i * 2.4, "#6B7B86");
+  ctx.restore();
+  circle(ctx, cx, cy + 3, 17, "#1B2429");
+  circle(ctx, cx, cy, 17, "#3A4750");
+  circle(ctx, cx - 5, cy - 6, 6, alpha("#FFFFFF", 0.35));
+  ctx.fillStyle = "#FFFFFF";
+  ctx.beginPath(); ctx.arc(cx + 3, cy - 3, 4.2, 0, 7); ctx.arc(cx + 11, cy - 3, 4.2, 0, 7); ctx.fill();
+  ctx.fillStyle = "#101A1F";
+  ctx.beginPath(); ctx.arc(cx + 4, cy - 3, 2.1, 0, 7); ctx.arc(cx + 12, cy - 3, 2.1, 0, 7); ctx.fill();
+}
+
 /** Volumetric cloud: stacked lobes with a lit crown and a shaded belly. */
 export function drawCloud(ctx, x, y, r, tint = "#FFFFFF") {
   const lobes = [
@@ -704,6 +805,10 @@ export function drawHazard(ctx, hz, T, t) {
     }
   } else if (hz.type === "water") {
     waterBody(ctx, hz.x, hz.y, hz.w, hz.h, T.water, t);
+  } else if (hz.type === "fire") {
+    drawFire(ctx, hz, T, t);
+  } else if (hz.type === "bullet") {
+    drawCannon(ctx, hz, T, t);
   } else if (hz.type === "saw") {
     const cx = hz.x + hz.w / 2, cy = hz.y + hz.h / 2, r = hz.w * 0.56;
     ctx.save();

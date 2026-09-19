@@ -78,6 +78,16 @@ export class SayJumpScene {
     this.wrongT = 0;
     this.listenStart = 0;
     this.misses = 0;        // consecutive failed attempts on this word
+
+    /**
+     * Seconds of invincibility left from a power star.
+     *
+     * A star does not make the child stronger, it makes the world stop
+     * mattering for a moment — which at this age is the more exciting of the
+     * two, and it is the only thing in the game that turns a hazard into a
+     * joke instead of a threat.
+     */
+    this.shield = 0;
     this.stateT = 0;
 
     this.fx = new Fx();
@@ -114,7 +124,14 @@ export class SayJumpScene {
       width: lvl.width,
       height: lvl.height,
     });
-    this.world.onHazard = (h) => this.hit(h);
+    this.world.onHazard = (h) => {
+      // A fire that is out, and a cannon with nothing in the air, are
+      // scenery. Without this a child would be burned by a cold jet.
+      if (h.type === HAZARD.FIRE && !h.lit) return;
+      if (h.type === HAZARD.BULLET && !h.flying) return;
+      if (this.shield > 0) { this.shrugOff(h); return; }
+      this.hit(h);
+    };
     this.world.onBounce = (p) => {
       p.squish = 1;
       sfx.jump(0.9);
@@ -392,6 +409,13 @@ export class SayJumpScene {
     }
   }
 
+  /** A hazard bounced off the star's shield: noise and sparkle, no damage. */
+  shrugOff(h) {
+    this.cam.shake = 6;
+    this.fx.burst(this.body.cx, this.body.cy, [TOKENS.bee, C.flame.light, TOKENS.snow], 14);
+    sfx.coin();
+  }
+
   hit(h) {
     if (this.state === "hurt" || this.state === "done") return;
     this.hearts--;
@@ -429,6 +453,14 @@ export class SayJumpScene {
     this.t += dt;
     this.speakT = Math.max(0, this.speakT - dt);
     this.wrongT = Math.max(0, this.wrongT - dt);
+    if (this.shield > 0) {
+      this.shield -= dt;
+      if (this.shield <= 0) { this.shield = 0; speak("all gone"); }
+      else if (Math.random() < dt * 22) {
+        this.fx.burst(this.body.cx, this.body.cy,
+          [TOKENS.bee, C.candy.light, TOKENS.snow], 3);
+      }
+    }
     this.stateT += dt;
     this.fx.update(dt);
     this.weather.update(dt);
@@ -438,6 +470,31 @@ export class SayJumpScene {
     for (const h of this.world.hazards) if (h.type === HAZARD.SAW) {
       h.spin = (h.spin ?? 0) + dt * 7;
       if (h.tx) h.x = h.ox + (Math.sin(this.t * h.speed) + 1) / 2 * h.tx;
+    }
+
+    // Fire and cannons run on their own clocks so a level reads as a rhythm
+    // a child can learn rather than a field of things that hurt at random.
+    const ms = this.t * 1000;
+    for (const h of this.world.hazards) {
+      if (h.type === HAZARD.FIRE) {
+        const cycle = h.onMs + h.offMs;
+        const at = (ms + h.phase) % cycle;
+        h.lit = at < h.onMs;
+        // The tell: it glows before it lights, so a jump can be planned.
+        h.warn = !h.lit && at > cycle - h.warnMs;
+        h.heat = h.lit
+          ? Math.min(1, h.heat + dt * 6)
+          : Math.max(0, h.heat - dt * 4);
+      } else if (h.type === HAZARD.BULLET) {
+        const at = (ms + h.phase) % h.everyMs;
+        h.flash = Math.max(0, h.flash - dt);
+        if (!h.flying && at < 60) { h.flying = true; h.bx = 0; h.flash = 0.22; sfx.pop(); }
+        if (h.flying) {
+          h.bx += dt * 470;
+          if (h.bx > h.reach) h.flying = false;
+          h.x = h.muzzleX + h.bx;
+        }
+      }
     }
 
     let move = 0;
@@ -517,6 +574,16 @@ export class SayJumpScene {
       if (p.taken) continue;
       if (Math.abs(p.x - this.body.cx) < 44 && Math.abs(p.y - this.body.cy) < 54) {
         p.taken = true;
+        if (p.kind === "power") {
+          // Eight seconds is long enough to get somewhere with it and short
+          // enough that losing it is a reason to look for the next one.
+          this.shield = 8;
+          this.fx.burst(p.x, p.y, [TOKENS.bee, C.flame.light, C.candy.light, TOKENS.snow], 30);
+          this.fx.say(p.x, p.y - 22, "SUPER!", TOKENS.bee, 26);
+          sfx.fanfare();
+          speak("super star");
+          continue;
+        }
         this.starsGot++;
         sfx.coin();
         this.fx.burst(p.x, p.y, [TOKENS.bee, TOKENS.snow], 10);
@@ -622,13 +689,42 @@ export class SayJumpScene {
       ctx.save();
       ctx.translate(p.x, p.y + bob);
       ctx.rotate(Math.sin(this.t * 2 + p.bob) * 0.2);
-      const glow = ctx.createRadialGradient(0, 0, 2, 0, 0, 34);
-      glow.addColorStop(0, alpha(TOKENS.bee, 0.5));
-      glow.addColorStop(1, alpha(TOKENS.bee, 0));
+      // The power star is bigger, rainbow-cycling and haloed, because it has
+      // to be obviously a different KIND of thing from the coins around it —
+      // a child should want it before knowing what it does.
+      const power = p.kind === "power";
+      const hue = power ? (this.t * 120 + p.bob * 40) % 360 : 0;
+      const core = power ? `hsl(${hue}, 95%, 62%)` : TOKENS.bee;
+      const r = power ? 30 : 19;
+
+      if (power) {
+        ctx.rotate(this.t * 1.6);
+        ctx.save();
+        ctx.globalAlpha = 0.45 + Math.sin(this.t * 5) * 0.2;
+        for (let i = 0; i < 8; i++) {
+          ctx.rotate(Math.PI / 4);
+          ctx.fillStyle = `hsl(${(hue + i * 24) % 360}, 95%, 66%)`;
+          ctx.beginPath();
+          ctx.moveTo(-5, -r - 6); ctx.lineTo(5, -r - 6); ctx.lineTo(0, -r - 24);
+          ctx.closePath(); ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      const glow = ctx.createRadialGradient(0, 0, 2, 0, 0, power ? 52 : 34);
+      glow.addColorStop(0, alpha(core, 0.55));
+      glow.addColorStop(1, alpha(core, 0));
       ctx.fillStyle = glow;
-      ctx.fillRect(-34, -34, 68, 68);
-      starShape(ctx, 0, 0, 19, 9, 5, TOKENS.bee);
-      starShape(ctx, -3, -3, 9, 4, 5, mix(TOKENS.bee, "#ffffff", 0.6));
+      ctx.fillRect(-52, -52, 104, 104);
+      starShape(ctx, 0, 0, r, r * 0.47, 5, core);
+      starShape(ctx, -3, -3, r * 0.47, r * 0.21, 5, mix(core, "#ffffff", 0.6));
+      if (power) {
+        // Two dots and a smile: the star is a character, not an item.
+        ctx.fillStyle = "#3A2208";
+        ctx.beginPath(); ctx.arc(-6, -2, 2.6, 0, 7); ctx.arc(6, -2, 2.6, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(0, 2, 6, 0.2 * Math.PI, 0.8 * Math.PI);
+        ctx.strokeStyle = "#3A2208"; ctx.lineWidth = 2.4; ctx.lineCap = "round"; ctx.stroke();
+      }
       ctx.restore();
     }
   }
