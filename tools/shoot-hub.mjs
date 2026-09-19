@@ -21,9 +21,9 @@ await p.screenshot({path:path.join(out,"welcome.png")});
 await p.click(".choice-grid .choice:nth-child(2)");
 await p.waitForTimeout(500);
 await p.screenshot({path:path.join(out,"hub.png"), fullPage:true});
-// and one with a level path open, which is the other half of the hub
-await p.click(".section:first-of-type .path-toggle");
+// and one game's own screen, which is the other half of the hub
+await p.click(".tile:first-of-type");
 await p.waitForTimeout(700);
-await p.screenshot({path:path.join(out,"hub-open.png"), fullPage:true});
+await p.screenshot({path:path.join(out,"game-screen.png"), fullPage:true});
 console.log(errs.length ? "ERRORS: "+errs.slice(0,4).join(" | ") : "no page errors");
 await b.close(); srv.close();

@@ -9,6 +9,7 @@
 import { save } from "./core/storage.js";
 import { BANDS } from "./core/words.js";
 import { drawBird, BIRDS, BIRD_IDS } from "./art/bird.js";
+import { thumbCanvas } from "./art/thumbs.js";
 import { install as installAudio, sfx, unlock } from "./core/audio.js";
 import { C } from "./core/palette.js";
 
@@ -165,14 +166,45 @@ function render() {
 
   if (!s.band) { app.append(welcome()); return; }
 
-  const band = BANDS[s.band];
-  app.append(unitBanner(band));
-
   const games = GAMES.filter((g) => g.bands.includes(s.band));
-  for (const g of games) app.append(gameSection(g));
+
+  // A game that has been opened takes over the whole screen. Progress used to
+  // unfold underneath its tile, which pushed the grid apart and put a column
+  // of padlocks between a child and the next game — the picker needs a room of
+  // its own, not a drawer in the middle of the shelf.
+  const opened = games.find((g) => g.id === s.openGame);
+  if (opened) { app.append(gameScreen(opened)); return; }
+
+  app.append(unitBanner(BANDS[s.band]));
+
+  // Two to a row. A single column of full-width cards turned ten games into a
+  // scroll with no end in sight, and the games added most recently were the
+  // ones nobody ever reached.
+  const grid = el("div", "games-grid");
+  for (const g of games) grid.append(gameTile(g));
+  app.append(grid);
 
   app.append(footer());
 }
+
+/** Open a game's own screen, and make the device back button close it. */
+function openGame(g) {
+  sfx.whoosh();
+  save.set({ openGame: g.id });
+  history.pushState({ game: g.id }, "", location.pathname);
+  render();
+  scrollTo(0, 0);
+}
+
+function closeGame() {
+  save.set({ openGame: null });
+  render();
+  scrollTo(0, 0);
+}
+
+window.addEventListener("popstate", () => {
+  if (save.state.openGame) closeGame();
+});
 
 function topBar(s) {
   const bar = el("div", "hud");
@@ -204,44 +236,73 @@ function unitBanner(band) {
   return u;
 }
 
-function gameSection(g) {
-  // No section heading: with the paths collapsed it sat directly above a card
-  // carrying the same name in larger type, which is a rule and a label of pure
-  // repetition between a child and the next game.
-  const sec = el("section", "section");
-  const open = save.state.openGame === g.id;
+function gameTile(g) {
+  // The picture is the label. A three-year-old cannot read "Sliding Blocks",
+  // but they can recognise a red block in a wooden frame, so the thumbnail is
+  // the whole top of the tile and the words sit under it.
+  //
+  // Nothing else goes on a tile. A progress bar or a level drawer under each
+  // one turns a wall of pictures into a wall of admin, and the picture is the
+  // only part a child reads.
+  const tile = el("button", "tile");
+  tile.title = `${g.title} — ${g.sub}`;
+  tile.setAttribute("aria-label", g.title);
 
-  const card = el("button", "game-card");
-  const chip = CONTROL_CHIP[g.control];
-  const art = el("div", "game-card__art", g.icon);
+  const art = el("div", "tile__art");
+  art.append(thumbCanvas(g.id, 190, 132));
   art.style.setProperty("--face", g.face);
+  art.style.setProperty("--edge", g.edge);
+
   const stars = save.totalStars(g.id);
-  card.append(art, el("div", "game-card__body",
-    `<div class="game-card__title">${g.title}</div>
-     <div class="game-card__sub">${g.sub}</div>
-     <div class="game-card__meta">
-       <span class="chip ${chip.cls}">${chip.label}</span>
+  tile.append(art, el("div", "tile__body",
+    `<div class="tile__title">${g.title}</div>
+     <div class="tile__meta">
+       <span class="chip ${CONTROL_CHIP[g.control].cls}">${CONTROL_CHIP[g.control].label}</span>
+       ${stars ? `<span class="chip">⭐ ${stars}</span>` : ""}
+     </div>`));
+  tile.onclick = () => openGame(g);
+  return tile;
+}
+
+/**
+ * One game's own screen: what it is, a button that plays it, and the trail of
+ * its levels. Reached by tapping a tile, left by the arrow or the device back
+ * button.
+ */
+function gameScreen(g) {
+  const wrap = el("div", "screen");
+
+  const banner = el("div", "screen__banner");
+  banner.style.setProperty("--face", g.face);
+  banner.style.setProperty("--edge", g.edge);
+  banner.append(thumbCanvas(g.id, 420, 210));
+
+  const back = el("button", "screen__back", "‹");
+  back.title = "Back to the games";
+  back.setAttribute("aria-label", "Back to the games");
+  back.onclick = () => { sfx.tick?.(); history.back(); };
+  banner.append(back);
+  wrap.append(banner);
+
+  const stars = save.totalStars(g.id);
+  wrap.append(el("div", "screen__head",
+    `<div class="screen__title">${g.title}</div>
+     <div class="screen__sub">${g.sub}</div>
+     <div class="screen__meta">
+       <span class="chip ${CONTROL_CHIP[g.control].cls}">${CONTROL_CHIP[g.control].label}</span>
        <span class="chip">⭐ ${stars}</span>
      </div>`));
-  // Tapping the card plays. That is the whole point of the card, and it stays
-  // one tap: a three-year-old should never have to open a menu to reach a
-  // game, and the level path below is for choosing a *different* level.
-  card.onclick = () => launch(g, save.unlockedLevel(g.id));
-  sec.append(card);
 
-  const toggle = el("button", "path-toggle" + (open ? " path-toggle--open" : ""));
-  toggle.setAttribute("aria-expanded", String(open));
-  toggle.innerHTML = `<span class="path-toggle__label">${open ? "HIDE LEVELS" : "CHOOSE A LEVEL"}</span>
-                      <span class="path-toggle__chev">▾</span>`;
-  toggle.onclick = () => {
-    sfx.tick?.();
-    save.set({ openGame: open ? null : g.id });
-    render();
-  };
-  sec.append(toggle);
+  // The one big button. Whatever else is on this screen, the fast path stays a
+  // single press: play the level you are up to.
+  const play = el("button", "btn btn--play", "PLAY");
+  play.style.setProperty("--face", g.face);
+  play.style.setProperty("--edge", g.edge);
+  play.onclick = () => launch(g, save.unlockedLevel(g.id));
+  wrap.append(play);
 
-  if (open) sec.append(levelPath(g));
-  return sec;
+  wrap.append(levelPath(g));
+  return wrap;
 }
 
 /**

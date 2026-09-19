@@ -53,19 +53,28 @@ await p.waitForTimeout(400);
 check("the menu loads no game code",
   loaded.length === 0, loaded.length ? loaded.join(",") : "0 game modules");
 
-// 2. every game in the band gets a card, and none of them has a path open
-const cards = await p.$$eval(".game-card", (n) => n.length);
+// 2. the grid is a wall of pictures and nothing else — no progress trail
+//    unfolding under a tile and pushing its neighbours apart
+const cards = await p.$$eval(".tile", (n) => n.length);
 const paths = await p.$$eval(".path", (n) => n.length);
-check("every card is collapsed to start", cards >= 9 && paths === 0,
-  `${cards} cards, ${paths} paths open`);
+const thumbs = await p.$$eval(".tile__art canvas", (n) => n.length);
+check("the grid shows every game as a picture, with no trail attached",
+  cards >= 9 && paths === 0 && thumbs === cards,
+  `${cards} tiles, ${thumbs} thumbnails, ${paths} trails`);
 
-// 3. opening one path fetches exactly that game's content
+// 3. tiles sit two to a row rather than one long column
+const rows = await p.$$eval(".tile", (n) =>
+  new Set(n.map((x) => Math.round(x.getBoundingClientRect().top))).size);
+check("tiles are laid out two to a row", rows <= Math.ceil(cards / 2),
+  `${cards} tiles in ${rows} rows`);
+
+// 4. opening a game fetches exactly that game's content
 loaded = [];
-await p.click(".section:first-of-type .path-toggle");
+await p.click(".tile:first-of-type");
 await p.waitForTimeout(700);
 const nodes = await p.$$eval(".node", (n) => n.length);
 const names = await p.$$eval(".node", (n) => n.map((x) => x.title));
-check("opening a path loads one game's content",
+check("opening a game loads one game's content",
   loaded.length === 1 && nodes > 1,
   `${loaded.length} module(s) → ${nodes} levels`);
 
@@ -75,22 +84,30 @@ check("the path shows the real level names",
   !names.some((t) => /^Board \d/.test(t)),
   names[0] ?? "none");
 
-// 5. only one path is open at a time
-await p.click(".section:nth-of-type(2) .path-toggle");
-await p.waitForTimeout(700);
-const openNow = await p.$$eval(".path", (n) => n.length);
-check("only one path is open at a time", openNow === 1, `${openNow} open`);
+// 5. the game's screen replaces the grid rather than growing inside it
+const gridGone = await p.$$eval(".games-grid", (n) => n.length);
+const hasPlay = await p.$$eval(".btn--play", (n) => n.length);
+check("a game's screen takes over from the grid",
+  gridGone === 0 && hasPlay === 1, `${gridGone} grids, ${hasPlay} play buttons`);
 
-// 6. which one is open survives coming back from a game
+// 6. the device back button returns to the grid
+await p.goBack();
+await p.waitForTimeout(500);
+const backToGrid = await p.$$eval(".games-grid", (n) => n.length);
+check("the back button returns to the games", backToGrid === 1);
+
+// 7. which game was open survives coming back from playing it
+await p.click(".tile:first-of-type");
+await p.waitForTimeout(600);
 await p.reload({ waitUntil:"networkidle" });
 await p.waitForTimeout(600);
-const stillOpen = await p.$$eval(".path", (n) => n.length);
-check("the open path is remembered across a reload", stillOpen === 1, `${stillOpen} open`);
+const stillOpen = await p.$$eval(".btn--play", (n) => n.length);
+check("the open game is remembered across a reload", stillOpen === 1);
 
-// 7. playing is still one tap
-await p.click(".game-card");
+// 8. from there, playing is a single press
+await p.click(".btn--play");
 await p.waitForTimeout(900);
-check("tapping a card goes straight into a game",
+check("the play button goes straight into the game",
   /\/src\/games\/.+\.html/.test(p.url()), p.url().split("/").pop());
 
 if (errs.length) check("no console errors", false, errs.slice(0, 2).join(" | "));
