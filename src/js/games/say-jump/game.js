@@ -34,6 +34,7 @@ import { speech, haptics } from "../../core/native.js";
 import { wordsForLevel, stretched } from "../../core/words.js";
 import { save, starsFromAccuracy } from "../../core/storage.js";
 import { Fx } from "../../core/fx.js";
+import { flightSquash } from "../../core/juice.js";
 
 const GAME_ID = "say-jump";
 
@@ -207,6 +208,7 @@ export class SayJumpScene {
   }
 
   async enter(engine) {
+    this.juice = engine.juice;
     this.engine = engine;
     engine.design = { w: 720, h: 1280 };
     engine.resize();
@@ -540,6 +542,7 @@ export class SayJumpScene {
     this.fx.dust(this.body.cx, this.body.bottom, 0.8, alpha(this.theme.cap.light, 0.9));
     if (correct) {
       this.wordsRight++;
+      this.juice?.hit("light", { freeze: false, punch: 0.4 });
       this.fx.say(this.body.cx, this.body.y - 30, "PERFECT!", TOKENS.bee, 20);
       this.fx.burst(this.body.cx, this.body.cy, [TOKENS.bee, TOKENS.snow, this.theme.accent], 16);
       sfx.correct();
@@ -670,7 +673,7 @@ export class SayJumpScene {
 
   /** A hazard bounced off the star's shield: noise and sparkle, no damage. */
   shrugOff(h) {
-    this.cam.shake = 6;
+    this.juice?.hit("light", { freeze: false });
     this.fx.burst(this.body.cx, this.body.cy, [TOKENS.bee, C.flame.light, TOKENS.snow], 14);
     sfx.coin();
   }
@@ -678,7 +681,10 @@ export class SayJumpScene {
   hit(h) {
     if (this.state === "hurt" || this.state === "done") return;
     this.hearts--;
-    this.cam.shake = 16;
+    // The biggest impact in the game gets the longest freeze: losing a heart
+    // is the moment that most needs to land, and three frames of stopped time
+    // say "that mattered" more loudly than any amount of shake.
+    this.juice?.hit("heavy", { punch: 0.6 });
     sfx.hurt();
     this.fx.burst(this.body.cx, this.body.cy, [TOKENS.cardinal, TOKENS.snow], 12);
     this.setState("hurt");
@@ -830,6 +836,7 @@ export class SayJumpScene {
             this.goalReached = true;
             this.setState("done");
             sfx.fanfare();
+            this.juice?.hit("medium", { punch: 0.9 });
             this.fx.burst(this.body.cx, this.body.cy, [TOKENS.bee, TOKENS.snow, this.theme.accent], 26);
           }
         }
@@ -869,6 +876,11 @@ export class SayJumpScene {
       case "air":
         if (this.body.onGround && this.stateT > 0.12) {
           sfx.land();
+          // Scaled by how hard the landing actually was, so a gentle hop onto
+          // the next perch does not get the same kick as dropping three rows.
+          // Squaring the trauma in Juice is what makes that affordable: the
+          // small ones barely move the camera.
+          this.juice?.hit(this.body.landImpact > 0.45 ? "medium" : "light", { freeze: false });
           this.fx.dust(this.body.cx, this.body.bottom, 0.9, alpha(this.theme.cap.light, 0.9));
           this.body.speedMul = 1;
           this.markSafe();
@@ -903,6 +915,7 @@ export class SayJumpScene {
           this.fx.say(p.x, p.y - 22, "SUPER!", TOKENS.bee, 26);
           sfx.fanfare();
           haptics.win();
+          this.juice?.hit("medium", { punch: 0.8 });
           speak("super star");
           continue;
         }
@@ -917,6 +930,7 @@ export class SayJumpScene {
           this.fx.say(p.x, p.y - 22, "BIG BIRD!", C.grass.light, 26);
           sfx.fanfare();
           haptics.win();
+          this.juice?.hit("medium", { punch: 0.8 });
           speak("big bird");
           continue;
         }
@@ -967,7 +981,6 @@ export class SayJumpScene {
     const minX = -vw * 0.2;
     this.cam.x = approach(this.cam.x, clamp(targetX, minX, Math.max(minX, this.level.width - vw)), 6, dt);
     this.cam.y = approach(this.cam.y, clamp(targetY, minY, maxY), 5, dt);
-    this.cam.shake = Math.max(0, this.cam.shake - dt * 60);
   }
 
   /* ---------------------------------------------------------------- draw */
@@ -975,15 +988,12 @@ export class SayJumpScene {
   draw(ctx, engine) {
     const view = engine.view;
     const vw = view.w / this.zoom, vh = view.h / this.zoom;
-    const shake = this.cam.shake;
-    const sx = shake ? (Math.random() - 0.5) * shake : 0;
-    const sy = shake ? (Math.random() - 0.5) * shake : 0;
 
     drawBackdrop(ctx, view, this.cam, this.theme, this.t);
 
     ctx.save();
     ctx.scale(this.zoom, this.zoom);
-    ctx.translate(-this.cam.x + sx, -this.cam.y + sy);
+    ctx.translate(-this.cam.x, -this.cam.y);
 
     const cull = { x: this.cam.x - 120, w: vw + 240 };
     const vis = (x, w = 0) => x + w > cull.x && x < cull.x + cull.w;
@@ -1308,6 +1318,24 @@ export class SayJumpScene {
       ctx.restore();
     }
 
+    /**
+     * Squash and stretch, anchored at the feet.
+     *
+     * Anchoring matters: scaled about its centre the bird sinks into the
+     * platform as it squashes and floats off it as it stretches. About the
+     * feet, which is where it is actually touching the world, it reads as a
+     * body absorbing a landing.
+     *
+     * The deformation conserves area — a bird squashed to 0.8 tall becomes
+     * 1.25 wide — because that is what happens to a thing made of stuff, and
+     * it is the difference between squash and simply resizing the sprite.
+     */
+    const sq = flightSquash(b.vy, b.landImpact);
+    ctx.save();
+    ctx.translate(b.cx, b.bottom);
+    ctx.scale(sq.sx, sq.sy);
+    ctx.translate(-b.cx, -b.bottom);
+
     drawBird(ctx, b.cx, b.bottom, this.charH * scale, {
       bird: this.birdId,
       state,
@@ -1318,6 +1346,7 @@ export class SayJumpScene {
       airborne,
       blink: birdBlink(this.t, 2),
     });
+    ctx.restore();
   }
 
   /* ----------------------------------------------------------------- HUD */

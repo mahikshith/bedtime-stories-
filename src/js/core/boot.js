@@ -24,6 +24,7 @@ import { Engine } from "./engine.js";
 import { install as installAudio } from "./audio.js";
 import { save } from "./storage.js";
 import { Coach } from "./coach.js";
+import { fadeIn, navigate } from "./nav.js";
 import { boot as bootNative, onBack, haptics } from "./native.js";
 
 /**
@@ -53,6 +54,8 @@ export async function boot({
   results = "../result.html",
 }) {
   installAudio();
+  // Up from ink, so arriving matches leaving.
+  fadeIn();
   // The shell first: lock to portrait, dress the status bar, drop the splash.
   // On the web every one of these is a no-op that resolves immediately.
   await bootNative();
@@ -69,7 +72,7 @@ export async function boot({
     host: document.getElementById("stage"), width, height,
   });
 
-  const exit = () => { location.href = home; };
+  const exit = () => navigate(home);
 
   /**
    * How-to-play, pause, restart and leave — for every game, from one place.
@@ -114,7 +117,7 @@ export async function boot({
     for (const [k, v] of Object.entries(result)) {
       if (v != null) q.set(k, String(v));
     }
-    location.href = `${results}?${q}`;
+    navigate(`${results}?${q}`);
   };
 
   // Registered before the scene so the corner is reliably "back" and nothing

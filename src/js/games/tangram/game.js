@@ -95,6 +95,8 @@ export class TangramScene {
   get showGhosts() { return this.puzzle.tier <= 2; }
 
   async enter(engine) {
+
+    this.juice = engine.juice;
     this.engine = engine;
     engine.design = { w: 720, h: 1280 };
     engine.resize();
@@ -280,6 +282,7 @@ export class TangramScene {
     if (Math.abs(dRot) > SNAP_ROT || !flipOk) {
       p.wrong = 1;
       sfx.wrong();
+      this.juice?.hit("medium");
       this.fx.say(p.sx, p.sy - 40, Math.abs(dRot) > SNAP_ROT ? "turn it!" : "flip it!",
         C.cherry.light, 22);
       this.bounceHome(p);
@@ -293,7 +296,9 @@ export class TangramScene {
     p.pop = 1;
     this.placedCount++;
     sfx.pop();
+    this.juice?.hit("light", { freeze: false, punch: 0.25 });
     sfx.coin();
+    this.juice?.hit("light", { freeze: false });
     const cx = this.origin.x + best.sol.x * this.unit;
     const cy = this.origin.y + best.sol.y * this.unit;
     this.fx.burst(cx, cy, [PIECE_COLOR[p.type].light, "#FFFFFF"], 14);
@@ -304,6 +309,7 @@ export class TangramScene {
       this.state = "won";
       this.stateT = 0;
       sfx.fanfare();
+      this.juice?.hit("medium", { freeze: false, punch: 0.9 });
       speak(`You made the ${this.puzzle.name}!`);
       const bx = this.origin.x + ((this.figBounds.minX + this.figBounds.maxX) / 2) * this.unit;
       const by = this.origin.y + ((this.figBounds.minY + this.figBounds.maxY) / 2) * this.unit;

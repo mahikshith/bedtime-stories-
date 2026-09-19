@@ -56,6 +56,8 @@ export class EchoPopScene {
   }
 
   async enter(engine) {
+
+    this.juice = engine.juice;
     this.engine = engine;
     engine.design = { w: 720, h: 1280 };
     engine.resize();
@@ -95,6 +97,7 @@ export class EchoPopScene {
       this.state = "done";
       this.stateT = 0;
       sfx.fanfare();
+      this.juice?.hit("medium", { freeze: false, punch: 0.9 });
       return;
     }
     this.round++;
@@ -165,7 +168,9 @@ export class EchoPopScene {
       this.found++;
       this.birdMood = "cheer";
       sfx.pop();
+      this.juice?.hit("light", { freeze: false, punch: 0.25 });
       sfx.correct();
+      this.juice?.hit("light", { freeze: false, punch: 0.45 });
       this.fx.burst(b.x, b.y, [C.sun.base, C.grass.light, "#FFFFFF", C.candy.base], 34);
       this.fx.ring(b.x, b.y, "#FFFFFF", 0.6);
       this.fx.say(b.x, b.y - 40, pick(["YES!", "GREAT!", "WOW!", "SUPER!"]), C.sun.light, 44);

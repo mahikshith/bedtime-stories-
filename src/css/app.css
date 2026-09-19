@@ -224,3 +224,38 @@ h1, h2, h3, .display { font-family: var(--font-display); font-weight: 800; lette
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
+
+/* ---------------------------------------------------------- transitions */
+
+/**
+ * The sheet that covers a screen while the next one loads.
+ *
+ * Driven by core/nav.js, which creates the element — every page loads this
+ * stylesheet, so the rule is here rather than in twelve HTML files.
+ *
+ * `--ink` rather than black or white: the point is that the gap between two
+ * screens looks like part of the app instead of like the browser showing
+ * through, and the browser's own flash is white.
+ */
+.wipe {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: var(--ink);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms var(--ease);
+}
+
+.wipe.is-on {
+  opacity: 1;
+  /* Swallows taps during the fade: a child who taps twice must not start two
+     navigations, and the second one always lands on a page that is leaving. */
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Gentler, not deleted — the fade is what hides the flash, and a child who
+     asked for less motion did not ask for more flashing. */
+  .wipe { transition-duration: 90ms; }
+}

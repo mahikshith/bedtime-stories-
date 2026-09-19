@@ -7,6 +7,7 @@
  */
 
 import { save } from "./core/storage.js";
+import { fadeIn, navigate } from "./core/nav.js";
 import { BANDS } from "./core/words.js";
 import { drawBird, BIRDS, BIRD_IDS } from "./art/bird.js";
 import { thumbCanvas } from "./art/thumbs.js";
@@ -485,7 +486,7 @@ function launch(game, level) {
     band: save.state.band || "mid",
     bird: save.state.bird || "chick",
   });
-  location.href = `${game.href}?${q}`;
+  navigate(`${game.href}?${q}`);
 }
 
 // Paint immediately so the app is never a blank screen, then restore any
@@ -493,6 +494,8 @@ function launch(game, level) {
 // back. Waiting on storage before the first frame would mean a cold start
 // shows nothing at all while a disk read happens.
 render();
+// After the first paint, so the fade reveals the hub rather than a blank page.
+fadeIn();
 bootNative().then(() => save.restore()).then((s) => {
   if (s.band || s.wordsLearned?.length) render();
 });

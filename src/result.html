@@ -39,8 +39,10 @@ import { drawBird } from "./js/art/bird.js";
 import { sfx, install, unlock } from "./js/core/audio.js";
 import { save } from "./js/core/storage.js";
 import { C } from "./js/core/palette.js";
+import { fadeIn, navigate } from "./js/core/nav.js";
 
 install();
+fadeIn();
 const q = new URLSearchParams(location.search);
 const game = q.get("game") ?? "say-jump";
 const level = parseInt(q.get("level") ?? "0", 10);
@@ -134,7 +136,10 @@ unlock();
 stars >= 2 ? sfx.fanfare() : sfx.coin();
 [0,1,2].filter(i => i < stars).forEach((i) => setTimeout(() => sfx.star(i), 200 + i * 190));
 
-const go = (href) => { unlock(); sfx.whoosh(); location.href = href; };
+// Through nav so the results screen leaves the same way every other
+// screen does — this is the last page a child sees before the hub, and
+// a white flash here undoes the fanfare that just played.
+const go = (href) => { unlock(); sfx.whoosh(); navigate(href); };
 const band = save.state.band || "mid";
 const bird = save.state.bird || "chick";
 const qs = (lv) => `?level=${lv}&band=${band}&bird=${bird}`;

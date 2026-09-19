@@ -101,6 +101,8 @@ export class TiltMazeScene {
   }
 
   async enter(engine) {
+
+    this.juice = engine.juice;
     this.engine = engine;
     engine.design = { w: 720, h: 1280 };
     engine.resize();
@@ -306,11 +308,13 @@ export class TiltMazeScene {
         want.taken = true;
         this.nextLetter++;
         sfx.coin();
+        this.juice?.hit("light", { freeze: false });
         this.fx.burst(this.origin.x + lx, this.origin.y + ly, [C.sun.base, "#FFFFFF"], 14);
         this.fx.say(this.origin.x + lx, this.origin.y + ly - 18, want.ch, C.sun.light, 30);
         save.addXp(3);
         if (this.nextLetter >= this.board.letters.length) {
           sfx.correct();
+          this.juice?.hit("light", { freeze: false, punch: 0.45 });
           speak(this.board.word);
         }
       }
@@ -344,6 +348,7 @@ export class TiltMazeScene {
         this.state = "won";
         this.stateT = 0;
         sfx.fanfare();
+        this.juice?.hit("medium", { freeze: false, punch: 0.9 });
         this.fx.burst(this.origin.x + ex, this.origin.y + ey, [C.sun.base, C.grass.light, "#FFFFFF"], 30);
         save.learnWord(this.board.word.toLowerCase());
       }
@@ -362,6 +367,7 @@ export class TiltMazeScene {
     this.hearts--;
     this.hurtT = 0.7;
     sfx.hurt();
+    this.juice?.hit("heavy", { punch: 0.6 });
     haptics.thud();
     this.fx.say(x, y - 22, label, C.cherry.light, 26);
     if (this.hearts <= 0) {

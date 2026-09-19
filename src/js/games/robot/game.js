@@ -80,6 +80,8 @@ export class RobotScene {
   }
 
   async enter(engine) {
+
+    this.juice = engine.juice;
     this.engine = engine;
     engine.design = { w: 720, h: 1280 };
     engine.resize();
@@ -203,6 +205,7 @@ export class RobotScene {
       this.program[target.list][target.index] = d.op;
       if (existing && d.from) this.program[d.from.list][d.from.index] = existing;
       sfx.pop();
+      this.juice?.hit("light", { freeze: false, punch: 0.25 });
     } else if (d.from) {
       sfx.whoosh();   // dragged out of the strip: deleted
     }
@@ -223,6 +226,7 @@ export class RobotScene {
       this.fx.say(this.engine.view.x + this.engine.view.w / 2, this.programTop - 30,
         "add some blocks!", C.sun.light, 24);
       sfx.wrong();
+      this.juice?.hit("medium");
       return;
     }
     this.runs++;
@@ -247,6 +251,7 @@ export class RobotScene {
         this.state = "failed";
         this.stateT = 0;
         sfx.wrong();
+        this.juice?.hit("medium");
       }
       return;
     }
@@ -263,10 +268,12 @@ export class RobotScene {
       this.fx.burst(p.x, p.y - 20, [C.sun.light, "#FFFFFF"], 16);
       this.fx.ring(p.x, p.y - 10, C.sun.light, 0.5);
       sfx.coin();
+      this.juice?.hit("light", { freeze: false });
     } else if (res.kind === "blocked") {
       const p = this.iso(before.x, before.y, this.sim.heightAt(before.x, before.y));
       this.fx.say(p.x, p.y - 60, "bump!", C.cherry.light, 22);
       sfx.hurt();
+      this.juice?.hit("heavy", { punch: 0.6 });
     }
     if (this.sim.won && this.state === "run") this.win();
   }
@@ -275,6 +282,7 @@ export class RobotScene {
     this.state = "won";
     this.stateT = 0;
     sfx.fanfare();
+    this.juice?.hit("medium", { freeze: false, punch: 0.9 });
     const p = this.iso(this.sim.x, this.sim.y, this.sim.heightAt(this.sim.x, this.sim.y));
     this.fx.burst(p.x, p.y - 30, [C.sun.base, C.grass.light, "#FFFFFF"], 40);
     speak("You programmed it!");

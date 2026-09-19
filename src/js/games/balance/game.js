@@ -62,6 +62,8 @@ export class BalanceScene {
   }
 
   async enter(engine) {
+
+    this.juice = engine.juice;
     this.engine = engine;
     engine.design = { w: 720, h: 1280 };
     engine.resize();
@@ -167,7 +169,8 @@ export class BalanceScene {
       if (next) {
         this.state = next;
         this.moves++;
-        sfx.pop(); sfx.correct();
+        sfx.pop();
+        this.juice?.hit("light", { freeze: false, punch: 0.25 }); sfx.correct();
         const cx = (d.px + over.x) / 2 + d.s / 2, cy = (d.py + over.y) / 2 + d.s / 2;
         this.fx.burst(cx, cy, [C.grass.light, "#FFFFFF"], 20);
         this.fx.say(cx, cy - 30, "gone!", C.grass.light, 24);
@@ -185,6 +188,7 @@ export class BalanceScene {
         this.state = addBoth(this.state, d.term);
         this.moves++;
         sfx.coin();
+        this.juice?.hit("light", { freeze: false });
         for (const side of ["left", "right"]) {
           this.fx.ring(this.panX[side], this.panTop + this.panH / 2, C.sun.light, 0.5);
         }
@@ -201,6 +205,7 @@ export class BalanceScene {
     this.phase = "won";
     this.phaseT = 0;
     sfx.fanfare();
+    this.juice?.hit("medium", { freeze: false, punch: 0.9 });
     const side = this.state.left.length === 1 ? "left" : "right";
     this.fx.burst(this.panX[side], this.panTop + this.panH / 2,
       [C.sun.base, C.grass.light, "#FFFFFF"], 40);

@@ -83,6 +83,8 @@ export class WordMobScene {
   get size() { return this.flock.length; }
 
   async enter(engine) {
+
+    this.juice = engine.juice;
     this.engine = engine;
     engine.design = { w: 720, h: 1280 };
     engine.resize();
@@ -142,6 +144,7 @@ export class WordMobScene {
       this.state = "done";
       this.stateT = 0;
       sfx.fanfare();
+      this.juice?.hit("medium", { freeze: false, punch: 0.9 });
     }
   }
 
@@ -178,6 +181,7 @@ export class WordMobScene {
           const after = chosen.op === "mul" ? before * chosen.value : before + chosen.value;
           this.setFlock(after);
           sfx.correct();
+          this.juice?.hit("light", { freeze: false, punch: 0.45 });
           this.fx.say(0, -240, `+${Math.round(this.size - before)}`, C.grass.light, 40);
           this.fx.burst(0, -230, [C.grass.light, "#FFFFFF", C.sun.base], 22);
           save.addXp(4);
@@ -188,6 +192,7 @@ export class WordMobScene {
           const after = chosen.op === "mul" ? before * chosen.value : before + chosen.value;
           this.setFlock(Math.max(1, after));
           sfx.wrong();
+          this.juice?.hit("medium");
           this.fx.say(0, -240, `${Math.round(this.size - before)}`, C.cherry.light, 36);
         }
         // Say the right answer out loud either way — a wrong guess is the
@@ -215,6 +220,7 @@ export class WordMobScene {
       e.hit = Math.max(0, e.hit - dt * 5);
       if (e.hp <= 0) {
         sfx.pop();
+        this.juice?.hit("light", { freeze: false, punch: 0.25 });
         this.fx.burst(e.x, e.y, [C.grape.light, C.cherry.light, "#FFFFFF"], e.boss ? 40 : 16);
         this.enemies.splice(i, 1);
         save.addXp(2);
@@ -225,6 +231,7 @@ export class WordMobScene {
         const bite = e.boss ? 25 : 6;
         this.setFlock(Math.max(1, this.size - bite));
         sfx.hurt();
+        this.juice?.hit("heavy", { punch: 0.6 });
         this.fx.burst(e.x, e.y, [C.cherry.base], 12);
         this.enemies.splice(i, 1);
       }
@@ -244,6 +251,7 @@ export class WordMobScene {
         });
       }
       sfx.shoot();
+      this.juice?.hit("light", { freeze: false });
     }
   }
 

@@ -116,6 +116,8 @@ export class TownScene {
   /* ---------------------------------------------------------------- setup */
 
   async enter(engine) {
+
+    this.juice = engine.juice;
     this.engine = engine;
     engine.design = { w: 720, h: 1280 };
     engine.resize();
@@ -291,6 +293,7 @@ export class TownScene {
       this.drag = { thing: item, from: "pocket", ox: 0, oy: 0, px: pt.x, py: pt.y };
       this.nameIt(item);
       sfx.pop();
+      this.juice?.hit("light", { freeze: false, punch: 0.25 });
       return;
     }
 
@@ -315,6 +318,7 @@ export class TownScene {
     if (bird) {
       bird.mood = "cheer"; bird.moodT = 1.4;
       sfx.coin();
+      this.juice?.hit("light", { freeze: false });
       speak("hello!");
       return;
     }
@@ -370,8 +374,10 @@ export class TownScene {
       this.flash(result.phrase);
       speak(result.phrase);
       sfx.correct();
+      this.juice?.hit("light", { freeze: false, punch: 0.45 });
     } else if (result.fired) {
       sfx.pop();
+      this.juice?.hit("light", { freeze: false, punch: 0.25 });
     }
     // settle onto a surface unless the reaction parked it somewhere
     if (this.things.includes(t) && !t.state?.floating) {
@@ -379,6 +385,7 @@ export class TownScene {
       this.settleRow(t.y, t);
     }
     sfx.land();
+    this.juice?.hit("light", { freeze: false });
     this.persist();
   }
 
@@ -430,6 +437,7 @@ export class TownScene {
     this.fx.burst(p.x, p.y, [C.sea.light, "#FFFFFF"], 18);
     this.fx.ring(p.x, p.y, C.sea.light, 0.45);
     sfx.pop();
+    this.juice?.hit("light", { freeze: false, punch: 0.25 });
   }
   playNote(freq) { sfx.jump(clamp((freq - 180) / 800, 0, 1)); }
 
@@ -478,6 +486,7 @@ export class TownScene {
     const p = this.pos(item);
     this.fx.burst(p.x, p.y, [C.sun.base, C.candy.base, "#FFFFFF", C.jade.light], 44);
     sfx.fanfare();
+    this.juice?.hit("medium", { freeze: false, punch: 0.9 });
     this.flash(`a ${THINGS[thingId].name}!`);
     speak(`A present! A ${THINGS[thingId].name}!`);
     save.learnWord(THINGS[thingId].name);

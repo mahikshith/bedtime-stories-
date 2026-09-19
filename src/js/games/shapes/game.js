@@ -81,6 +81,8 @@ export class ShapesScene {
   }
 
   async enter(engine) {
+
+    this.juice = engine.juice;
     this.engine = engine;
     engine.design = { w: 720, h: 1280 };
     engine.resize();
@@ -198,7 +200,8 @@ export class ShapesScene {
       best.glow = 1;
       this.placed++;
       this.birdMood = "cheer";
-      sfx.pop(); sfx.correct();
+      sfx.pop();
+      this.juice?.hit("light", { freeze: false, punch: 0.25 }); sfx.correct();
       this.fx.burst(best.x, best.y, [SHAPES[t.key].color.light, "#FFFFFF", C.sun.base], 22);
       this.fx.ring(best.x, best.y, "#FFFFFF", 0.55);
       save.addXp(2);
@@ -208,6 +211,7 @@ export class ShapesScene {
         this.state = "won";
         this.stateT = 0;
         sfx.fanfare();
+        this.juice?.hit("medium", { freeze: false, punch: 0.9 });
       }
       this.resize(this.engine.view);
     } else {

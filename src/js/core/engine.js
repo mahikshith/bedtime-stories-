@@ -9,6 +9,8 @@
  * the design size.
  */
 
+import { Juice } from "./juice.js";
+
 const STEP = 1 / 60; // physics tick; render interpolates between ticks
 const MAX_FRAME = 0.25; // clamp after a tab-switch so nothing tunnels
 
@@ -44,6 +46,14 @@ export class Engine {
      * come back to a bird that drowned while they read it.
      */
     this.overlay = null;
+    /**
+     * Hit-stop, screen shake and the zoom punch, for every game at once.
+     *
+     * Driven here for the same reason the overlay is: Say & Jump had a
+     * hand-rolled camera shake and the other nine games had none, so the
+     * flagship reacted to impacts and everything else sat perfectly still.
+     */
+    this.juice = new Juice();
     this.running = false;
     this._pd = this._pm = this._pu = null;
     this.time = 0; // seconds of simulated time
@@ -170,7 +180,11 @@ export class Engine {
         // The overlay keeps animating while it holds the game still, because
         // a frozen hand demonstrating a gesture teaches nothing.
         this.overlay?.update?.(STEP, this);
-        if (!this.overlay?.blocking) this.scene?.update?.(STEP, this);
+        // Hit-stop returns 0 while frozen, and a scene that is not stepped is
+        // a world that flinched. The effects themselves keep advancing, so
+        // the screen is shaking hardest during the frames it is stopped.
+        const step = this.juice.update(STEP);
+        if (step > 0 && !this.overlay?.blocking) this.scene?.update?.(step, this);
         this._acc -= STEP;
       }
       this.render(this._acc / STEP);
@@ -189,7 +203,13 @@ export class Engine {
     ctx.save();
     ctx.scale(this.scale, this.scale);
     ctx.translate(-this.view.x, -this.view.y);
+    // Shake wraps the SCENE only. An overlay that shakes with the world is a
+    // pause menu sliding around while the game behind it is hit, which reads
+    // as a bug rather than as impact.
+    ctx.save();
+    this.juice.apply(ctx, this.view);
     this.scene?.draw?.(ctx, this, alpha);
+    ctx.restore();
     this.overlay?.draw?.(ctx, this, alpha);
     ctx.restore();
   }

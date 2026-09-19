@@ -70,6 +70,8 @@ export class SlideScene {
   }
 
   async enter(engine) {
+
+    this.juice = engine.juice;
     this.engine = engine;
     engine.design = { w: 720, h: 1280 };
     engine.resize();
@@ -151,6 +153,7 @@ export class SlideScene {
     this.state = "won";
     this.stateT = 0;
     sfx.fanfare();
+    this.juice?.hit("medium", { freeze: false, punch: 0.9 });
     const cx = this.origin.x + (big.x + 1) * this.cell;
     const cy = this.origin.y + (big.y + 1) * this.cell;
     this.fx.burst(cx, cy, [C.sun.base, C.cherry.light, "#FFFFFF"], 40);
