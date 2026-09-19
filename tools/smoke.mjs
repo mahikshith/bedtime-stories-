@@ -40,6 +40,9 @@ const PAGES = [
   { name: "slide L6",    url: "/src/games/slide.html?level=5" },
   { name: "shapes L1",   url: "/src/games/shapes.html?level=0" },
   { name: "shapes L6",   url: "/src/games/shapes.html?level=5" },
+  { name: "robot L1",    url: "/src/games/robot.html?level=0" },
+  { name: "robot L7",    url: "/src/games/robot.html?level=6" },
+  { name: "robot L10",   url: "/src/games/robot.html?level=9" },
   { name: "result",      url: "/src/result.html?game=say-jump&level=0&stars=2&words=4&asked=5" },
 ];
 

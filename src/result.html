@@ -57,6 +57,7 @@ const NEXT = {
   "tangram": "src/games/tangram.html",
   "slide": "src/games/slide.html",
   "shapes": "src/games/shapes.html",
+  "robot": "src/games/robot.html",
 };
 
 /** Per-game result tiles, so each game reports what it actually measured. */
@@ -81,6 +82,8 @@ function tiles() {
       return [["MOVES", n("moves") ?? "0"], ["BEST", n("par") ?? "-"]];
     case "shapes":
       return [["SORTED", `${n("placed") ?? 0}/${n("total") ?? 0}`]];
+    case "robot":
+      return [["BLOCKS", n("blocks") ?? "0"], ["SHORTEST", n("best") ?? "-"]];
     default:
       return [];
   }
