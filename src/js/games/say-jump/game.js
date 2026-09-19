@@ -77,6 +77,23 @@ export class SayJumpScene {
     this.heardWrong = null;
     this.wrongT = 0;
     this.listenStart = 0;
+
+    /**
+     * How far the "say it" meter has filled while the recogniser listens.
+     *
+     * This exists because handing the microphone to a native recogniser takes
+     * it away from the loudness meter: on Android the two cannot share it, so
+     * `voice.speaking` never went true, `currentCharge()` returned zero, and
+     * the bar on the left stopped moving and the landing arc stopped being
+     * drawn. Worse, the jump was launched from a recomputed constant, so every
+     * jump went exactly the same distance no matter what the child did.
+     *
+     * So while the recogniser has the microphone, LENGTH is the input. The
+     * meter fills as the child keeps saying the word, the arc grows with it,
+     * and the value the meter is showing at the moment the word is recognised
+     * is the value the jump uses — what you see is what you get.
+     */
+    this.listenCharge = 0;
     this.misses = 0;        // consecutive failed attempts on this word
 
     /**
@@ -209,6 +226,12 @@ export class SayJumpScene {
     window.removeEventListener("keyup", this._ku);
   }
 
+  /** Change state without the side effects `setState` carries. */
+  setStateQuiet(s) {
+    this.state = s;
+    this.stateT = 0;
+  }
+
   setState(s) {
     this.state = s;
     this.stateT = 0;
@@ -270,11 +293,30 @@ export class SayJumpScene {
 
   /* ------------------------------------------------------------- action */
 
-  launch(charge, correct) {
+  /**
+   * The reach a jump actually gets.
+   *
+   * Saying the word right is the whole skill this game teaches, so it is also
+   * the thing that guarantees the landing: a child who pronounces "castle"
+   * clearly does not drown for having said it quietly. Before this, a short
+   * or soft "castle" charged to 0.34 against a gap that needed 0.46, so doing
+   * the hard part correctly still ended in the water — which taught exactly
+   * the wrong lesson.
+   *
+   * Charge is not thereby pointless: it buys distance BEYOND the gap, which
+   * is what carries the bird onto the high ledges and the stars. Speaking up
+   * still earns something, it just no longer decides whether you survive.
+   */
+  effectiveCharge(charge, correct) {
+    if (charge <= 0) return 0;   // silence is silence; the meter must read empty
     const c = clamp(charge, 0.06, 1);
-    // Saying the right word adds real reach — the reward has to be mechanical,
-    // not just a sticker, or children stop bothering to pronounce it.
-    const eff = clamp(c * (correct ? 1.12 : 1), 0, 1);
+    if (!correct) return c;
+    const floor = clamp((this.needCharge ?? 0.4) + 0.06, 0, 1);
+    return clamp(Math.max(c * 1.12, floor), 0, 1);
+  }
+
+  launch(charge, correct) {
+    const eff = this.effectiveCharge(charge, correct);
     this.world.jump(this.body, apexFor(eff), distFor(eff), 1);
     this.body.speedMul = 1.6;
     sfx.jump(eff);
@@ -347,17 +389,17 @@ export class SayJumpScene {
     if (!want || this.word?.word !== want) return;          // moved on since
     if (this.state !== "prompt" && this.state !== "charge") return;
 
-    const spokenMs = performance.now() - this.listenStart;
     const best = heard.map((h) => matchWord(h, want)).sort((a, b) => b.score - a.score)[0];
+    // Whatever the meter was showing is what the jump gets. No floor here —
+    // `launch` guarantees the gap for a correct word, so a floor added on top
+    // would only make every jump overshoot by the same amount.
+    const power = clamp(this.listenCharge, 0, 1);
 
     if (best?.match) {
       this.heardWrong = null;
       this.heard = best.heard;
       save.learnWord(want);
-      // Longer utterance, longer jump. Clamped so a two-year-old who says it
-      // once, quickly and correctly still clears the gap.
-      const held = clamp((spokenMs - 380) / 1200, 0, 1);
-      this.launch(0.42 + held * 0.58, true);
+      this.launch(power, true);
       return;
     }
 
@@ -453,6 +495,15 @@ export class SayJumpScene {
     this.t += dt;
     this.speakT = Math.max(0, this.speakT - dt);
     this.wrongT = Math.max(0, this.wrongT - dt);
+
+    // The meter fills while the recogniser is listening. Roughly 1.7s to the
+    // top, which is about as long as a five-year-old will hold a word.
+    if (this.listening) {
+      this.listenCharge = clamp(this.listenCharge + dt * 0.58, 0, 1);
+      if (this.state === "prompt" && this.listenCharge > 0.04) this.setStateQuiet("charge");
+    } else {
+      this.listenCharge = 0;
+    }
     if (this.shield > 0) {
       this.shield -= dt;
       if (this.shield <= 0) { this.shield = 0; speak("all gone"); }
@@ -750,7 +801,13 @@ export class SayJumpScene {
    * "let go now", red means "keep going".
    */
   drawArc(ctx) {
-    const c = this.currentCharge();
+    // Preview the jump the child is ACTUALLY about to make, floor and all.
+    // Showing a raw-charge arc that falls short of a jump the game then
+    // guarantees would be a lie in the one place a child is looking for the
+    // truth. While they are speaking we assume they will get the word right,
+    // because that is what the arc is reassuring them about.
+    const correct = this.holding ? this.holdCharge > 0.3 : true;
+    const c = this.effectiveCharge(this.currentCharge(), correct);
     const { points, landing } = this.world.predictArc(this.body, apexFor(c), distFor(c), 1, { steps: 90 });
     const good = !!landing;
     const col = good ? TOKENS.featherGreen : TOKENS.cardinal;
@@ -775,9 +832,12 @@ export class SayJumpScene {
 
   currentCharge() {
     if (this.holding) return this.holdCharge;
-    if (this.voiceReady && this.voice.speaking) {
+    // Loudness wins when the meter really has the microphone — it is the
+    // better signal, and on desktop both can run at once.
+    if (this.voiceReady && this.voice.live && this.voice.speaking) {
       return clamp(Math.max(this.voice.charge, this.voice.peak * 0.55), 0, 1);
     }
+    if (this.listening) return this.listenCharge;
     return 0;
   }
 
@@ -884,8 +944,9 @@ export class SayJumpScene {
     ctx.restore();
     fillRound(ctx, x + 3, y + 3, w - 6, h - 6, r - 3, "#161F23");
 
-    // amber column
-    const c = this.currentCharge();
+    // amber column — the REAL jump power, matching the arc on screen, so the
+    // column clearing the red line means the same thing the green arc does.
+    const c = this.effectiveCharge(this.currentCharge(), this.holding ? this.holdCharge > 0.3 : true);
     const live = this.voiceReady ? Math.max(c, this.voice.level * 0.5) : c;
     const fh = (h - 12) * clamp(live, 0, 1);
     if (fh > 5) {

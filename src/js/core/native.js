@@ -87,13 +87,18 @@ export async function ready() {
     try {
       await sb.setStyle({ style: "DARK" });
       await sb.setBackgroundColor({ color: "#101A1F" });
-      // NOT overlaid. Every game draws its "leave the level" target in the
-      // top-left corner of its own canvas, and with the web view running under
-      // the system bar that target sat directly beneath the clock — taps went
-      // to Android, not to the game, so back simply did not work. Letting the
-      // status bar have its own strip costs a few pixels and makes the one
-      // control a child is told about reachable.
-      await sb.setOverlaysWebView({ overlay: false });
+      // Overlaid ON PURPOSE, and then inset again in CSS.
+      //
+      // Asking the plugin not to overlay was the obvious fix and it did not
+      // hold: the HUD was still under the clock on a real phone, and because
+      // the web view was no longer full-bleed, env(safe-area-inset-top)
+      // reported zero — so CSS could not correct it either. Nothing could see
+      // the problem.
+      //
+      // Full-bleed is the deterministic choice. The insets are always real,
+      // `.stage` subtracts them, and the strip behind the system bar is
+      // painted by the page instead of being a black letterbox.
+      await sb.setOverlaysWebView({ overlay: true });
     } catch {}
   }
   const sp = plugin("SplashScreen");

@@ -178,7 +178,28 @@ h1, h2, h3, .display { font-family: var(--font-display); font-weight: 800; lette
 
 /* ---------------------------------------------------------------- stage */
 /* Full-bleed canvas host used by every game. */
-.stage { position: fixed; inset: 0; display: block; }
+/*
+ * The play surface stops where the system UI starts.
+ *
+ * Every game draws its own HUD — hearts, the progress bar, the close button —
+ * along the top of its canvas, and with the canvas running edge to edge those
+ * controls sat underneath the Android clock and signal icons. The close button
+ * was not merely ugly there, it was UNREACHABLE: taps in that strip go to the
+ * system, not to the app.
+ *
+ * Insetting the stage rather than teaching eleven games about safe areas fixes
+ * all of them at once and keeps the design-space coordinates they are authored
+ * in honest — y = 0 is now genuinely the top of what the child can touch. The
+ * strip behind the system bar is painted by `body`, so it reads as part of the
+ * app rather than as a letterbox.
+ */
+.stage {
+  position: fixed;
+  inset: 0;
+  top: var(--safe-top);
+  bottom: var(--safe-bottom);
+  display: block;
+}
 .stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
 /* Layer that floats HUD above the canvas. */
