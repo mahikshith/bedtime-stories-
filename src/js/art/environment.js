@@ -290,9 +290,32 @@ function drawFire(ctx, hz, T, t) {
   const cx = hz.x + hz.w / 2;
   const base = hz.y + hz.h;
 
-  // The vent, always visible.
-  fillRound(ctx, cx - hz.w * 0.62, base - 12, hz.w * 1.24, 18, 6, "#4A3325");
-  fillRound(ctx, cx - hz.w * 0.5, base - 14, hz.w, 8, 4, "#2B1C12");
+  // The vent, always visible — and always visibly HOT.
+  //
+  // It used to be a flat dark lip that read as a stone at rest, which meant a
+  // child only learned it was a fire vent by being set on fire by it. A pilot
+  // light burning the whole time says "this thing does fire" before it ever
+  // does any, and that is the difference between a hazard and a trap.
+  const vw = hz.w * 1.5;
+  fillRound(ctx, cx - vw / 2, base - 20, vw, 26, 9, "#4A3325");
+  fillRound(ctx, cx - vw * 0.42, base - 24, vw * 0.84, 12, 6, "#2B1C12");
+  // three rivets, so it reads as built rather than grown
+  for (let i = -1; i <= 1; i++) circle(ctx, cx + i * vw * 0.3, base - 8, 3, "#6B4A34");
+
+  if (hz.heat <= 0.02) {
+    ctx.save();
+    const beat = 0.35 + Math.sin(t * (hz.warn ? 18 : 4)) * (hz.warn ? 0.3 : 0.16);
+    ctx.globalAlpha = beat;
+    const g = ctx.createRadialGradient(cx, base - 22, 1, cx, base - 22, hz.w * 0.85);
+    g.addColorStop(0, hz.warn ? "#FFD166" : "#FF8A2B");
+    g.addColorStop(1, "rgba(255,138,43,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(cx - hz.w, base - 22 - hz.w, hz.w * 2, hz.w * 2);
+    ctx.globalAlpha = Math.min(1, beat + 0.25);
+    circle(ctx, cx, base - 22, hz.warn ? 11 : 6, hz.warn ? "#FFD166" : "#FF8A2B");
+    ctx.restore();
+    return;
+  }
 
   if (hz.warn && hz.heat <= 0.02) {
     ctx.save();

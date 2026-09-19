@@ -48,6 +48,16 @@ TILE = 64
 MAX_GAP = 7
 MAX_RISE = 3
 
+# A gap with a moving platform in it is allowed to be WIDER than any jump,
+# because that is the only thing that makes the mover matter. Reported from
+# the device: "since we have a moving platform, the user must and should land
+# on the platform in order to cross it". At 10 tiles the gap is 640px against
+# a 560px best jump, so there is no shout that crosses it — and each hop on
+# and off the mover is a single tile, so the skill being asked for is timing,
+# not power.
+BRIDGED_GAP = 10
+MOVER_SPAN = 3          # 192px of platform: the bird is 50px, a 64px slab was a tightrope
+
 # Platforms are NARROW on purpose. In the reference art the bird is nearly as
 # wide as the perch it stands on, which is what makes each landing feel like a
 # landing. Wide platforms turn the same jump into stepping between two floors
@@ -67,15 +77,16 @@ class Level:
             if 0 <= col + i < self.cols and 0 <= row < ROWS:
                 self.g[row][col + i] = ch
 
-    def pillars(self, specs):
+    def pillars(self, specs, bridged=()):
         """specs: list of (col, width, top_row). Pillars run down to the floor."""
         prev = None
-        for (col, width, top) in specs:
+        for i, (col, width, top) in enumerate(specs):
             assert TOP_MIN <= top <= TOP_MAX, f"top row {top} outside {TOP_MIN}..{TOP_MAX}"
             assert MIN_W <= width <= MAX_W, f"platform width {width} outside {MIN_W}..{MAX_W}"
             if prev is not None:
                 gap = col - (prev[0] + prev[1])
-                assert gap <= MAX_GAP, f"gap {gap} tiles ({gap*TILE}px) > {MAX_GAP}"
+                limit = BRIDGED_GAP if (i - 1) in bridged else MAX_GAP
+                assert gap <= limit, f"gap {gap} tiles ({gap*TILE}px) > {limit}"
                 rise = prev[2] - top
                 assert rise <= MAX_RISE, f"step up of {rise} rows > {MAX_RISE}"
             for r in range(top, ROWS):
@@ -106,26 +117,97 @@ class Level:
 def build():
     out = {}
 
-    def level(cols, specs, *, spawn_i=0, goal_i=-1, stars=(), props=(), extras=()):
+    def widen_for_bridges(specs, movers):
+        """
+        Open each bridged gap to BRIDGED_GAP tiles, sliding everything to its
+        right along. Done here rather than by hand because widening one gap
+        moves every pillar after it, and renumbering a level by hand is how a
+        gap nobody can jump gets into the game.
+        """
+        out, shift = [], 0
+        for i, (c, w, t) in enumerate(specs):
+            out.append((c + shift, w, t))
+            if i in movers and i + 1 < len(specs):
+                gap = specs[i + 1][0] - (c + w)
+                shift += max(0, BRIDGED_GAP - gap)
+        return out, shift
+
+    def shift_at(specs, movers, col):
+        """
+        How far a thing at absolute column `col` has to move right.
+
+        `extras` are written in absolute columns, and widening a gap slides
+        every pillar after it along — so without this, opening one gap leaves
+        every spring, vent, cannon and one-way ledge downstream of it standing
+        in open air next to the perch it used to belong to. That is the same
+        mistake the sky offset made vertically, and it is silent in exactly
+        the same way.
+        """
+        sh = 0
+        for i in sorted(movers):
+            if i + 1 >= len(specs):
+                continue
+            gap_start = specs[i][0] + specs[i][1]
+            if gap_start < col:
+                sh += max(0, BRIDGED_GAP - (specs[i + 1][0] - gap_start))
+        return sh
+
+    def level(cols, specs, *, spawn_i=0, goal_i=-1, stars=(), props=(), extras=(), movers=()):
         # Shift ONCE, here, before anything reads a row number. Doing it inside
         # `pillars()` moved the pillars and left every gate, star, spawn and
         # goal at its old height — four rows of clear air above a perch that
         # was no longer there.
         specs = [(col, width, top + SKY) for (col, width, top) in specs]
-        L = Level(cols)
-        L.pillars(specs)
+        movers = set(movers)
+        unwidened = specs
+        specs, grew = widen_for_bridges(specs, movers)
+        L = Level(cols + grew)
+        L.pillars(specs, bridged=movers)
+        # Movers go in BEFORE the flood, so the water fills around them.
+        for i in sorted(movers):
+            c0, w0, t0 = specs[i]
+            c1, _, t1 = specs[i + 1]
+            gap = c1 - (c0 + w0)
+            # Travel chosen so the mover's far edge finishes FLUSH with the
+            # far lip. A tile of daylight there would mean a second jump to
+            # get off — and this game gives one jump per word, so the bird
+            # would ride to the end and then walk into the sea. One tile of
+            # daylight at the NEAR end is deliberate: that hop is the jump the
+            # word buys.
+            travel = max(1, gap - MOVER_SPAN - 1)
+            # Level with the DESTINATION lip, not the one you leave from.
+            #
+            # You board a mover with a jump, which copes with a step up or
+            # down; you leave it by walking, which does not. Levelling it with
+            # the near lip put the far lip a tile above the deck, so the bird
+            # rode to the end, walked into the side of the pillar, and was
+            # carried back — for ever, at three hearts intact, looking for all
+            # the world like a level that simply could not be finished.
+            L.put(t1, c0 + w0 + 1, "M" * MOVER_SPAN + "-" * travel)
         L.flood()
-        # a word gate on the right lip of every perch except the last
-        for i, (c, w, t) in enumerate(specs[:-1]):
-            L.put(t - 1, c + w - 1, "W")
         for i in stars:
             c, w, t = specs[i]
             L.put(max(0, t - 3), c + w // 2, "o")
+        # Extras carry ABSOLUTE rows, so they need the same shift the pillars
+        # got. Without it the sky offset moved the ground out from under every
+        # mover, spring, fire vent, cannon and power star in the game and left
+        # them hanging four rows up — reachable by nothing, and invisible to
+        # the level checker, which only ever verified gaps and word gates.
         for (row, col, txt) in extras:
-            L.put(row, col, txt)
+            L.put(row + SKY, col + shift_at(unwidened, movers, col), txt)
         for (i, ch) in props:
             c, w, t = specs[i]
             L.put(t - 1, c, ch)
+        # A word gate on the right lip of every perch except the last, placed
+        # AFTER the decorations for the same reason spawn and goal are.
+        #
+        # They used to go first, and a crumbling ledge written over the top of
+        # one simply deleted it: three perches in Crystal Caves had no gate, so
+        # the bird walked past them looking for the next one and off the edge
+        # into the water. It reads as the level being broken, which it was.
+        for i, (c, w, t) in enumerate(specs[:-1]):
+            L.put(t - 1, c + w - 1, "W")
+
         # Spawn and goal are written LAST so a decoration can never sit on top
         # of them — a level with its spawn eaten by a tree silently starts the
         # bird in the wrong place.
@@ -159,29 +241,38 @@ def build():
     out["M1_2"] = level(56, [
         (0, 4, 7), (8, 3, 6), (15, 3, 5), (22, 3, 6), (29, 3, 5), (36, 3, 6), (43, 5, 7),
     ], stars=(1, 2, 3, 4, 5), props=((0, "T"), (2, "f"), (4, "b")),
-       extras=[(4, 11, "M--"), (4, 32, "M--")])
+       movers=(1, 4))
 
     # Tiny perches, and the first star that makes you untouchable.
     out["M1_3"] = level(58, [
         (0, 4, 7), (8, 2, 6), (15, 2, 5), (22, 2, 6), (29, 2, 5), (36, 2, 6), (43, 2, 5), (50, 5, 7),
     ], stars=(1, 3, 5), props=((0, "b"), (3, "r"), (5, "f")),
-       extras=[(4, 18, "M--"), (3, 30, "P")])
+       movers=(2,), extras=[(3, 30, "P")])
 
     # ---------------------------------------------------------- world 2 --
-    # Crystal Caves: perches crumble under you.
+    # Crystal Caves: perches crumble under you — and the first fire vent.
+    #
+    # Fire used to wait until M2_4 and cannons until M3_4, which is correct
+    # pacing on paper and came back from a real phone as "there is no fire,
+    # there is no bullets": nobody had played that far. A hazard nobody meets
+    # is not gentle difficulty, it is content that does not exist. World 1
+    # still cannot hurt anyone — that promise is worth keeping — but world 2
+    # now opens with the thing it is named for.
     out["M2_1"] = level(58, [
         (0, 4, 7), (8, 3, 6), (15, 3, 6), (22, 3, 6), (29, 3, 6), (36, 3, 6), (43, 5, 7),
-    ], stars=(1, 2, 4), extras=[(5, 8, "%%%"), (5, 22, "%%%"), (5, 36, "%%%")])
+    ], stars=(1, 2, 4), extras=[(5, 8, "%%%"), (5, 22, "%%%"), (5, 36, "%%%"),
+                                (7, 12, "F"), (6, 12, "!")])
 
     # Springs throw you up to the high perches.
     out["M2_2"] = level(58, [
         (0, 4, 7), (8, 3, 5), (16, 3, 7), (24, 3, 4), (32, 3, 6), (40, 3, 5), (47, 5, 7),
-    ], stars=(1, 3, 5), extras=[(6, 2, "B"), (6, 17, "B"), (5, 33, "B"), (3, 26, "Q")])
+    ], stars=(1, 3, 5), extras=[(6, 2, "B"), (6, 17, "B"), (5, 33, "B"), (3, 26, "Q"),
+                                (5, 12, "C----"), (7, 21, "F"), (6, 21, "!")])
 
     # Moving perches over the deep.
     out["M2_3"] = level(60, [
         (0, 4, 7), (9, 3, 6), (17, 3, 6), (25, 3, 6), (33, 3, 6), (41, 3, 6), (48, 5, 7),
-    ], stars=(2, 4), extras=[(4, 6, "M--"), (4, 22, "M--"), (4, 38, "M--"), (3, 34, "H")])
+    ], stars=(2, 4), movers=(0, 2, 4), extras=[(3, 34, "H")])
 
     # ---------------------------------------------------------- world 3 --
     # Cloud Kingdom: soft cloud ledges you hop up through.
@@ -197,7 +288,7 @@ def build():
     # Everything at once.
     out["M3_3"] = level(62, [
         (0, 4, 7), (8, 2, 6), (15, 2, 5), (22, 2, 6), (29, 2, 5), (36, 2, 6), (43, 2, 5), (50, 5, 7),
-    ], stars=(1, 3, 5), extras=[(4, 12, "M--"), (4, 33, "M--"), (4, 26, "==="), (6, 2, "B"), (3, 40, "H")])
+    ], stars=(1, 3, 5), movers=(1, 4), extras=[(4, 26, "==="), (6, 2, "B"), (3, 40, "H")])
 
     # ---------------------------------------------------------- world 4 --
     # Sugar Peaks: ice perches — you keep sliding after you land.
@@ -230,7 +321,7 @@ def build():
     out["M4_3"] = level(70, [
         (0, 4, 7), (8, 2, 6), (15, 2, 5), (22, 3, 6), (30, 2, 5), (37, 2, 6),
         (44, 3, 5), (52, 2, 6), (59, 5, 7),
-    ], stars=(1, 3, 5, 7), extras=[(4, 12, "M--"), (4, 41, "M--"), (4, 27, "==="),
+    ], stars=(1, 3, 5, 7), movers=(1, 5), extras=[(4, 27, "==="),
                                    (4, 34, "V"), (5, 34, "|"),
                                    (5, 15, "%%"), (5, 30, "%%"),
                                    (6, 2, "B"), (6, 55, "B"), (3, 20, "H"), (3, 52, "Q")])
@@ -240,9 +331,8 @@ def build():
     out["M4_4"] = level(74, [
         (0, 4, 7), (8, 3, 6), (16, 3, 5), (24, 3, 6), (32, 2, 5), (39, 3, 6),
         (47, 2, 5), (54, 3, 6), (63, 5, 7),
-    ], stars=(1, 3, 5, 7), extras=[(7, 12, "F"), (6, 12, "!"),
+    ], stars=(1, 3, 5, 7), movers=(3,), extras=[(7, 12, "F"), (6, 12, "!"),
                                    (5, 20, "C-----"),
-                                   (4, 28, "M--"),
                                    (7, 36, "F"), (6, 36, "!"),
                                    (4, 43, "X--"),
                                    (5, 51, "C-----"),

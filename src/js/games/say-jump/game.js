@@ -30,7 +30,7 @@ import { C, TOKENS, PAIRS, alpha, mix } from "../../core/palette.js";
 import { roundRect, fillRound, circle, text, outlinedText, star as starShape } from "../../core/draw.js";
 import { VoiceInput, matchWord } from "../../core/voice.js";
 import { sfx, speak, stopSpeaking, startMusic, stopMusic } from "../../core/audio.js";
-import { speech } from "../../core/native.js";
+import { speech, haptics } from "../../core/native.js";
 import { wordsForLevel, stretched } from "../../core/words.js";
 import { save, starsFromAccuracy } from "../../core/storage.js";
 import { Fx } from "../../core/fx.js";
@@ -280,13 +280,76 @@ export class SayJumpScene {
     this.needCharge = chargeForDist(this.gapAhead() + 70);
   }
 
+  /** The nearest landable surface in front of the bird, mover or not. */
+  nextSurface() {
+    const fromX = this.body.x + this.body.w;
+    let best = null, bestD = Infinity;
+    for (const p of this.world.platforms) {
+      if (p.gone || p === this.body.ground) continue;
+      if (p.x + p.w < fromX) continue;
+      if (p.y < this.body.bottom - TILE * 4) continue;
+      const d = p.x - fromX;
+      if (d < bestD) { bestD = d; best = p; }
+    }
+    return best;
+  }
+
+  /**
+   * True while the only way on is a mover that has not come back yet.
+   *
+   * The bird waits at the lip instead, which is what a person does at a bus
+   * stop and reads as patience rather than as the game being stuck.
+   */
+  waitingForRide() {
+    const next = this.nextSurface();
+    return next?.kind === KIND.MOVING && this.gapAhead() > TILE * 2.2;
+  }
+
+  /** The nearest surface ahead that does not move. */
+  nextSolid() {
+    const fromX = this.body.x + this.body.w;
+    let best = null, bestD = Infinity;
+    for (const p of this.world.platforms) {
+      if (p.gone || p.kind === KIND.MOVING || p === this.body.ground) continue;
+      if (p.x + p.w < fromX) continue;
+      if (p.y < this.body.bottom - TILE * 4) continue;   // ignore high ledges
+      const d = p.x - fromX;
+      if (d < bestD) { bestD = d; best = p; }
+    }
+    return best;
+  }
+
+  /**
+   * Has the platform being ridden reached the far side?
+   *
+   * Measured between the MOVER'S far edge and the lip it delivers to, not
+   * from the bird. Measuring from the bird meant a bird standing in the
+   * middle of a three-tile platform read as "still a tile short" at the exact
+   * moment the platform was flush against the ledge — so it rode back and
+   * forth for ever, correctly, and never got off.
+   */
+  rideArrived() {
+    const m = this.body.ground;
+    const land = this.nextSolid();
+    if (!m || !land) return true;         // nothing to wait for
+    return land.x - (m.x + m.w) <= 8;
+  }
+
   /** Distance from the character to the far side of the gap in front. */
   gapAhead() {
     const fromX = this.body.x + this.body.w;
     let best = Infinity;
     for (const p of this.world.platforms) {
       if (p.gone) continue;
-      const px = p.kind === KIND.MOVING ? Math.min(p.x, p.ox) : p.x;
+      // A mover's CURRENT position, not the leftmost point of its travel.
+      //
+      // Being conservative was right when a mover was a bonus perch beside a
+      // gap you could already jump. Now a mover IS the route across a gap
+      // wider than any jump, and answering "how far is the next surface" with
+      // where that surface will be at the far end of its travel told the
+      // meter to ask for almost no power at all — so the bird hopped off the
+      // lip into open water while the platform was still coming.
+      const px = p.x;
       if (px + 4 < fromX) continue;
       if (p.y < this.body.bottom - TILE * 4) continue; // ignore high ledges
       best = Math.min(best, px - fromX);
@@ -337,7 +400,33 @@ export class SayJumpScene {
     const c = clamp(charge * big, 0.06, 1);
     if (!correct) return c;
     const floor = clamp((this.needCharge ?? 0.4) + 0.06, 0, 1);
-    return clamp(Math.max(c * 1.12, floor), 0, 1);
+    let eff = Math.max(c * 1.12, floor);
+
+    /**
+     * A correct word is CAPPED as well as floored: it lands you ON the perch.
+     *
+     * The floor made a quiet child safe and left an enthusiastic one drowning
+     * — a full-power shout carries nine tiles and a perch is three, so saying
+     * the word beautifully and loudly sailed clean over the thing that was
+     * supposed to catch you. "Even if they say the word, we are killing the
+     * bird" was exactly this, and a game that punishes enthusiasm for a word
+     * it just asked a five-year-old to shout has its incentives backwards.
+     *
+     * Volume is not thereby pointless: the cap is the FAR edge of the perch,
+     * so a loud word still lands three tiles further along than a quiet one
+     * — which is what reaches the stars sitting at the far end — it just no
+     * longer lands past it in the water.
+     *
+     * A mover is aimed nearer its middle: it is narrower, it is moving, and
+     * the skill it asks for is when rather than how hard.
+     */
+    const target = this.nextSurface();
+    if (target) {
+      const reach = target.kind === KIND.MOVING ? target.w * 0.55 : target.w * 0.8 + 40;
+      eff = Math.min(eff, chargeForDist(this.gapAhead() + reach));
+      eff = Math.max(eff, floor * 0.9);
+    }
+    return clamp(eff, 0, 1);
   }
 
   launch(charge, correct) {
@@ -588,11 +677,34 @@ export class SayJumpScene {
         const stop = this.stops[this.stopIndex];
         const targetX = stop ? stop.x : this.level.goal.x + TILE / 2;
         const dx = targetX - this.body.cx;
+
+        /**
+         * Standing on a mover means RIDING it, not walking off it.
+         *
+         * The bird walks itself to the next word gate between jumps, which is
+         * right everywhere except on a moving platform: there, walking
+         * forward is walking into the sea. A gap that needs a mover is wider
+         * than any jump, so there is no recovering from it either.
+         *
+         * So it waits, and the mover does the work — which is also what makes
+         * the platform feel like transport rather than scenery.
+         */
+        if (dx > 14 && this.body.ground?.kind === KIND.MOVING && !this.rideArrived()) {
+          this.body.vx *= 0.7;
+          this.markSafe();
+          break;
+        }
+
         if (dx > 14) move = 1;
         else {
           this.body.vx *= 0.6;
           if (stop) {
-            if (this.body.onGround) this.setState("prompt");
+            // Do not ask for the word until the jump it buys can be made.
+            // Where a mover is the only route, prompting while it is at the
+            // far end of its travel asks a five-year-old for a maximum shout
+            // AND perfect timing, and then drowns them for getting one of the
+            // two slightly wrong.
+            if (this.body.onGround && !this.waitingForRide()) this.setState("prompt");
           } else if (!this.goalReached && Math.abs(dx) < 40 && this.body.onGround) {
             this.goalReached = true;
             this.setState("done");
@@ -606,11 +718,19 @@ export class SayJumpScene {
 
       case "prompt":
         this.body.vx *= 0.7;
+        // Recomputed every frame, not once when the word was asked: the
+        // target can be a platform that is still travelling, and a meter
+        // whose red line was measured to where it USED to be is a lie in the
+        // one place the child is reading for the truth.
+        this.needCharge = chargeForDist(this.gapAhead() + 70);
         if (this.body.onGround) this.markSafe();
         break;
 
       case "charge":
         this.body.vx *= 0.7;
+        // Same reason as `prompt`: the arc and the guaranteed reach are both
+        // measured against this, and the target may still be moving.
+        this.needCharge = chargeForDist(this.gapAhead() + 70);
         if (this.holding) {
           // Touch fallback charges at roughly the rate a sustained word does.
           this.holdCharge = clamp(this.holdCharge + dt * 0.85, 0, 1);
@@ -748,9 +868,9 @@ export class SayJumpScene {
     const vis = (x, w = 0) => x + w > cull.x && x < cull.x + cull.w;
 
     for (const p of this.level.props) if (vis(p.x, 60)) drawProp(ctx, p, this.theme, this.t);
-    // Everything except the water first — the water goes in FRONT of it.
+    // Spikes sit ON platforms, so they go behind them and read as attached.
     for (const h of this.world.hazards) {
-      if (h.type === "water" || !vis(h.x, h.w)) continue;
+      if (h.type !== "spike" || !vis(h.x, h.w)) continue;
       drawHazard(ctx, h, this.theme, this.t);
     }
     for (const p of this.world.platforms) {
@@ -774,6 +894,16 @@ export class SayJumpScene {
     if (this.waterY != null) {
       waterBody(ctx, cull.x, this.waterY, cull.w,
         this.level.height - this.waterY + 400, this.theme.water, this.t);
+    }
+
+    // Fire and cannons go IN FRONT of the water. They stand in the gaps,
+    // which is exactly where the waterline is, so painting the sea over them
+    // left a vent showing as a brown lump at the surface and a cannon as a
+    // grey smudge — reported, fairly, as "there is no fire, there is no
+    // bullets". A hazard the player cannot see is not a hazard, it is a trap.
+    for (const h of this.world.hazards) {
+      if (h.type === "water" || h.type === "spike" || !vis(h.x, h.w)) continue;
+      drawHazard(ctx, h, this.theme, this.t);
     }
 
     this.drawGoal(ctx);

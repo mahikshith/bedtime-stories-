@@ -60,7 +60,11 @@ await page.mouse.click(210, 500);
 await page.waitForTimeout(500);
 
 const log = [];
-for (let i = 0; i < 26; i++) {
+// Generous, because a level can now contain a RIDE: where a moving platform
+// bridges a gap no jump crosses, the bird waits at the lip for it, boards,
+// and is carried. That is seconds of correct play in which nothing happens,
+// and a tighter budget reported it as a level that could not be finished.
+for (let i = 0; i < 110; i++) {
   const st = await peek();
   if (!st) { log.push("no scene exposed"); break; }
   log.push(`${String(i).padStart(2)} ${st.state.padEnd(7)} stop ${st.stop}/${st.stops} x=${String(st.x).padStart(4)} ♥${st.hearts} ★${st.stars} w=${st.words} ${st.word ?? ""} need=${st.need ?? ""}`);
@@ -69,7 +73,12 @@ for (let i = 0; i < 26; i++) {
   if (st.state === "prompt") {
     // Hold long enough to charge past what this gap needs.
     const need = parseFloat(st.need ?? "0.5");
-    const ms = Math.max(250, Math.round((need + 0.16) / 0.85 * 1000));
+    // Never shorter than the touch path's "they meant it" threshold (0.3
+    // charge, ~360ms). Below that the game treats the input as a stumble
+    // rather than a word, so none of the guarantees a correct word carries
+    // apply — and the harness was reporting levels as unwinnable when all it
+    // had done was mumble at them.
+    const ms = Math.max(500, Math.round((need + 0.16) / 0.85 * 1000));
     await page.mouse.move(210, 600);
     await page.mouse.down();
     await page.waitForTimeout(ms);
@@ -79,6 +88,8 @@ for (let i = 0; i < 26; i++) {
   } else {
     await page.waitForTimeout(450);
   }
+  // Nudge past a stall: if the bird is safely aboard a mover, just wait.
+
 }
 
 const final = await peek();

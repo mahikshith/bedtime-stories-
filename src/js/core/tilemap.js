@@ -181,8 +181,12 @@ export function parseMap(src, opts = {}) {
           while (r - tall >= 0 && at(c, r - tall) === "!") { used[r - tall][c] = true; tall++; }
           hazards.push({
             type: HAZARD.FIRE,
-            x: c * tile + tile * 0.18, y: (r - tall + 1) * tile,
-            w: tile * 0.64, h: tall * tile, pad: 8,
+            // Wider and taller than the glyph suggests. At 0.64 of a tile a
+            // vent was a 40px smudge at the waterline of a gap the bird flies
+            // over, and it came back from the device as "there is no fire" —
+            // which is the correct reading of a hazard nobody can see.
+            x: c * tile + tile * 0.05, y: (r - tall + 1) * tile - tile * 0.5,
+            w: tile * 0.9, h: (tall + 0.5) * tile, pad: 8,
             onMs: 1500, offMs: 1700, warnMs: 550,
             // Staggered by column so a row of jets ripples instead of
             // flashing in unison, which is both prettier and more readable.
@@ -339,11 +343,57 @@ export function auditMap(map, {
     }
   }
 
+  /**
+   * Every perch but the last carries a word gate.
+   *
+   * A gate is what stops the bird and asks for a word; a perch without one is
+   * a perch the bird walks straight over on its way to the next gate — which,
+   * with a gap in between, means walking into the water. Three perches in
+   * Crystal Caves had lost theirs to a crumbling ledge written over the top
+   * of them, and nothing here noticed: the gaps were fine, the goal was
+   * reachable, and the level was unplayable.
+   */
+  // Only the PILLARS count. A crumbling ledge, an ice patch or a conveyor is
+  // something on the route, not a place the bird is asked to stop and speak.
+  const perches = surfaces.filter((s) => s.kind === KIND.SOLID);
+  if (map.wordGates.length < perches.length - 1) {
+    issues.push(`only ${map.wordGates.length} word gates for ${perches.length} perches ` +
+                `— a perch with no gate is one the bird walks off`);
+  }
+
   // Word gates must have something to stand on, or the prompt never fires.
   for (const g of map.wordGates) {
     const s = under({ x: g.x, y: g.y });
     if (!s || s.ry1 - g.y > map.tile * 3) {
       issues.push(`word gate at x=${Math.round(g.x)} has no platform beneath it`);
+    }
+  }
+
+  /**
+   * Pickups have to be catchable, and movers have to be standable.
+   *
+   * These went unchecked, and a change to where the camera frames the level
+   * shifted the pillars four rows down while leaving every mover, spring,
+   * fire vent, cannon and power star at its old height. The result passed
+   * every check here — the gaps were fine and the goal was reachable — and
+   * the entire furniture of the game was hanging in mid-air above it.
+   *
+   * A star may sit up to a full jump's apex above the surface below it,
+   * because reaching one is allowed to be the point. Anything higher is not
+   * a challenge, it is an oversight.
+   */
+  for (const p of map.pickups ?? []) {
+    const s = under({ x: p.x, y: p.y });
+    const above = s ? s.ry1 - p.y : Infinity;
+    if (above > maxJumpApex + map.tile) {
+      issues.push(`${p.kind} at x=${Math.round(p.x)} floats ${Math.round(above)}px above anything (max ${maxJumpApex + map.tile})`);
+    }
+  }
+  // A mover the player cannot board is decoration that looks like a route.
+  for (const m of surfaces.filter((s) => s.kind === KIND.MOVING)) {
+    const boardable = surfaces.some((s) => s !== m && s.kind !== KIND.MOVING && reach(s, m));
+    if (!boardable) {
+      issues.push(`moving platform at x=${Math.round(m.rx1)} cannot be reached from any ground`);
     }
   }
   return issues;
