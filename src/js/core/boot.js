@@ -23,6 +23,7 @@
 import { Engine } from "./engine.js";
 import { install as installAudio } from "./audio.js";
 import { save } from "./storage.js";
+import { boot as bootNative, onBack, haptics } from "./native.js";
 
 /**
  * The top-left corner that always goes home, in logical px.
@@ -41,7 +42,7 @@ export const BACK_HIT = 74;
  * @param {string} [opts.band]    band to fall back to when nothing is chosen;
  *                                a toddler game wants a different default
  */
-export function boot({
+export async function boot({
   game,
   scene,
   band: bandFallback = "mid",
@@ -51,6 +52,12 @@ export function boot({
   results = "../result.html",
 }) {
   installAudio();
+  // The shell first: lock to portrait, dress the status bar, drop the splash.
+  // On the web every one of these is a no-op that resolves immediately.
+  await bootNative();
+  // And restore progress from the native mirror before anything reads it,
+  // because a game page can be opened cold straight from a notification.
+  await save.restore();
 
   const params = new URLSearchParams(location.search);
   const level = Math.max(0, parseInt(params.get("level") ?? "0", 10) || 0);
@@ -62,6 +69,11 @@ export function boot({
   });
 
   const exit = () => { location.href = home; };
+
+  // Android's hardware back leaves the level, rather than closing the app.
+  // Without this, pressing back inside a game quits to the home screen, which
+  // to a child is indistinguishable from the game crashing.
+  onBack(() => { exit(); return true; });
 
   /**
    * Finish the level. Whatever the game reports is carried to the results
@@ -83,6 +95,7 @@ export function boot({
     const p = engine.toLocal(e);
     if (p.x < engine.view.x + BACK_HIT && p.y < engine.view.y + BACK_HIT) {
       e.stopImmediatePropagation();
+      haptics.tap();
       exit();
     }
   });

@@ -6,6 +6,8 @@
  * collecting and nothing to breach.
  */
 
+import { mirror } from "./native.js";
+
 const KEY = "wordquest.save.v1";
 
 const FRESH = {
@@ -52,12 +54,45 @@ let state = load();
 const listeners = new Set();
 
 function persist() {
-  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+  const json = JSON.stringify(state);
+  try { localStorage.setItem(KEY, json); } catch {}
+  // Fire and forget: the native mirror exists so progress survives iOS
+  // evicting WebView storage, and no caller should ever wait on it.
+  mirror.save(KEY, json);
   listeners.forEach((fn) => fn(state));
+}
+
+/**
+ * Rehydrate from the native mirror if local storage has come back empty.
+ *
+ * A WKWebView's localStorage is not durable — iOS can clear it when the device
+ * is short of space — and a child opening the app to find every level locked
+ * again would have no idea why, and no way to get it back. Await this before
+ * the first render; on the web it resolves immediately and does nothing.
+ */
+async function restore() {
+  if (state.band || state.wordsLearned?.length) return state;
+  const raw = await mirror.load(KEY);
+  if (!raw) return state;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return state;
+    state = {
+      ...structuredClone(FRESH),
+      ...parsed,
+      settings: { ...FRESH.settings, ...(parsed.settings || {}) },
+      stars: parsed.stars || {},
+      best: parsed.best || {},
+    };
+    try { localStorage.setItem(KEY, raw); } catch {}
+    listeners.forEach((fn) => fn(state));
+  } catch {}
+  return state;
 }
 
 export const save = {
   get state() { return state; },
+  restore,
 
   subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
 

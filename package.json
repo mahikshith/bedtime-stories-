@@ -3,13 +3,33 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Voice- and motion-controlled learning games for children aged 2-11.",
+  "description": "Voice, motion and puzzle games for children aged 2-11. Ships to the web, Google Play and the App Store from one codebase.",
   "scripts": {
     "start": "node tools/serve.mjs",
+    "build": "node tools/build-app.mjs",
+    "icons": "node tools/make-icons.mjs",
+    "sync": "npm run build && npx cap sync",
+    "android": "npm run sync && npx cap open android",
+    "ios": "npm run sync && npx cap open ios",
+    "verify": "node tools/check.mjs && node tools/check-robot.mjs && node tools/check-balance.mjs",
+    "test": "node tools/smoke.mjs && node tools/check-wiring.mjs && node tools/test-hub.mjs && node tools/test-slide.mjs && node tools/test-robot.mjs && node tools/test-balance.mjs && node tools/test-town.mjs",
+    "test:app": "npm run build && node tools/test-app.mjs",
     "shoot": "node tools/shoot.mjs",
-    "check": "node tools/check.mjs"
+    "weigh": "node tools/weigh.mjs"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.2",
     "playwright": "^1.63.0"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.5.2",
+    "@capacitor/preferences": "^8.0.1",
+    "@capacitor/screen-orientation": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3"
   }
 }

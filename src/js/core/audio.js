@@ -9,6 +9,8 @@
  * to the first pointerdown/keydown by `install()`.
  */
 
+import { haptics } from "./native.js";
+
 let ctx = null;
 let master = null;
 let musicGain = null;
@@ -146,40 +148,58 @@ export function sing(freq, { vol = 0.12, dur = 0.55, delay = 0, detune = 0, vibr
 
 /* ------------------------------------------------------------- the kit */
 
+/*
+ * Every cue below fires a haptic as well as a sound.
+ *
+ * They live together because they are the same event: a thing landed, a thing
+ * was right, a thing popped. Putting the buzz here rather than in each game
+ * means all eleven get it without any of them importing the native layer, and
+ * there is no game that can quietly forget to. It follows the mute switch,
+ * because a parent silencing the app in a waiting room means all of it.
+ */
+const feel = (kind) => { if (enabled) haptics[kind](); };
+
 const NOTE = { C4: 261.6, D4: 293.7, E4: 329.6, F4: 349.2, G4: 392.0, A4: 440.0, B4: 493.9,
                C5: 523.3, D5: 587.3, E5: 659.3, G5: 784.0, C6: 1046.5 };
 
 export const sfx = {
   /** Jump — pitch scales with charge so a big shout sounds big. */
   jump(power = 0.5) {
+    feel("tap");
     voice({ freq: 320 + power * 220, to: 640 + power * 420, type: "triangle", dur: 0.22, vol: 0.26 });
     noise({ dur: 0.1, vol: 0.08, freq: 1600, sweepTo: 3400 });
   },
   land() {
+    feel("knock");
     voice({ freq: 180, to: 90, type: "sine", dur: 0.12, vol: 0.28 });
     noise({ dur: 0.09, vol: 0.14, freq: 420, q: 0.8 });
   },
   step() { noise({ dur: 0.045, vol: 0.05, freq: 700, q: 1.6 }); },
   coin() {
+    feel("tap");
     voice({ freq: NOTE.E5, type: "square", dur: 0.07, vol: 0.14 });
     voice({ freq: NOTE.C6, type: "square", dur: 0.14, vol: 0.14, delay: 0.06 });
   },
   pop() {
+    feel("tap");
     voice({ freq: 700, to: 1500, type: "sine", dur: 0.09, vol: 0.24 });
     noise({ dur: 0.07, vol: 0.14, freq: 2200, sweepTo: 800 });
   },
   whoosh() { noise({ dur: 0.3, vol: 0.12, freq: 300, sweepTo: 2200, q: 0.6 }); },
   /** Correct — the rising major triad the app uses to say "yes". */
   correct() {
+    feel("knock");
     [NOTE.C5, NOTE.E5, NOTE.G5].forEach((f, i) =>
       voice({ freq: f, type: "triangle", dur: 0.26, vol: 0.2, delay: i * 0.065 }));
   },
   wrong() {
+    feel("tap");
     voice({ freq: 200, to: 120, type: "sawtooth", dur: 0.3, vol: 0.16 });
     voice({ freq: 150, to: 92, type: "square", dur: 0.3, vol: 0.09, delay: 0.02 });
   },
   /** Level complete — a little fanfare worth replaying for. */
   fanfare() {
+    feel("win");
     const line = [NOTE.C5, NOTE.E5, NOTE.G5, NOTE.C6, NOTE.G5, NOTE.C6];
     line.forEach((f, i) =>
       voice({ freq: f, type: "triangle", dur: 0.3, vol: 0.22, delay: i * 0.11 }));

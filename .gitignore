@@ -1,4 +1,23 @@
 node_modules/
-package-lock.json
 *.log
 .DS_Store
+
+# Build output. `npm run build` regenerates it; nothing in here is edited.
+www/
+
+# Native build artefacts and machine-local paths. The android/ and ios/
+# projects themselves ARE committed — the manifest, the Info.plist and the
+# store configuration are source, and regenerating them would silently drop
+# the microphone permission and the portrait lock.
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/app/src/main/assets/public/
+ios/App/build/
+ios/App/Pods/
+ios/App/App/public/
+ios/DerivedData/
+*.xcuserstate
+xcuserdata/

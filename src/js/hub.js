@@ -11,6 +11,7 @@ import { BANDS } from "./core/words.js";
 import { drawBird, BIRDS, BIRD_IDS } from "./art/bird.js";
 import { thumbCanvas } from "./art/thumbs.js";
 import { install as installAudio, sfx, unlock } from "./core/audio.js";
+import { boot as bootNative, onBack, haptics } from "./core/native.js";
 import { C } from "./core/palette.js";
 
 installAudio();
@@ -190,6 +191,7 @@ function render() {
 /** Open a game's own screen, and make the device back button close it. */
 function openGame(g) {
   sfx.whoosh();
+  haptics.tap();
   save.set({ openGame: g.id });
   history.pushState({ game: g.id }, "", location.pathname);
   render();
@@ -486,7 +488,21 @@ function launch(game, level) {
   location.href = `${game.href}?${q}`;
 }
 
+// Paint immediately so the app is never a blank screen, then restore any
+// progress the native mirror is holding and repaint if it brought something
+// back. Waiting on storage before the first frame would mean a cold start
+// shows nothing at all while a disk read happens.
 render();
+bootNative().then(() => save.restore()).then((s) => {
+  if (s.band || s.wordsLearned?.length) render();
+});
+
+// Android's hardware back closes a game's screen rather than the app.
+onBack(() => {
+  if (save.state.openGame) { closeGame(); return true; }
+  return false;
+});
+
 window.addEventListener("resize", () => {
   // the path amplitude is width-dependent, so re-lay it out
   document.querySelectorAll(".path__row").forEach((row, i) => {

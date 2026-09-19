@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Word Quest</string>
+    <string name="title_activity_main">Word Quest</string>
+    <string name="package_name">com.wordquest.kids</string>
+    <string name="custom_url_scheme">com.wordquest.kids</string>
+</resources>

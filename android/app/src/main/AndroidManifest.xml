@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:name=".MainActivity"
+            android:screenOrientation="portrait"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:launchMode="singleTask"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"></meta-data>
+        </provider>
+    </application>
+
+    <!-- Permissions -->
+
+    <!--
+      INTERNET is required by Capacitor itself: the app's own files are served
+      to the WebView through a local server, which goes through the network
+      stack even though nothing ever leaves the device. The app makes no
+      outbound requests of any kind — no ads, no analytics, no accounts — and
+      that is what the Play Data Safety declaration says.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+      The microphone is the CONTROLLER for two of the games: in Say & Jump how
+      loudly and how long a child says the word decides how far the bird jumps,
+      and Echo Pop lets them answer out loud. Audio is analysed for loudness in
+      the page and never recorded, stored or transmitted.
+
+      Marked not-required so the app still installs and plays on a device
+      without a microphone; the voice games fall back to touch.
+    -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
+    <!-- Tilt Maze reads the accelerometer. Optional: it falls back to drag. -->
+    <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
+</manifest>
