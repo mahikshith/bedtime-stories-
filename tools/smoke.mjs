@@ -36,6 +36,10 @@ const PAGES = [
   { name: "tangram T1",  url: "/src/games/tangram.html?level=0" },
   { name: "tangram T2",  url: "/src/games/tangram.html?level=5" },
   { name: "tangram T3",  url: "/src/games/tangram.html?level=9" },
+  { name: "slide L1",    url: "/src/games/slide.html?level=0" },
+  { name: "slide L6",    url: "/src/games/slide.html?level=5" },
+  { name: "shapes L1",   url: "/src/games/shapes.html?level=0" },
+  { name: "shapes L6",   url: "/src/games/shapes.html?level=5" },
   { name: "result",      url: "/src/result.html?game=say-jump&level=0&stars=2&words=4&asked=5" },
 ];
 

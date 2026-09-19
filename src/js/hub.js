@@ -13,6 +13,8 @@ import { LEVELS } from "./games/say-jump/levels.js";
 import { BOARDS } from "./games/tilt-maze/levels.js";
 import { RUNS } from "./games/word-mob/levels.js";
 import { PUZZLES } from "./games/tangram/puzzles.js";
+import { LAYOUTS } from "./games/slide/layouts.js";
+import { LEVEL_COUNT as SHAPE_LEVELS } from "./games/shapes/game.js";
 import { install as installAudio, sfx, unlock } from "./core/audio.js";
 import { C } from "./core/palette.js";
 
@@ -48,6 +50,24 @@ const GAMES = [
     face: C.flame.base, edge: C.flame.dark,
     href: "src/games/word-mob.html",
     levels: () => RUNS.map((r) => ({ name: r.name, teaches: r.teaches })),
+  },
+  {
+    id: "shapes", title: "Shape Sorter", icon: "🔶",
+    sub: "Drop each shape into the hole it fits. Learn their names.",
+    control: "tap", bands: ["tiny", "mid"],
+    face: C.flame.base, edge: C.flame.dark,
+    href: "src/games/shapes.html",
+    levels: () => Array.from({ length: SHAPE_LEVELS }, (_, i) => ({
+      name: `Board ${i + 1}`, teaches: "Match the shape to its hole",
+    })),
+  },
+  {
+    id: "slide", title: "Sliding Blocks", icon: "🧩",
+    sub: "华容道 — slide the blocks to free the big one.",
+    control: "tap", bands: ["mid", "big"],
+    face: C.cherry.base, edge: C.cherry.dark,
+    href: "src/games/slide.html",
+    levels: () => LAYOUTS.map((l) => ({ name: l.name, teaches: `Best: ${l.par} moves` })),
   },
   {
     id: "tangram", title: "Tangram", icon: "🔷",

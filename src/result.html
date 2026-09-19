@@ -55,6 +55,8 @@ const NEXT = {
   "word-mob": "src/games/word-mob.html",
   "echo-pop": "src/games/echo-pop.html",
   "tangram": "src/games/tangram.html",
+  "slide": "src/games/slide.html",
+  "shapes": "src/games/shapes.html",
 };
 
 /** Per-game result tiles, so each game reports what it actually measured. */
@@ -75,6 +77,10 @@ function tiles() {
     case "tangram":
       return [["SHAPE", (n("name") ?? "").toUpperCase()],
               ["HINTS", n("hints") ?? "0"]];
+    case "slide":
+      return [["MOVES", n("moves") ?? "0"], ["BEST", n("par") ?? "-"]];
+    case "shapes":
+      return [["SORTED", `${n("placed") ?? 0}/${n("total") ?? 0}`]];
     default:
       return [];
   }
