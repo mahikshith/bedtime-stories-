@@ -34,11 +34,16 @@ HTTPS or use your laptop's local address with a tunnel.
 | **Sliding Blocks** 华容道 | 5–11 | 👆 drag | Planning and sequencing. Pure look-ahead. |
 | **Robot Path** | 5–11 | 👆 drag | Sequencing, debugging, procedures, recursion. |
 | **Balance** | 5–11 | 👆 drag | Algebra — before any notation appears. |
+| **Tinker Town** | 2–11 | 👆 drag | Nothing, on purpose. Object names, cause and effect. |
 
 The games train deliberately different things. The first four are language.
-The next three are spatial. The last two are symbolic — programming and
-algebra. Shape rotation is one of the few interventions with measured transfer
-to arithmetic, which is why the geometry side is not an afterthought.
+The next three are spatial. Two are symbolic — programming and algebra. Shape
+rotation is one of the few interventions with measured transfer to arithmetic,
+which is why the geometry side is not an afterthought.
+
+Tinker Town is the odd one out and is meant to be: it has no levels, no score
+and no way to finish. Everything else here asks a child to be right. One place
+should not.
 
 ### Say & Jump
 
@@ -144,6 +149,40 @@ skill they already have — the opposite of how algebra is usually introduced.
 The scale never tilts. A tilting scale would suggest the two sides can differ,
 which is the one idea the game exists to rule out.
 
+### Tinker Town
+
+Four rooms — kitchen, garden, bathroom, music room — a pocket that holds six
+things, and twenty-five objects that can be carried anywhere and put on
+anything. Twenty-eight rules say what happens when two things meet. None of
+them is explained.
+
+Four decisions carry the whole game:
+
+- **Every touch says the thing's name.** This is the entire educational layer
+  and it costs the play nothing. A child hears "watering can" forty times in a
+  session because they picked it up forty times, not because a quiz asked.
+- **Anything goes in the pocket.** Four rooms you can move things between is a
+  far bigger space than eight rooms you cannot. The stone from the garden
+  sinks in the bath; a cup filled at the kitchen sink waters a seedling. Those
+  are not scripted set-pieces, they fall out of the rules meeting each other.
+- **Reactions, not instructions.** Seed into soil sprouts, water grows a
+  flower, soap in the bath makes bubbles, a pot on the stove cooks. The child
+  forms a hypothesis and tests it, which is the actual loop.
+- **A gentle hint, never an arrow.** While something is held, the fixtures it
+  could act on breathe. After a quiet spell one object hops. Both say *where*
+  without saying *what*, so the discovery still belongs to the child.
+
+The deepest chain runs three steps across two rooms: fill a cup at the sink,
+pour it into the pot, put the pot on the stove — and the game says "the water
+is boiling" instead of "it's cooking", which is the only evidence a child
+needs that it noticed what they did two steps ago.
+
+Nothing is ever a dead end: a mushroom put back in the soil makes another one,
+a towel undoes water, soap undoes mud. Undoing a thing you just did is how you
+find out you caused it. The world persists to `localStorage`, because a sandbox
+you have to rebuild every session is a toy box somebody empties overnight. A
+present crate opens once a day and adds one new object.
+
 ## Layout
 
 ```
@@ -167,8 +206,11 @@ src/
     art/
       bird.js           the playable bird, eight animated states
       environment.js    themes, parallax, pillars, water, hazards
+      backdrops.js      six themed scenes behind the puzzle games
       character.js shading.js
     games/<id>/         game.js + levels.js per game
+      town/             things.js (25 objects), scenes.js (4 rooms),
+                        rules.js (28 reactions), game.js
 tools/                  level composer, audits, screenshots, playtests
 ```
 
@@ -207,6 +249,8 @@ node tools/check-robot.mjs        # run every robot level's reference solution
 node tools/test-robot.mjs         # play every robot level in a browser
 node tools/check-balance.mjs      # prove every equation is solvable, report par
 node tools/test-balance.mjs       # solve every equation inside the running game
+node tools/test-town.mjs          # play Tinker Town's discovery chains in a browser
+node tools/shoot-town.mjs <dir>   # capture every room, plus the idle nudge
 python3 tools/compose-levels.py   # regenerate platformer maps from their specs
 python3 tools/compose-tangram.py  # solve + verify tangram figures, emit puzzles.js
 python3 tools/compose-slide.py    # BFS-solve sliding layouts, emit layouts.js
@@ -230,6 +274,11 @@ playable before it ships:
   three broken levels on its first run.
 - **Balance equations** are solved by search over the two legal moves, which
   proves each level is reachable and records the shortest solution.
+- **Tinker Town** has no levels to verify, so the tests assert its promises
+  instead: that a seed grows, that a stone carried from the garden sinks in the
+  bath, that a cup filled at the sink pours into the pot — and that nothing
+  ever ends up hidden underneath anything else, since to a three-year-old a
+  covered toy has not been covered, it has been eaten by the game.
 
 Several games are verified twice: once against the model (does the content
 work under the rules?) and once in a real browser (does the game apply those

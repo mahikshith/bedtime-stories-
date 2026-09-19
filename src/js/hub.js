@@ -99,6 +99,17 @@ const GAMES = [
     })),
   },
   {
+    // No levels, no stars, no way to finish — so it gets one node on the path
+    // and the whole town behind it. It is the only game here a child can open
+    // and still be inside twenty minutes later.
+    id: "town", title: "Tinker Town", icon: "🏠",
+    sub: "Four rooms, a pocket, and no rules. Carry things about and find out what happens.",
+    control: "tap", bands: ["tiny", "mid", "big"],
+    face: C.clay.base, edge: C.clay.dark,
+    href: "src/games/town.html",
+    levels: () => [{ name: "Tinker Town", teaches: "Play with anything, any way" }],
+  },
+  {
     id: "echo-pop", title: "Echo Pop", icon: "🫧",
     sub: "Say it or tap it. Pop the bubble with the right thing inside.",
     control: "voice", bands: ["tiny", "mid"],

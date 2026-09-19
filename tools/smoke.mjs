@@ -46,6 +46,14 @@ const PAGES = [
   { name: "balance L1",  url: "/src/games/balance.html?level=0" },
   { name: "balance L7",  url: "/src/games/balance.html?level=6" },
   { name: "balance L11", url: "/src/games/balance.html?level=10" },
+  // Tinker Town has no levels, so each room is loaded by travelling to it.
+  { name: "town kitchen", url: "/src/games/town.html" },
+  { name: "town garden",  url: "/src/games/town.html",
+    setup: async (p) => { await p.evaluate(() => window.__scene.travel("garden")); } },
+  { name: "town bath",    url: "/src/games/town.html",
+    setup: async (p) => { await p.evaluate(() => window.__scene.travel("bath")); } },
+  { name: "town music",   url: "/src/games/town.html",
+    setup: async (p) => { await p.evaluate(() => window.__scene.travel("music")); } },
   { name: "result",      url: "/src/result.html?game=say-jump&level=0&stars=2&words=4&asked=5" },
 ];
 
