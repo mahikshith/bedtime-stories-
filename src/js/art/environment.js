@@ -198,21 +198,69 @@ export function pillar(ctx, x, y, w, h, ramp, { brick = true } = {}) {
  * surface, and a second offset row behind for depth.
  */
 export function waterBody(ctx, x, y, w, h, ramp, t) {
-  ctx.fillStyle = ramp.base;
-  ctx.fillRect(x, y, w, h);
+  // The surface is a real moving waterline, not a straight edge with a
+  // pattern sliding behind it. Two sine waves of different speed and length
+  // keep it from looking like a metronome, and because the whole body is
+  // clipped to the wave the depth bands and glints rise and fall with it.
+  //
+  // The previous version scrolled a row of scallops sideways and nothing
+  // else, which at a glance read as a flat blue rectangle — reported, fairly,
+  // as "the water is not flowing".
+  const surf = (px) =>
+    y + 14 +
+    Math.sin(px * 0.018 + t * 2.1) * 7 +
+    Math.sin(px * 0.041 - t * 3.4) * 3.5;
+
   ctx.save();
   ctx.beginPath();
-  ctx.rect(x, y, w, h);
+  ctx.moveTo(x, y + h);
+  for (let px = x; px <= x + w; px += 6) ctx.lineTo(px, surf(px));
+  ctx.lineTo(x + w, y + h);
+  ctx.closePath();
   ctx.clip();
 
-  // depth bands
+  ctx.fillStyle = ramp.base;
+  ctx.fillRect(x, y, w, h);
   ctx.fillStyle = ramp.dark;
   ctx.fillRect(x, y + h * 0.45, w, h);
   ctx.fillStyle = ramp.deep;
   ctx.fillRect(x, y + h * 0.75, w, h);
 
-  scallops(ctx, x, y + 16, w, 20, alpha(ramp.light, 0.55), t * 26, 54);
-  scallops(ctx, x, y + 4, w, 24, "#FFFFFF", t * 40, 62);
+  // Caustic streaks drifting down and across, which is what sells depth.
+  ctx.globalAlpha = 0.16;
+  ctx.fillStyle = ramp.light;
+  for (let i = 0; i < 5; i++) {
+    const cx = x + ((i * 0.27 + t * 0.06) % 1.2 - 0.1) * w;
+    const cy = y + h * (0.2 + i * 0.16) + Math.sin(t * 1.3 + i) * 10;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, w * 0.22, h * 0.03, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  scallops(ctx, x, y + 18, w, 18, alpha(ramp.light, 0.5), t * 42, 54);
+  ctx.restore();
+
+  // The foam line rides on top of the clip so the crest stays crisp.
+  ctx.save();
+  ctx.fillStyle = "#FFFFFF";
+  ctx.beginPath();
+  ctx.moveTo(x, surf(x));
+  for (let px = x; px <= x + w; px += 6) ctx.lineTo(px, surf(px));
+  for (let px = x + w; px >= x; px -= 6) ctx.lineTo(px, surf(px) - 9);
+  ctx.closePath();
+  ctx.fill();
+
+  // Glints that wink along the crest.
+  ctx.globalAlpha = 0.85;
+  for (let i = 0; i < 6; i++) {
+    const gx = x + ((i * 0.19 + t * 0.09) % 1.1) * w;
+    const tw = 0.5 + Math.sin(t * 5 + i * 2.1) * 0.5;
+    if (tw < 0.45) continue;
+    ctx.beginPath();
+    ctx.ellipse(gx, surf(gx) - 16, 7 * tw, 3 * tw, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
 }
 

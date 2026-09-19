@@ -61,6 +61,8 @@ export class SayJumpScene {
 
     this.state = "intro";       // intro|walk|prompt|charge|air|hurt|done
     this.t = 0;
+    this.speakT = 0;        // glow on the pronunciation button
+    this.sayButton = null;  // hit box, recorded when the card is drawn
     this.stateT = 0;
 
     this.fx = new Fx();
@@ -155,6 +157,7 @@ export class SayJumpScene {
 
   destroy() {
     this.voice.stop();
+    clearTimeout(this._sylTimer);
     stopSpeaking();
     stopMusic();
     window.removeEventListener("keydown", this._kd);
@@ -237,9 +240,20 @@ export class SayJumpScene {
     this.setState("air");
   }
 
-  down() {
+  down(pt) {
     if (this.state === "intro") { this.setState("walk"); return; }
     if (this.state === "done") { this.finish(); return; }
+    // The pronunciation button comes first: a child pressing it wants to hear
+    // the word, not to start a jump with it.
+    if (this.sayButton && (this.state === "prompt" || this.state === "charge")) {
+      const b = this.sayButton;
+      // A generous radius — this is aimed at a three-year-old's finger.
+      if (pt && Math.hypot(pt.x - b.cx, pt.y - b.cy) < b.r + 18) {
+        this.sayWordAloud();
+        return;
+      }
+    }
+
     // Touch ALWAYS works, even when the microphone is listening.
     //
     // It used to be switched off the moment the mic initialised, on the theory
@@ -259,6 +273,27 @@ export class SayJumpScene {
     if (!this.holding) return;
     this.holding = false;
     if (this.state === "charge") this.launch(this.holdCharge, this.holdCharge > 0.3);
+  }
+
+  /**
+   * Say the word out loud so the child can copy it.
+   *
+   * Slower and a little lower than the app's usual voice: this is a model to
+   * imitate, not a line of dialogue. The syllables follow after a beat,
+   * because "cas · tle" is the part a child who is stuck actually needs.
+   */
+  sayWordAloud() {
+    if (!this.word) return;
+    stopSpeaking();
+    this.speakT = 1.1;
+    sfx.pop();
+    speak(this.word.word, { rate: 0.62, pitch: 1.05 });
+    if (this.word.syl?.length > 1) {
+      clearTimeout(this._sylTimer);
+      this._sylTimer = setTimeout(() => {
+        speak(this.word.syl.join(", "), { rate: 0.5, pitch: 1.1 });
+      }, 900);
+    }
   }
 
   hit(h) {
@@ -296,6 +331,7 @@ export class SayJumpScene {
 
   update(dt) {
     this.t += dt;
+    this.speakT = Math.max(0, this.speakT - dt);
     this.stateT += dt;
     this.fx.update(dt);
     this.weather.update(dt);
@@ -614,7 +650,7 @@ export class SayJumpScene {
     if (this.state === "done") this.drawDone(ctx, view);
     if (!this.voiceReady && this.state !== "intro") {
       text(ctx, "No microphone — hold the screen to charge",
-        view.x + view.w / 2, view.y + view.h - 12,
+        view.x + view.w / 2, view.y + view.h * 0.70 + 194,
         { size: 15, color: alpha(TOKENS.snow, 0.6) });
     }
   }
@@ -752,7 +788,11 @@ export class SayJumpScene {
     const h = 168;
     const x = view.x + view.w / 2 - w / 2 + 36;
     const pop = easeOutBack(clamp(this.stateT * 3.2, 0, 1));
-    const y = view.y + view.h - h - 30 - (1 - pop) * 40;
+    // Lifted well clear of the bottom edge. Sitting 30px from the bottom put
+    // the word — the single most important thing on the screen — in the strip
+    // a hand covers while holding the phone, and on a device with gesture
+    // navigation the hint underneath it was cut off entirely.
+    const y = view.y + view.h * 0.70 - (1 - pop) * 40;
 
     ctx.save();
     ctx.globalAlpha = pop;
@@ -779,9 +819,30 @@ export class SayJumpScene {
       text(ctx, W.syl.join(" · "), x + 124, y + 144,
         { size: 16, color: TOKENS.textDim, align: "left" });
 
-      // replay button
-      circle(ctx, x + w - 42, y + h / 2, 24, alpha(this.theme.accent, 0.25));
-      text(ctx, "🔊", x + w - 42, y + h / 2, { size: 24, color: TOKENS.snow });
+      // The "say it for me" button.
+      //
+      // It was drawn here before but was never wired to anything — a picture
+      // of a speaker that did nothing when pressed. A child who cannot read
+      // the word, or is not sure how it sounds, has no other way in: hearing
+      // it is the whole point of a game about saying it. So it is now a real
+      // target, deliberately large, and it breathes so it reads as pressable
+      // rather than as a label.
+      const sb = this.sayButton = {
+        cx: x + w - 52, cy: y + h / 2, r: 40,
+      };
+      const beat = this.speakT > 0
+        ? 1 + Math.sin(this.speakT * 22) * 0.06
+        : 1 + Math.sin(this.t * 2.6) * 0.045;
+      ctx.save();
+      ctx.translate(sb.cx, sb.cy);
+      ctx.scale(beat, beat);
+      circle(ctx, 0, 4, sb.r, alpha("#000000", 0.35));
+      circle(ctx, 0, 0, sb.r, this.speakT > 0 ? this.theme.accent : alpha(this.theme.accent, 0.9));
+      circle(ctx, 0, -sb.r * 0.28, sb.r * 0.72, alpha("#FFFFFF", 0.18));
+      text(ctx, "🔊", 0, 2, { size: 34, color: "#17120A" });
+      ctx.restore();
+      text(ctx, "HEAR IT", sb.cx, sb.cy + sb.r + 18,
+        { size: 12, color: alpha(TOKENS.snow, 0.75) });
     }
     ctx.restore();
 

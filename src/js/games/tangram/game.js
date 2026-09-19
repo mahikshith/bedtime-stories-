@@ -121,8 +121,13 @@ export class TangramScene {
     }
     const figW = maxX - minX, figH = maxY - minY;
 
-    const trayH = 210;
-    const padTop = 190, padBottom = trayH + 60, padX = 46;
+    // The tray is deliberately tall and the pieces ride high inside it. At
+    // 210 the piece line sat about a hundred pixels off the bottom of the
+    // screen, which on a phone means underneath the gesture bar and under the
+    // hand holding it — the one thing a child has to grab was the hardest
+    // thing on screen to reach.
+    const trayH = 272;
+    const padTop = 150, padBottom = trayH + 40, padX = 46;
     const availW = view.w - padX * 2;
     const availH = view.h - padTop - padBottom;
     this.unit = Math.min(availW / Math.max(figW, 1), availH / Math.max(figH, 1));
@@ -150,7 +155,7 @@ export class TangramScene {
       const n = loose.length;
       const slotW = view.w / (n + 0.4);
       p.px = view.x + slotW * (i + 0.7);
-      p.py = this.tray.y + this.tray.h * 0.52;
+      p.py = this.tray.y + this.tray.h * 0.40;
       p.homeX = p.px; p.homeY = p.py;
       if (!p.dragged) { p.sx = p.px; p.sy = p.py; }
       if (p.scale == null) p.scale = this.trayUnit;
