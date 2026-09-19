@@ -32,11 +32,13 @@ HTTPS or use your laptop's local address with a tunnel.
 | **Shape Sorter** | 2–7 | 👆 drag | Shape names, and matching a form to its hole. |
 | **Tangram** 七巧板 | 4–11 | 👆 drag | Spatial reasoning, rotation, part-and-whole. |
 | **Sliding Blocks** 华容道 | 5–11 | 👆 drag | Planning and sequencing. Pure look-ahead. |
+| **Robot Path** | 5–11 | 👆 drag | Sequencing, debugging, procedures, recursion. |
+| **Balance** | 5–11 | 👆 drag | Algebra — before any notation appears. |
 
-The word games and the puzzle games train different things on purpose. The
-first four are language; the last three are spatial and logical. Shape
-rotation is one of the few interventions with measured transfer to
-arithmetic, which is why the geometry side is not an afterthought.
+The games train deliberately different things. The first four are language.
+The next three are spatial. The last two are symbolic — programming and
+algebra. Shape rotation is one of the few interventions with measured transfer
+to arithmetic, which is why the geometry side is not an afterthought.
 
 ### Say & Jump
 
@@ -108,6 +110,40 @@ backing out of it. The par shown is the true minimum, found by exhaustive
 search at build time, so matching it is a real achievement. The classic
 layout, Heng Dao Li Ma, takes 116 moves.
 
+### Robot Path
+
+Drag instruction blocks into a program strip, press PLAY, and watch the robot
+execute exactly what you wrote. No typing and no reading beyond the icons.
+
+The difficulty curve is carried by the SLOT LIMITS, not by the mazes. Level 6
+gives the main program four slots against a route that needs twelve, so the
+child has to spot the repeating pattern and move it into a procedure. Level 7
+lets that procedure call itself, which is a loop. Sequencing, then
+abstraction, then recursion — that is the actual syllabus.
+
+The program runs visibly, one block at a time, with the running block lit up.
+A child who wrote the wrong thing has to be able to *see* the moment it went
+wrong, or the game is guess-and-check and nothing is learned.
+
+### Balance
+
+Get the box alone on its side of the scale. There are exactly two moves, and
+they are exactly the two laws that make algebra work:
+
+- **drag a card from the deck** — it lands on *both* pans, because the scale
+  must stay balanced. This is "do the same to both sides".
+- **drop a card on its shadow** — both vanish. This is `x + (-x) = 0`, learned
+  as a fact about pictures rather than about signs.
+
+With those two moves, `box + a = b` is solved by adding shadow-a to both sides
+and cancelling. That is a real derivation, performed by a child who has never
+seen a letter used as a number. Later tiers relabel the same creatures as
+numerals and then rename the box to `x`, so the notation arrives on top of a
+skill they already have — the opposite of how algebra is usually introduced.
+
+The scale never tilts. A tilting scale would suggest the two sides can differ,
+which is the one idea the game exists to rule out.
+
 ## Layout
 
 ```
@@ -167,6 +203,10 @@ node tools/check.mjs              # audit every platformer level for reachabilit
 node tools/smoke.mjs              # load every page, drive input, fail on any error
 node tools/playtest.mjs 0         # drive a Say & Jump level end to end
 node tools/test-slide.mjs         # solve sliding layouts in-page, assert the win
+node tools/check-robot.mjs        # run every robot level's reference solution
+node tools/test-robot.mjs         # play every robot level in a browser
+node tools/check-balance.mjs      # prove every equation is solvable, report par
+node tools/test-balance.mjs       # solve every equation inside the running game
 python3 tools/compose-levels.py   # regenerate platformer maps from their specs
 python3 tools/compose-tangram.py  # solve + verify tangram figures, emit puzzles.js
 python3 tools/compose-slide.py    # BFS-solve sliding layouts, emit layouts.js
@@ -185,6 +225,16 @@ playable before it ships:
   the canonical dissection that looking at it would never have found.
 - **Sliding layouts** are solved by breadth-first search over the whole state
   space, which both proves solvability and yields the exact par.
+- **Robot levels** ship a reference solution that is simulated headlessly, and
+  checked to fit the slot limits the player is actually given. This caught
+  three broken levels on its first run.
+- **Balance equations** are solved by search over the two legal moves, which
+  proves each level is reachable and records the shortest solution.
+
+Several games are verified twice: once against the model (does the content
+work under the rules?) and once in a real browser (does the game apply those
+rules faithfully?). The second layer is what catches wiring bugs a screenshot
+hides.
 
 An impossible puzzle should break the build, not a child.
 

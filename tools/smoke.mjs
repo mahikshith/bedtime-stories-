@@ -43,6 +43,9 @@ const PAGES = [
   { name: "robot L1",    url: "/src/games/robot.html?level=0" },
   { name: "robot L7",    url: "/src/games/robot.html?level=6" },
   { name: "robot L10",   url: "/src/games/robot.html?level=9" },
+  { name: "balance L1",  url: "/src/games/balance.html?level=0" },
+  { name: "balance L7",  url: "/src/games/balance.html?level=6" },
+  { name: "balance L11", url: "/src/games/balance.html?level=10" },
   { name: "result",      url: "/src/result.html?game=say-jump&level=0&stars=2&words=4&asked=5" },
 ];
 

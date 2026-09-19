@@ -16,6 +16,7 @@ import { PUZZLES } from "./games/tangram/puzzles.js";
 import { LAYOUTS } from "./games/slide/layouts.js";
 import { LEVEL_COUNT as SHAPE_LEVELS } from "./games/shapes/game.js";
 import { LEVELS as ROBOT_LEVELS } from "./games/robot/levels.js";
+import { LEVELS as BALANCE_LEVELS } from "./games/balance/levels.js";
 import { install as installAudio, sfx, unlock } from "./core/audio.js";
 import { C } from "./core/palette.js";
 
@@ -61,6 +62,14 @@ const GAMES = [
     levels: () => Array.from({ length: SHAPE_LEVELS }, (_, i) => ({
       name: `Board ${i + 1}`, teaches: "Match the shape to its hole",
     })),
+  },
+  {
+    id: "balance", title: "Balance", icon: "⚖️",
+    sub: "Get the box alone. Quietly, this is algebra.",
+    control: "tap", bands: ["mid", "big"],
+    face: C.grape.base, edge: C.grape.dark,
+    href: "src/games/balance.html",
+    levels: () => BALANCE_LEVELS.map((l) => ({ name: l.name, teaches: l.teaches })),
   },
   {
     id: "robot", title: "Robot Path", icon: "🤖",
