@@ -25,9 +25,11 @@ import { fillRound, roundRect, circle, ellipse, text, star as starShape } from "
 import { drawBird, birdBlink } from "../../art/bird.js";
 import { workshop } from "../../art/backdrops.js";
 import { sfx, speak, startMusic, stopMusic } from "../../core/audio.js";
+import { haptics } from "../../core/native.js";
 import { save, starsFromAccuracy } from "../../core/storage.js";
 import { Fx } from "../../core/fx.js";
-import { BOARDS, parseBoard, T } from "./levels.js";
+import { BOARDS } from "./levels.js";
+import { parseBoard, T } from "./parse.js";
 
 const GAME_ID = "tilt-maze";
 
@@ -64,6 +66,31 @@ export class TiltMazeScene {
     this.state = "intro";          // intro | play | fell | won
     this.nextLetter = 0;
     this.falls = 0;
+    /**
+     * Hearts, and what spends them.
+     *
+     * Asked for across every game: "if they make a mistake, there should
+     * always be a penalty". Three is the number — enough that a five-year-old
+     * gets to be wrong twice and still finish, few enough that the third one
+     * means something. A hole costs one, and so does a decoy letter, which is
+     * what makes reading the tray worth doing.
+     */
+    this.hearts = 3;
+    this.hurtT = 0;
+
+    /**
+     * The clock, and why it is generous.
+     *
+     * Asked for directly: "there should be a level of urgency for every
+     * single game". The honest tension is that rushing a fine-motor task is
+     * the opposite of what steering a ball trains, so this is not a race —
+     * it is a budget most children will never notice. It only turns red in
+     * the last ten seconds, and running out costs a heart and resets rather
+     * than ending the level. Urgency, without punishing the careful player
+     * the game is trying to produce.
+     */
+    this.timeLimit = 95 - this.levelIndex * 6;
+    this.timeLeft = this.timeLimit;
     this.elapsed = 0;
     this.usingGyro = false;
 
@@ -92,6 +119,28 @@ export class TiltMazeScene {
   down() {
     if (this.state === "intro") { this.state = "play"; this.stateT = 0; this.tilt.calibrate(); }
     else if (this.state === "won") this.finish();
+    else if (this.state === "over" && this.stateT > 0.6) this.retry();
+  }
+
+  /**
+   * Another go at the same board, hearts restored.
+   *
+   * Straight back into play rather than out to the results screen: running
+   * out of hearts is not finishing a level, and a child who just lost is the
+   * one most likely to want an immediate second try. The letters they had
+   * already collected go back, because half a word is not a checkpoint.
+   */
+  retry() {
+    this.hearts = 3;
+    this.falls = 0;
+    this.timeLeft = this.timeLimit;
+    this.nextLetter = 0;
+    for (const l of this.board.letters) l.taken = false;
+    for (const d of this.board.decoys ?? []) d.taken = false;
+    this.resetBall();
+    this.state = "play";
+    this.stateT = 0;
+    this.tilt.calibrate();
   }
 
   destroy() {
@@ -133,6 +182,14 @@ export class TiltMazeScene {
   update(dt) {
     this.t += dt;
     this.stateT += dt;
+    this.hurtT = Math.max(0, this.hurtT - dt);
+    if (this.state === "play") {
+      this.timeLeft -= dt;
+      if (this.timeLeft <= 0) {
+        this.timeLeft = Math.min(this.timeLimit, 25);   // a short reprieve, not a fresh start
+        this.loseHeart("Too slow!", this.ball.x + this.origin.x, this.ball.y + this.origin.y);
+      }
+    }
     this.fx.update(dt);
     this.tilt.update(dt);
 
@@ -140,7 +197,7 @@ export class TiltMazeScene {
       if (this.stateT > 3) { this.state = "play"; this.stateT = 0; this.tilt.calibrate(); }
       return;
     }
-    if (this.state === "won") return;
+    if (this.state === "won" || this.state === "over") return;
     if (this.state === "fell") {
       if (this.stateT > 0.65) { this.state = "play"; this.stateT = 0; this.resetBall(); }
       return;
@@ -232,8 +289,9 @@ export class TiltMazeScene {
       const hx = (cx + 0.5) * tile, hy = (cy + 0.5) * tile;
       if (Math.hypot(b.x - hx, b.y - hy) < tile * 0.3) {
         this.falls++;
-        sfx.hurt();
         this.fx.burst(this.origin.x + hx, this.origin.y + hy, [C.slate.base, C.coal.base], 10);
+        this.loseHeart("Oops!", this.origin.x + hx, this.origin.y + hy);
+        if (this.state === "over") return;
         this.state = "fell";
         this.stateT = 0;
         return;
@@ -257,6 +315,18 @@ export class TiltMazeScene {
         }
       }
     }
+    // Decoys: letters that are not in the word at all. Touching one costs a
+    // heart and says so out loud, because the lesson is "read it first", and
+    // a penalty a child cannot connect to a cause teaches nothing.
+    for (const d of this.board.decoys ?? []) {
+      if (d.taken) continue;
+      const dx = (d.c + 0.5) * tile, dy = (d.r + 0.5) * tile;
+      if (Math.hypot(b.x - dx, b.y - dy) < tile * 0.46) {
+        d.taken = true;
+        this.loseHeart(`Not ${d.ch}!`, this.origin.x + dx, this.origin.y + dy);
+      }
+    }
+
     // Touching a later letter early just nudges the child back on track.
     for (let i = this.nextLetter + 1; i < this.board.letters.length; i++) {
       const l = this.board.letters[i];
@@ -277,6 +347,27 @@ export class TiltMazeScene {
         this.fx.burst(this.origin.x + ex, this.origin.y + ey, [C.sun.base, C.grass.light, "#FFFFFF"], 30);
         save.learnWord(this.board.word.toLowerCase());
       }
+    }
+  }
+
+  /**
+   * Spend a heart, and end the run if that was the last.
+   *
+   * Deliberately NOT a silent decrement: the label pops where the mistake
+   * happened, so the cost is attached to the thing that caused it rather than
+   * to a counter at the top of the screen a child is not looking at.
+   */
+  loseHeart(label, x, y) {
+    if (this.state === "over" || this.state === "won") return;
+    this.hearts--;
+    this.hurtT = 0.7;
+    sfx.hurt();
+    haptics.thud();
+    this.fx.say(x, y - 22, label, C.cherry.light, 26);
+    if (this.hearts <= 0) {
+      this.hearts = 0;
+      this.state = "over";
+      this.stateT = 0;
     }
   }
 
@@ -396,6 +487,7 @@ export class TiltMazeScene {
     ctx.drawImage(this.maze, 0, 0, bw, bh);
 
     this.drawExit(ctx);
+    this.drawDecoys(ctx);
     this.drawLetters(ctx);
     this.drawBall(ctx);
     ctx.restore();
@@ -404,6 +496,7 @@ export class TiltMazeScene {
     this.drawHud(ctx, view);
     if (this.state === "intro") this.drawIntro(ctx, view);
     if (this.state === "won") this.drawWon(ctx, view);
+    if (this.state === "over") this.drawOver(ctx, view);
   }
 
 
@@ -435,6 +528,34 @@ export class TiltMazeScene {
       text(ctx, String(left), ex, ey + tile * 0.62, { size: tile * 0.28, color: C.sun.base });
     }
     ctx.restore();
+  }
+
+  /**
+   * The wrong letters.
+   *
+   * Drawn identically to a letter that is not due yet — same shape, same
+   * size, same stone colour — because a decoy you can pick out by its colour
+   * is not a decoy, and the whole point is to make reading the tray worth
+   * something. The one honest tell is the numbered pip a real letter carries
+   * and this does not, which rewards a child who looks closely rather than
+   * one who happens to know that purple means bad.
+   */
+  drawDecoys(ctx) {
+    const tile = this.tile;
+    for (const [i, d] of (this.board.decoys ?? []).entries()) {
+      if (d.taken) continue;
+      const dx = (d.c + 0.5) * tile, dy = (d.r + 0.5) * tile;
+      const bob = Math.sin(this.t * 2.6 + i * 1.7) * tile * 0.04;
+      ctx.save();
+      ctx.translate(dx, dy + bob);
+      ctx.globalAlpha = 0.45;
+      const s = tile * 0.34;
+      fillRound(ctx, -s, -s + 4, s * 2, s * 2, 9, C.slate.dark);
+      fillRound(ctx, -s, -s, s * 2, s * 2, 9, C.slate.base);
+      fillRound(ctx, -s + 4, -s + 4, s * 2 - 8, s * 0.5, 4, alpha("#FFFFFF", 0.35));
+      text(ctx, d.ch, 0, 2, { size: tile * 0.42, color: "#0B1113" });
+      ctx.restore();
+    }
   }
 
   drawLetters(ctx) {
@@ -508,25 +629,115 @@ export class TiltMazeScene {
 
   /* ----------------------------------------------------------------- HUD */
 
+  /**
+   * Three hearts, top right, big enough to read at arm's length.
+   *
+   * A lost heart flashes the whole row rather than just fading the one that
+   * went: a five-year-old watching the ball is not watching the corner, and
+   * the flash is what makes them look.
+   */
+  drawHearts(ctx, view, top) {
+    const size = 30, gap = 10;
+    const total = 3 * size + 2 * gap;
+    let x = view.x + view.w - 24 - total;
+    const flash = this.hurtT > 0 ? Math.sin(this.hurtT * 34) * 0.5 + 0.5 : 0;
+    for (let i = 0; i < 3; i++) {
+      const alive = i < this.hearts;
+      ctx.save();
+      ctx.globalAlpha = alive ? 1 : 0.24;
+      if (alive && flash) {
+        ctx.shadowColor = C.cherry.light;
+        ctx.shadowBlur = 16 * flash;
+      }
+      this.drawHeart(ctx, x + size / 2, top + size / 2 + 4, size * (alive ? 1 + flash * 0.16 : 0.84),
+        alive ? C.cherry.base : C.slate.base);
+      ctx.restore();
+      x += size + gap;
+    }
+  }
+
+  /**
+   * The time budget, as a draining bar rather than a number.
+   *
+   * A five-year-old cannot read "0:38" as a quantity of anything, but a bar
+   * that is nearly empty needs no explanation. It stays calm and green for
+   * most of the level and only starts pulsing red in the last ten seconds,
+   * so the pressure arrives when it is useful and not before.
+   */
+  drawClock(ctx, view, top) {
+    const w = 200, h = 12;
+    const x = view.x + view.w - 24 - w, y = top + 46;
+    const f = clamp(this.timeLeft / this.timeLimit, 0, 1);
+    const low = this.timeLeft <= 10;
+    fillRound(ctx, x, y, w, h, h / 2, alpha("#000000", 0.45));
+    if (f > 0.005) {
+      ctx.save();
+      if (low) {
+        ctx.globalAlpha = 0.65 + Math.sin(this.t * 9) * 0.35;
+        ctx.shadowColor = C.cherry.light;
+        ctx.shadowBlur = 12;
+      }
+      fillRound(ctx, x + 2, y + 2, (w - 4) * f, h - 4, (h - 4) / 2,
+        low ? C.cherry.base : f < 0.35 ? C.sun.base : C.grass.base);
+      ctx.restore();
+    }
+  }
+
+  drawHeart(ctx, cx, cy, s, col) {
+    const r = s / 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.beginPath();
+    ctx.moveTo(0, r * 0.72);
+    ctx.bezierCurveTo(-r * 1.3, -r * 0.2, -r * 0.52, -r * 1.16, 0, -r * 0.4);
+    ctx.bezierCurveTo(r * 0.52, -r * 1.16, r * 1.3, -r * 0.2, 0, r * 0.72);
+    ctx.closePath();
+    ctx.fillStyle = col;
+    ctx.fill();
+    ctx.restore();
+  }
+
   drawHud(ctx, view) {
     const pad = 24;
     const top = view.y + pad;
     text(ctx, "✕", view.x + pad + 14, top + 18, { size: 30, color: "#FFFFFF" });
 
-    // The word being spelled, with collected letters filled in.
+    // Hearts. Three of them, spent on holes and on wrong letters.
+    this.drawHearts(ctx, view, top);
+    this.drawClock(ctx, view, top);
+
+    /**
+     * The word being spelled — WITH the letters still to come shown, ghosted.
+     *
+     * They used to be blank underscores, which was a fair puzzle when every
+     * letter on the board was one you wanted. It stopped being fair the
+     * moment decoys arrived: a child cannot choose between an A and an I
+     * without knowing which one the word needs. The target is the hint, the
+     * order is the challenge.
+     */
     const word = this.board.word;
     const n = word.length;
-    const cell = Math.min(64, (view.w - pad * 2 - 40) / n);
+    const cell = Math.min(78, (view.w - pad * 2 - 40) / n);
     const startX = view.x + view.w / 2 - (n * cell) / 2;
-    const y = (this.origin?.y ?? view.y + 210) - cell - 46;
-    text(ctx, "SPELL THE WORD", view.x + view.w / 2, y - 30, { size: 16, color: C.sun.base });
+    const y = (this.origin?.y ?? view.y + 210) - cell - 52;
+    text(ctx, "SPELL THE WORD", view.x + view.w / 2, y - 32, { size: 24, color: C.sun.base, weight: 900 });
     for (let i = 0; i < n; i++) {
       const got = i < this.nextLetter;
+      const next = i === this.nextLetter;
       const x = startX + i * cell;
-      fillRound(ctx, x + 3, y + 5, cell - 6, cell - 6, 10, got ? C.grass.dark : "#0D1518");
-      fillRound(ctx, x + 3, y, cell - 6, cell - 6, 10, got ? C.grass.base : "#1B2930");
-      if (got) text(ctx, word[i], x + cell / 2, y + cell / 2 - 3, { size: cell * 0.52, color: "#FFFFFF" });
-      else text(ctx, "_", x + cell / 2, y + cell / 2 + 4, { size: cell * 0.4, color: "#3A4C55" });
+      fillRound(ctx, x + 3, y + 5, cell - 6, cell - 6, 12, got ? C.grass.dark : "#0D1518");
+      fillRound(ctx, x + 3, y, cell - 6, cell - 6, 12, got ? C.grass.base : "#1B2930");
+      if (next) {
+        ctx.save();
+        ctx.globalAlpha = 0.5 + Math.sin(this.t * 5) * 0.3;
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = C.sun.base;
+        roundRect(ctx, x + 3, y, cell - 6, cell - 6, 12);
+        ctx.stroke();
+        ctx.restore();
+      }
+      text(ctx, word[i], x + cell / 2, y + cell / 2 - 3,
+        { size: cell * 0.56, color: got ? "#FFFFFF" : next ? C.sun.light : "#445A66" });
     }
 
     // falls
@@ -563,6 +774,24 @@ export class TiltMazeScene {
     text(ctx, this.board.teaches, view.x + view.w / 2, cy + 30, { size: 22, color: alpha("#FFFFFF", 0.8) });
     text(ctx, "tap to start", view.x + view.w / 2, cy + 110,
       { size: 18, color: alpha("#FFFFFF", 0.4 + Math.sin(this.t * 4) * 0.2) });
+    ctx.restore();
+  }
+
+  drawOver(ctx, view) {
+    const k = clamp(this.stateT * 1.6, 0, 1);
+    ctx.save();
+    ctx.globalAlpha = 0.82 * k;
+    ctx.fillStyle = "#1A0A0E";
+    ctx.fillRect(view.x, view.y, view.w, view.h);
+    ctx.globalAlpha = k;
+    const cx = view.x + view.w / 2;
+    const cy = view.y + view.h * 0.38;
+    for (let i = 0; i < 3; i++) this.drawHeart(ctx, cx - 60 + i * 60, cy - 90, 44, alpha(C.slate.base, 0.6));
+    text(ctx, "OUT OF HEARTS", cx, cy, { size: 46 * easeOutBack(k), color: C.cherry.light, weight: 900 });
+    // Named, so the next attempt is aimed at something rather than just repeated.
+    text(ctx, `The word was ${this.board.word.toUpperCase()}`, cx, cy + 62,
+      { size: 28, color: "#FFFFFF" });
+    text(ctx, "tap to try again", cx, cy + 132, { size: 26, color: alpha("#FFFFFF", 0.75) });
     ctx.restore();
   }
 

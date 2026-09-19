@@ -14,22 +14,36 @@ So levels are built the way the reference art is built: PILLARS rising out of
 WATER, with their tops in the middle band of the screen and obvious gaps
 between them.
 
-    rows 0-3    sky      (headroom for a full-power jump's apex)
-    rows 4-7    tops     (platform surfaces live here, at varying heights)
-    rows 8-10   water    (the thing you fall into)
+    rows 0-7    sky      (headroom for a full-power jump's apex)
+    rows 8-11   tops     (platform surfaces live here, at varying heights)
+    rows 12+    water    (the thing you fall into)
+
+The sky band is deliberately DEEPER than the apex needs. Every level here is
+shorter than the viewport, so the camera pins vertically and the platforms
+land at whatever fraction of the screen the sky puts them at — with four rows
+of sky they sat 22% down, with the rest of the phone below them. Eight rows
+puts them at 38%, which is where a player expects the ground to be.
 
 Budgets, checked by assertions below:
     horizontal gap  <= 7 tiles (448px) against a 520px max jump
     upward step     <= 3 rows  (192px) against a 260px max apex
 """
 
-# The water runs far deeper than the screen shows. A portrait viewport that is
-# wide enough to frame two perches and the gap between them is also very tall,
-# and a level that stops just below the waterline leaves a band of nothing at
-# the bottom of every frame. Bottomless water fills it and reads as danger.
-ROWS = 24
-TOP_MIN, TOP_MAX = 4, 7      # legal rows for a platform surface
-WATER_ROW = 8                # water fills from here down
+# The water no longer has to run off the bottom of the world to fill the frame.
+# It is drawn as one wide body in front of the pillars now, extending past the
+# level's end, so six rows of it is plenty — and the pillars it hides are six
+# rows of brick that used to be painted over the sea.
+ROWS = 18
+
+# Every level spec below names its platform tops in rows 4..7, and they are
+# shifted down by SKY when the grid is built. Keeping the specs as they were
+# written is not laziness: each one is a hand-paced difficulty curve, and
+# renumbering forty rows by hand to change where the camera frames them is a
+# large opportunity to introduce a gap nobody can jump.
+SKY = 4
+SPEC_TOP_MIN, SPEC_TOP_MAX = 4, 7
+TOP_MIN, TOP_MAX = SPEC_TOP_MIN + SKY, SPEC_TOP_MAX + SKY
+WATER_ROW = TOP_MAX + 1      # water fills from here down
 TILE = 64
 MAX_GAP = 7
 MAX_RISE = 3
@@ -93,6 +107,11 @@ def build():
     out = {}
 
     def level(cols, specs, *, spawn_i=0, goal_i=-1, stars=(), props=(), extras=()):
+        # Shift ONCE, here, before anything reads a row number. Doing it inside
+        # `pillars()` moved the pillars and left every gate, star, spawn and
+        # goal at its old height — four rows of clear air above a perch that
+        # was no longer there.
+        specs = [(col, width, top + SKY) for (col, width, top) in specs]
         L = Level(cols)
         L.pillars(specs)
         L.flood()
@@ -157,35 +176,35 @@ def build():
     # Springs throw you up to the high perches.
     out["M2_2"] = level(58, [
         (0, 4, 7), (8, 3, 5), (16, 3, 7), (24, 3, 4), (32, 3, 6), (40, 3, 5), (47, 5, 7),
-    ], stars=(1, 3, 5), extras=[(6, 2, "B"), (6, 17, "B"), (5, 33, "B")])
+    ], stars=(1, 3, 5), extras=[(6, 2, "B"), (6, 17, "B"), (5, 33, "B"), (3, 26, "Q")])
 
     # Moving perches over the deep.
     out["M2_3"] = level(60, [
         (0, 4, 7), (9, 3, 6), (17, 3, 6), (25, 3, 6), (33, 3, 6), (41, 3, 6), (48, 5, 7),
-    ], stars=(2, 4), extras=[(4, 6, "M--"), (4, 22, "M--"), (4, 38, "M--")])
+    ], stars=(2, 4), extras=[(4, 6, "M--"), (4, 22, "M--"), (4, 38, "M--"), (3, 34, "H")])
 
     # ---------------------------------------------------------- world 3 --
     # Cloud Kingdom: soft cloud ledges you hop up through.
     out["M3_1"] = level(58, [
         (0, 4, 7), (8, 3, 6), (16, 3, 5), (24, 3, 6), (32, 3, 5), (40, 3, 6), (47, 5, 7),
-    ], stars=(1, 2, 3, 4), extras=[(4, 12, "==="), (4, 28, "==="), (4, 44, "===")])
+    ], stars=(1, 2, 3, 4), extras=[(4, 12, "==="), (4, 28, "==="), (4, 44, "==="), (3, 30, "H")])
 
     # Lifts carry you to the high road.
     out["M3_2"] = level(60, [
         (0, 4, 7), (9, 3, 7), (17, 3, 6), (25, 3, 5), (33, 3, 6), (41, 3, 7), (48, 5, 7),
-    ], stars=(2, 3, 4), extras=[(4, 6, "V"), (5, 6, "|"), (4, 30, "V"), (5, 30, "|"), (6, 14, "B")])
+    ], stars=(2, 3, 4), extras=[(4, 6, "V"), (5, 6, "|"), (4, 30, "V"), (5, 30, "|"), (6, 14, "B"), (3, 18, "Q")])
 
     # Everything at once.
     out["M3_3"] = level(62, [
         (0, 4, 7), (8, 2, 6), (15, 2, 5), (22, 2, 6), (29, 2, 5), (36, 2, 6), (43, 2, 5), (50, 5, 7),
-    ], stars=(1, 3, 5), extras=[(4, 12, "M--"), (4, 33, "M--"), (4, 26, "==="), (6, 2, "B")])
+    ], stars=(1, 3, 5), extras=[(4, 12, "M--"), (4, 33, "M--"), (4, 26, "==="), (6, 2, "B"), (3, 40, "H")])
 
     # ---------------------------------------------------------- world 4 --
     # Sugar Peaks: ice perches — you keep sliding after you land.
     out["M4_1"] = level(58, [
         (0, 4, 7), (8, 4, 6), (16, 4, 6), (24, 4, 6), (32, 4, 6), (40, 4, 6), (47, 5, 7),
     ], stars=(1, 3, 5), extras=[(6, 8, "IIII"), (6, 16, "IIII"), (6, 24, "IIII"),
-                                (6, 32, "IIII"), (6, 40, "IIII")])
+                                (6, 32, "IIII"), (6, 40, "IIII"), (3, 28, "H")])
 
     # Fire in the cave mouths. It breathes, so it is a rhythm to read rather
     # than a wall to be told about.
@@ -193,19 +212,19 @@ def build():
         (0, 4, 7), (9, 3, 6), (17, 3, 6), (25, 3, 6), (33, 3, 6), (41, 3, 6), (48, 5, 7),
     ], stars=(1, 3, 5), extras=[(7, 13, "F"), (6, 13, "!"),
                                 (7, 29, "F"), (6, 29, "!"),
-                                (7, 45, "F"), (6, 45, "!")])
+                                (7, 45, "F"), (6, 45, "!"), (3, 20, "Q")])
 
     # Cannons across the gaps — the shot is slow, loud and announced.
     out["M3_4"] = level(62, [
         (0, 4, 7), (9, 3, 6), (18, 3, 5), (27, 3, 6), (36, 3, 5), (45, 3, 6), (52, 5, 7),
     ], stars=(2, 4), extras=[(5, 6, "C-----"), (4, 24, "C-----"), (5, 42, "C-----"),
-                             (3, 33, "P")])
+                             (3, 33, "P"), (3, 22, "Q"), (3, 48, "H")])
 
     # Belts and saws.
     out["M4_2"] = level(60, [
         (0, 4, 7), (9, 4, 6), (18, 4, 6), (27, 4, 6), (36, 4, 6), (44, 3, 6), (51, 5, 7),
     ], stars=(2, 4), extras=[(6, 9, ">>>>"), (6, 18, "<<<<"), (6, 27, ">>>>"),
-                             (4, 6, "X--"), (4, 24, "X--"), (4, 41, "X--")])
+                             (4, 6, "X--"), (4, 24, "X--"), (4, 41, "X--"), (3, 34, "Q")])
 
     # The finale.
     out["M4_3"] = level(70, [
@@ -214,7 +233,7 @@ def build():
     ], stars=(1, 3, 5, 7), extras=[(4, 12, "M--"), (4, 41, "M--"), (4, 27, "==="),
                                    (4, 34, "V"), (5, 34, "|"),
                                    (5, 15, "%%"), (5, 30, "%%"),
-                                   (6, 2, "B"), (6, 55, "B")])
+                                   (6, 2, "B"), (6, 55, "B"), (3, 20, "H"), (3, 52, "Q")])
 
     # The gauntlet: everything the game has, arranged so each hazard has its
     # own beat rather than arriving all at once.
@@ -228,7 +247,7 @@ def build():
                                    (4, 43, "X--"),
                                    (5, 51, "C-----"),
                                    (6, 5, "B"), (6, 59, "B"),
-                                   (3, 24, "P"), (3, 47, "P")])
+                                   (3, 24, "P"), (3, 47, "P"), (3, 38, "H")])
 
     return out
 

@@ -24,7 +24,7 @@
 import { Engine, clamp, lerp, approach, easeOutCubic, easeOutBack } from "../../core/engine.js";
 import { Body, World, TILE, KIND, HAZARD, TUNE, solveJump } from "../../core/physics.js";
 import { loadLevel, LEVELS, LEVEL_COUNT } from "./levels.js";
-import { THEMES, drawBackdrop, drawPlatform, drawHazard, drawProp, Weather } from "../../art/environment.js";
+import { THEMES, drawBackdrop, drawPlatform, drawHazard, drawProp, waterBody, Weather } from "../../art/environment.js";
 import { drawBird, birdBlink, BIRDS } from "../../art/bird.js";
 import { C, TOKENS, PAIRS, alpha, mix } from "../../core/palette.js";
 import { roundRect, fillRound, circle, text, outlinedText, star as starShape } from "../../core/draw.js";
@@ -45,6 +45,9 @@ const def_band = (lvl) => lvl.band ?? "mid";
 // landing platform out of frame on a portrait screen, so the player loses
 // sight of where they are going at exactly the wrong moment.
 const JUMP = { minApex: 120, maxApex: 260, minDist: 150, maxDist: 560 };
+
+/** Lives per level. See the note where it is spent. */
+const MAX_HEARTS = 3;
 
 const apexFor = (c) => lerp(JUMP.minApex, JUMP.maxApex, c);
 const distFor = (c) => lerp(JUMP.minDist, JUMP.maxDist, c);
@@ -105,10 +108,23 @@ export class SayJumpScene {
      * joke instead of a threat.
      */
     this.shield = 0;
+    /** Seconds of BIG left from a grow star. */
+    this.grow = 0;
     this.stateT = 0;
 
     this.fx = new Fx();
-    this.hearts = 5;
+    /**
+     * Three hearts, not five.
+     *
+     * Asked for across every game: "they only have two to three hearts and
+     * if they are exhausted, the game will end". Five was enough to fall in
+     * the water on nearly every gap and still finish, which makes the water
+     * scenery. Three makes the third mistake matter without making the first
+     * one fatal — and a correct word is now guaranteed to clear the gap it
+     * faces, so the hearts are spent on hazards and hesitation rather than on
+     * saying a word quietly.
+     */
+    this.hearts = MAX_HEARTS;
     this.starsGot = 0;
     this.wordsRight = 0;
     this.wordsAsked = 0;
@@ -134,6 +150,11 @@ export class SayJumpScene {
     this.level = lvl;
     this.theme = THEMES[lvl.theme] ?? THEMES.meadow;
     this.weather = new Weather(this.theme, 22);
+    // The waterline: the top of the shallowest water tile in the level. Read
+    // from the level rather than hardcoded, because it is the composer's
+    // WATER_ROW and this should not have to know that number.
+    const wet = lvl.hazards.filter((h) => h.type === "water");
+    this.waterY = wet.length ? Math.min(...wet.map((h) => h.y)) : null;
 
     this.world = new World({
       platforms: lvl.platforms,
@@ -309,7 +330,11 @@ export class SayJumpScene {
    */
   effectiveCharge(charge, correct) {
     if (charge <= 0) return 0;   // silence is silence; the meter must read empty
-    const c = clamp(charge, 0.06, 1);
+    // A big bird is a STRONG bird. The size is what a child notices, but the
+    // reach is what makes the powerup worth crossing the level for, and both
+    // have to be the same fact or the reward is decoration.
+    const big = this.grow > 0 ? 1.22 : 1;
+    const c = clamp(charge * big, 0.06, 1);
     if (!correct) return c;
     const floor = clamp((this.needCharge ?? 0.4) + 0.06, 0, 1);
     return clamp(Math.max(c * 1.12, floor), 0, 1);
@@ -504,6 +529,10 @@ export class SayJumpScene {
     } else {
       this.listenCharge = 0;
     }
+    if (this.grow > 0) {
+      this.grow -= dt;
+      if (this.grow <= 0) { this.grow = 0; speak("back to normal"); }
+    }
     if (this.shield > 0) {
       this.shield -= dt;
       if (this.shield <= 0) { this.shield = 0; speak("all gone"); }
@@ -632,7 +661,34 @@ export class SayJumpScene {
           this.fx.burst(p.x, p.y, [TOKENS.bee, C.flame.light, C.candy.light, TOKENS.snow], 30);
           this.fx.say(p.x, p.y - 22, "SUPER!", TOKENS.bee, 26);
           sfx.fanfare();
+          haptics.win();
           speak("super star");
+          continue;
+        }
+        if (p.kind === "grow") {
+          // Being BIG is the one powerup a child can see working without
+          // being told, which is why it is here: the bird is visibly twice
+          // the bird, and it jumps further, so the reward and the effect are
+          // the same fact. "There is no meaning for powerups" was the note
+          // this answers.
+          this.grow = 9;
+          this.fx.burst(p.x, p.y, [C.grass.light, TOKENS.snow, C.jade.light], 30);
+          this.fx.say(p.x, p.y - 22, "BIG BIRD!", C.grass.light, 26);
+          sfx.fanfare();
+          haptics.win();
+          speak("big bird");
+          continue;
+        }
+        if (p.kind === "heart") {
+          // Refuses to overfill. A heart that vanishes into a full bar is a
+          // reward a child watched not happen.
+          const room = this.hearts < MAX_HEARTS;
+          if (room) this.hearts++;
+          this.fx.burst(p.x, p.y, [C.cherry.light, TOKENS.snow], 22);
+          this.fx.say(p.x, p.y - 22, room ? "+1 LIFE!" : "ALL FULL!", C.cherry.light, 26);
+          room ? sfx.correct() : sfx.coin();
+          haptics.knock();
+          if (room) speak("extra life");
           continue;
         }
         this.starsGot++;
@@ -692,10 +748,32 @@ export class SayJumpScene {
     const vis = (x, w = 0) => x + w > cull.x && x < cull.x + cull.w;
 
     for (const p of this.level.props) if (vis(p.x, 60)) drawProp(ctx, p, this.theme, this.t);
-    for (const h of this.world.hazards) if (vis(h.x, h.w)) drawHazard(ctx, h, this.theme, this.t);
+    // Everything except the water first — the water goes in FRONT of it.
+    for (const h of this.world.hazards) {
+      if (h.type === "water" || !vis(h.x, h.w)) continue;
+      drawHazard(ctx, h, this.theme, this.t);
+    }
     for (const p of this.world.platforms) {
       if (p.gone || !vis(p.x, p.w)) continue;
       drawPlatform(ctx, p, this.theme, this.t);
+    }
+    /**
+     * The sea, as ONE body in front of everything, rather than a tile per gap.
+     *
+     * A ground pillar is drawn from its cap all the way down so it plunges
+     * into the water rather than floating above it. The water was painted
+     * first and only in the gaps — the cells a pillar occupies have no water
+     * tile — so every pillar showed as brick to the bottom of the frame. Two
+     * thirds of a portrait screen was wall, which came back from the device
+     * as "the walls, they are too high".
+     *
+     * Painting one wide body over the lot puts the waterline where it belongs
+     * and hides what is under it, which is what water does. The per-gap
+     * hazards still drive the collision; this is only what you see.
+     */
+    if (this.waterY != null) {
+      waterBody(ctx, cull.x, this.waterY, cull.w,
+        this.level.height - this.waterY + 400, this.theme.water, this.t);
     }
 
     this.drawGoal(ctx);
@@ -733,10 +811,110 @@ export class SayJumpScene {
     ctx.restore();
   }
 
+  /**
+   * A grow star and a spare heart: a fat upward arrow and a heart, each on
+   * its own glowing disc so it reads as a pickup rather than as scenery.
+   */
+  drawPowerup(ctx, p, bob) {
+    const heart = p.kind === "heart";
+    const col = heart ? C.cherry.base : C.grass.base;
+    const lit = heart ? C.cherry.light : C.grass.light;
+    const pulse = 1 + Math.sin(this.t * 4 + p.bob) * 0.07;
+    ctx.save();
+    ctx.translate(p.x, p.y + bob);
+    ctx.scale(pulse, pulse);
+
+    const glow = ctx.createRadialGradient(0, 0, 2, 0, 0, 46);
+    glow.addColorStop(0, alpha(lit, 0.5));
+    glow.addColorStop(1, alpha(lit, 0));
+    ctx.fillStyle = glow;
+    ctx.fillRect(-46, -46, 92, 92);
+
+    circle(ctx, 0, 3, 24, alpha("#0B1113", 0.35));
+    circle(ctx, 0, 0, 24, col);
+    circle(ctx, 0, -2, 20, lit);
+
+    ctx.fillStyle = "#FFFFFF";
+    if (heart) {
+      this.drawHeartPath(ctx, 0, 1, 26);
+    } else {
+      // a chunky up-arrow: grow
+      ctx.beginPath();
+      ctx.moveTo(0, -14);
+      ctx.lineTo(12, 0);
+      ctx.lineTo(5, 0);
+      ctx.lineTo(5, 13);
+      ctx.lineTo(-5, 13);
+      ctx.lineTo(-5, 0);
+      ctx.lineTo(-12, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  /**
+   * What powerup is running, and how much of it is left.
+   *
+   * Without this, a powerup is eight seconds during which the game quietly
+   * behaves differently and then quietly stops. A child needs to know it is
+   * ON — that is most of the reward — and needs a moment's warning before it
+   * goes, which is what the draining bar is for.
+   */
+  drawPowerBadge(ctx, view, top) {
+    const on = this.shield > 0
+      ? { label: "INVINCIBLE!", left: this.shield, full: 8, col: C.sun.base, lit: C.sun.light }
+      : this.grow > 0
+      ? { label: "BIG BIRD!", left: this.grow, full: 9, col: C.grass.base, lit: C.grass.light }
+      : null;
+    if (!on) return;
+
+    const w = 244, h = 54;
+    const x = view.x + view.w / 2 - w / 2, y = top + 4;
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.45)";
+    ctx.shadowBlur = 12;
+    fillRound(ctx, x, y + 4, w, h, 27, alpha("#0B1113", 0.85));
+    ctx.restore();
+    fillRound(ctx, x + 4, y + 8, w - 8, h - 8, 23, alpha(on.col, 0.28));
+
+    outlinedText(ctx, on.label, x + w / 2, y + h / 2 + 4,
+      { size: 26, color: "#FFFFFF", weight: 900, stroke: alpha("#000000", 0.55), strokeWidth: 5 });
+
+    const bw = w - 28;
+    const f = clamp(on.left / on.full, 0, 1);
+    fillRound(ctx, x + 14, y + h - 4, bw, 6, 3, alpha("#000000", 0.5));
+    ctx.save();
+    if (on.left < 2) ctx.globalAlpha = 0.45 + Math.sin(this.t * 18) * 0.4;
+    fillRound(ctx, x + 14, y + h - 4, bw * f, 6, 3, on.lit);
+    ctx.restore();
+  }
+
+  /** The heart outline, shared by the pickup and the HUD. */
+  drawHeartPath(ctx, cx, cy, s) {
+    const r = s / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + r * 0.72);
+    ctx.bezierCurveTo(cx - r * 1.3, cy - r * 0.2, cx - r * 0.52, cy - r * 1.16, cx, cy - r * 0.4);
+    ctx.bezierCurveTo(cx + r * 0.52, cy - r * 1.16, cx + r * 1.3, cy - r * 0.2, cx, cy + r * 0.72);
+    ctx.closePath();
+    ctx.fill();
+  }
+
   drawPickups(ctx) {
     for (const p of this.pickups) {
       if (p.taken) continue;
       const bob = Math.sin(this.t * 3 + p.bob) * 7;
+
+      // The two powerups that are not stars get their own shapes. A child
+      // choosing between three rewards has to be able to tell which is which
+      // from across the level, and three differently-coloured stars is not
+      // telling them apart, it is asking them to remember a colour code.
+      if (p.kind === "grow" || p.kind === "heart") {
+        this.drawPowerup(ctx, p, bob);
+        continue;
+      }
+
       ctx.save();
       ctx.translate(p.x, p.y + bob);
       ctx.rotate(Math.sin(this.t * 2 + p.bob) * 0.2);
@@ -853,7 +1031,33 @@ export class SayJumpScene {
 
     const airborne = b.onGround ? 0 : clamp(-b.vy / 700 + 0.4, 0, 1);
 
-    drawBird(ctx, b.cx, b.bottom, this.charH, {
+    // BIG. Eased in and out over half a second at each end, because a bird
+    // that snaps to twice its size reads as a glitch rather than a reward.
+    const g = clamp(Math.min(this.grow, 0.5) * 2, 0, 1) *
+              clamp((9 - this.grow) * 2, 0, 1);
+    const scale = 1 + g * 0.55;
+
+    // Invincibility, made visible. It was only ever legible as hazards
+    // failing to hurt — which a child experiences as the game being broken,
+    // not as being protected.
+    if (this.shield > 0) {
+      const fade = this.shield < 2 ? 0.4 + Math.sin(this.t * 20) * 0.35 : 0.85;
+      ctx.save();
+      ctx.globalAlpha = fade;
+      const r = this.charH * scale * 0.62;
+      const hue = (this.t * 220) % 360;
+      const ring = ctx.createRadialGradient(b.cx, b.cy, r * 0.5, b.cx, b.cy, r);
+      ring.addColorStop(0, `hsla(${hue}, 95%, 70%, 0)`);
+      ring.addColorStop(0.72, `hsla(${hue}, 95%, 72%, 0.5)`);
+      ring.addColorStop(1, `hsla(${(hue + 60) % 360}, 95%, 65%, 0)`);
+      ctx.fillStyle = ring;
+      ctx.beginPath();
+      ctx.arc(b.cx, b.cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    drawBird(ctx, b.cx, b.bottom, this.charH * scale, {
       bird: this.birdId,
       state,
       t: this.t,
@@ -886,15 +1090,18 @@ export class SayJumpScene {
     text(ctx, "✕", view.x + pad + 16, top + 18, { size: 30, color: TOKENS.snow });
     ctx.restore();
 
-    // hearts
-    for (let i = 0; i < 5; i++) {
-      const hx = view.x + view.w - pad - 24 - i * 26;
-      this.drawHeart(ctx, hx, top + 18, 10, i < this.hearts);
+    // Hearts. Bigger than they were, and spaced to match — at 10px across
+    // they were a row of dots a child could not count at arm's length.
+    for (let i = 0; i < MAX_HEARTS; i++) {
+      const hx = view.x + view.w - pad - 26 - i * 42;
+      this.drawHeart(ctx, hx, top + 20, 16, i < this.hearts);
     }
 
     // stars collected
-    text(ctx, `★ ${this.starsGot}/${this.pickups.length}`, view.x + view.w - pad - 4, top + 52,
-      { size: 20, color: TOKENS.bee, align: "right" });
+    text(ctx, `★ ${this.starsGot}/${this.pickups.length}`, view.x + view.w - pad - 4, top + 56,
+      { size: 22, color: TOKENS.bee, align: "right" });
+
+    this.drawPowerBadge(ctx, view, top);
 
     this.drawVoiceMeter(ctx, view);
 

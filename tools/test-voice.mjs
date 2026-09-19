@@ -76,6 +76,7 @@ await dismissCoach(page);
 
     const want = s.word.word;
     const x0 = s.body.x;
+    const hearts0 = s.hearts;
 
     // Take the real recogniser out of the way first. Headless Chromium has no
     // microphone, so `beginListening` fails instantly and retries on a timer —
@@ -124,7 +125,7 @@ await dismissCoach(page);
       chargedState: samples.some((x) => x.state === "charge"),
       maxCharge: Math.max(...samples.map((x) => x.charge)),
       travelled: Math.round(landedX - x0),
-      hearts: s.hearts,
+      hearts: s.hearts, hearts0,
       stop: s.stopIndex,
     };
   }, speakMs);
@@ -154,7 +155,11 @@ ok(longSpeak.travelled > shortSpeak.travelled + 40, "and the bird actually lands
    `${shortSpeak.travelled}px vs ${longSpeak.travelled}px`);
 ok(shortSpeak.reach >= shortSpeak.need, "a SHORT, quiet word still clears the gap",
    `reach ${shortSpeak.reach} vs need ${shortSpeak.need}`);
-ok(shortSpeak.hearts === 5 && longSpeak.hearts === 5, "saying the word right never costs a heart");
+// Against the count the level STARTED with, not a number written here: the
+// heart budget is a tuning decision and this test is about the word.
+ok(shortSpeak.hearts === shortSpeak.hearts0 && longSpeak.hearts === longSpeak.hearts0,
+   "saying the word right never costs a heart",
+   `${shortSpeak.hearts0} -> ${shortSpeak.hearts} / ${longSpeak.hearts}`);
 ok(shortSpeak.stop > 0 && longSpeak.stop > 0, "the bird gets to the next stop either way",
    `stops ${shortSpeak.stop} / ${longSpeak.stop}`);
 ok(!shortSpeak.errors.length && !longSpeak.errors.length, "no page errors",

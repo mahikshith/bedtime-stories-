@@ -14,6 +14,8 @@
  *   ^  spikes                   ~  water
  *   X  saw (moves with its own path marks)
  *   o  star                     *  gem
+ *   P  power star (invincible)   Q  grow star (bigger, jumps further)
+ *   H  spare heart
  *   W  word gate                K  key      D  door
  *   S  spawn                    G  goal
  *   T  tree      f  flower      r  rock     b  bush
@@ -205,10 +207,13 @@ export function parseMap(src, opts = {}) {
           });
           break;
         }
-        case "P": {
+        // The three powerups. They share a shape here because they differ only
+        // in what they grant; the game draws and applies them apart.
+        case "P": case "Q": case "H": {
           used[r][c] = true;
           pickups.push({
-            kind: "power", x: c * tile + tile / 2, y: r * tile + tile / 2,
+            kind: ch === "P" ? "power" : ch === "Q" ? "grow" : "heart",
+            x: c * tile + tile / 2, y: r * tile + tile / 2,
             taken: false, bob: Math.random() * 6,
           });
           break;
