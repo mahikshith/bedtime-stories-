@@ -379,6 +379,7 @@ export class World {
       const probe = { x: x - b.w / 2, y, w: b.w, h: b.h };
       if (svy > 0) {
         const prevBottom = points[points.length - 1].y;
+        let bounced = false;
         for (const p of this.overlapping(probe)) {
           /**
            * A landing means the feet crossed the TOP edge from above.
@@ -394,9 +395,26 @@ export class World {
            * has to apply to every platform, not just those.
            */
           if (prevBottom > p.y + 2) continue;
+          /**
+           * A spring is not a destination, it is another launch.
+           *
+           * Stopping here reported "you land safely" for an arc that ends
+           * with the bird being thrown a further two hundred pixels by a
+           * trampoline — so the meter aimed at the spring, the child hit it,
+           * and the bounce carried them into the water. Following the bounce
+           * through is the only answer that tells the truth about where the
+           * jump actually ends.
+           */
+          if (p.kind === KIND.BOUNCY && svy > TUNE.bounceTrigger) {
+            y = p.y - b.h;
+            svy = -TUNE.bounceSpeed;
+            bounced = true;
+            break;
+          }
           landing = p;
           break;
         }
+        if (bounced) { points.push({ x, y: y + b.h }); continue; }
       }
       points.push({ x, y: y + b.h });
       if (landing) break;

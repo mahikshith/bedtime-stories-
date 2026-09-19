@@ -360,57 +360,88 @@ export class SayJumpScene {
     const m = this.body.ground;
     const land = this.nextSolid();
     if (!m || !land) return true;         // nothing to wait for
+    // A VERTICAL lift is a step, not transport: it carries you up, never
+    // along, so waiting for it to arrive somewhere waits for ever. The Long
+    // Drop's lift travels one tile down and the bird rode it at full health
+    // for the entire level, patiently, because the far ledge was never going
+    // to get closer.
+    if (!m.tx) return true;
     return land.x - (m.x + m.w) <= 8;
   }
 
   /**
-   * The smallest charge whose arc actually reaches solid ground — SIMULATED.
+   * The BAND of charges whose arc actually reaches solid ground — simulated.
    *
-   * The closed form was wrong twice over, and both were fatal:
+   * Both ends matter and they are the same question, so they come from one
+   * scan. The low end is what the meter's red line asks for and what a
+   * correct word is floored to; the high end is what it is capped at, so a
+   * child who shouts cannot sail over the perch that was supposed to catch
+   * them.
    *
-   *   `chargeForDist` answers "how far does this jump travel before it comes
-   *   back down to the height it left from". Wherever the next surface is
-   *   HIGHER than the lip — a crumbling ledge one row up, a lift three rows
-   *   up — the arc has to arrive there long before it returns to launch
-   *   height, so the honest requirement is much larger than the formula's.
-   *   In Cracked Path the bird jumped exactly far enough to clip the left
-   *   FACE of the ledge and slide down it into the water, three hearts in a
-   *   row, having said the word correctly every time.
+   * Everything closed-form here was wrong, in three escalating ways:
+   *
+   *   `chargeForDist` answers "how far before coming back down to the height
+   *   it left from", which is the wrong question wherever the next surface is
+   *   higher — a crumbling ledge one row up, a lift three rows up. In The
+   *   Long Drop it asked for 0.14, buying 145px of apex against 192px of
+   *   rise, and the bird fell short three hearts in a row.
    *
    *   Adding a separate rise term and taking the larger is still wrong: the
    *   two constraints are not independent. You need the charge that satisfies
-   *   BOTH at once, and that is a question about a trajectory, not a sum.
+   *   both at once, which is a question about a trajectory, not a sum.
    *
-   * So it asks the physics. `predictArc` already simulates the real arc
-   * against the real platforms — it is what draws the landing preview — and
-   * the smallest charge whose arc reports a landing IS the answer, including
-   * for moving platforms, one-way ledges and everything else the formula
-   * could not see.
+   *   And a cap derived from the target's width ignores its height entirely,
+   *   so an under-powered jump was "capped" to pass clean underneath a cloud
+   *   ledge it was aimed at.
    *
-   * Scanned upward rather than bisected because "lands on something" is not
-   * monotonic in charge: a bigger jump can sail over the perch into the water
-   * beyond it, so the first success going up is the one we want. Throttled,
-   * because this is ~12 trajectory simulations and it is asked for every
-   * frame that the meter is on screen.
+   * So it asks the physics. `predictArc` simulates the real arc against the
+   * real platforms — it is what draws the landing preview — and the band of
+   * charges whose arcs report a landing IS the answer, for moving platforms,
+   * one-way ledges and everything else a formula could not see.
+   *
+   * Scanned rather than bisected, and stopped at the first gap, because
+   * "lands on something" is not monotonic: a bigger jump can sail over the
+   * perch into the water beyond it, and the band we want is the contiguous
+   * one starting at the first success.
    */
-  chargeNeeded() {
+  landingBand() {
     const now = this.t;
-    if (this._needAt != null && now - this._needAt < 0.08 && this._needVal != null) {
-      return this._needVal;
-    }
-    this._needAt = now;
+    if (this._bandAt != null && now - this._bandAt < 0.08 && this._band) return this._band;
+    this._bandAt = now;
+
+    /**
+     * The perch under the bird's feet, found by POSITION rather than by
+     * `body.ground`.
+     *
+     * `ground` is null for the odd frame — the moment gravity has pulled the
+     * feet a pixel clear before the next collision pass puts them back — and
+     * on those frames "landing somewhere that is not the ground" was true of
+     * the perch the bird was standing on. The scan then reported that a 0.06
+     * charge lands safely, the meter asked for almost nothing, and the bird
+     * hopped off the lip into open water. Position does not flicker.
+     */
+    const here = this.world.platforms.find((p) =>
+      !p.gone && this.body.right > p.x + 2 && this.body.x < p.x + p.w - 2 &&
+      Math.abs(this.body.bottom - p.y) < 8);
     const ground = this.body.ground;
-    let found = null;
-    for (let c = 0.08; c <= 1.0001; c += 0.08) {
+    let lo = null, hi = null;
+    for (let c = 0.06; c <= 1.0001; c += 0.07) {
       const { landing } = this.world.predictArc(
-        this.body, apexFor(c), distFor(c), 1, { steps: 60 });
+        // Long enough to follow a bounce through to wherever it ends.
+        this.body, apexFor(c), distFor(c), 1, { steps: 130 });
       // Coming straight back down onto the perch you left is not a landing.
-      if (landing && landing !== ground) { found = c; break; }
+      const ok = landing && landing !== ground && landing !== here;
+      if (ok) { if (lo == null) lo = c; hi = c; }
+      else if (lo != null) break;          // the band has ended
     }
-    // Nothing reaches: ask for everything, and let the cap keep it sane.
-    this._needVal = clamp(found ?? 1, 0, 1);
-    return this._needVal;
+    // Nothing reaches: ask for everything and cap at nothing, which leaves
+    // the jump entirely in the child's hands rather than aiming it at a hole.
+    this._band = { lo: lo ?? 1, hi: hi ?? 1 };
+    return this._band;
   }
+
+  /** The charge the meter asks for: the low end of the band. */
+  chargeNeeded() { return this.landingBand().lo; }
 
   /** Distance from the character to the far side of the gap in front. */
   gapAhead() {
@@ -480,32 +511,24 @@ export class SayJumpScene {
     let eff = Math.max(c * 1.12, floor);
 
     /**
-     * A correct word is CAPPED as well as floored: it lands you ON the perch.
+     * A correct word is CAPPED as well as floored: it lands you ON something.
      *
-     * The floor made a quiet child safe and left an enthusiastic one drowning
-     * — a full-power shout carries nine tiles and a perch is three, so saying
-     * the word beautifully and loudly sailed clean over the thing that was
-     * supposed to catch you. "Even if they say the word, we are killing the
-     * bird" was exactly this, and a game that punishes enthusiasm for a word
-     * it just asked a five-year-old to shout has its incentives backwards.
+     * The floor alone made a quiet child safe and left an enthusiastic one
+     * drowning — a full shout carries nine tiles and a perch is three, so
+     * saying the word beautifully and loudly sailed clean over the thing that
+     * was supposed to catch you. "Even if they say the word, we are killing
+     * the bird" was exactly this, and a game that punishes enthusiasm for a
+     * word it just asked a five-year-old to shout has its incentives
+     * backwards.
      *
-     * Volume is not thereby pointless: the cap is the FAR edge of the perch,
-     * so a loud word still lands three tiles further along than a quiet one
-     * — which is what reaches the stars sitting at the far end — it just no
-     * longer lands past it in the water.
-     *
-     * A mover is aimed nearer its middle: it is narrower, it is moving, and
-     * the skill it asks for is when rather than how hard.
+     * Inside the band every charge lands somewhere, so volume still decides
+     * WHERE — a loud word lands further along than a quiet one and can still
+     * reach the stars at the far end of a perch — it just cannot land in the
+     * water.
      */
-    const target = this.nextSurface();
-    if (target) {
-      const reach = target.kind === KIND.MOVING ? target.w * 0.55 : target.w * 0.8 + 40;
-      eff = Math.min(eff, chargeForDist(this.gapAhead() + reach));
-      // The cap is about not OVERSHOOTING, so it must never pull the jump
-      // below what it takes to get there in the first place — which for a
-      // surface above the bird is a question of height, not distance.
-      eff = Math.max(eff, floor * 0.9);
-    }
+    const band = this.landingBand();
+    eff = Math.min(eff, band.hi);
+    eff = Math.max(eff, Math.min(band.lo, floor));
     return clamp(eff, 0, 1);
   }
 

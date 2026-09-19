@@ -138,7 +138,7 @@ def build():
 
         `extras` are written in absolute columns, and widening a gap slides
         every pillar after it along — so without this, opening one gap leaves
-        every spring, vent, cannon and one-way ledge downstream of it standing
+        every vent, cannon and one-way ledge downstream of it standing
         in open air next to the perch it used to belong to. That is the same
         mistake the sky offset made vertically, and it is silent in exactly
         the same way.
@@ -263,10 +263,21 @@ def build():
     ], stars=(1, 2, 4), extras=[(5, 8, "%%%"), (5, 22, "%%%"), (5, 36, "%%%"),
                                 (7, 12, "F"), (6, 12, "!")])
 
-    # Springs throw you up to the high perches.
+    # Tall steps, taken in two hops.
+    #
+    # The springs that used to be here are gone. They fought the loop rather
+    # than serving it: this game is "stand at a gate, say a word, fly to the
+    # next gate", and there is no moment in that where a bounce helps. Worse,
+    # a spring sitting between where the bird lands and the gate it walks to
+    # is unavoidable — the child is not steering — and it made the landing
+    # prediction that the meter and the on-screen arc both depend on collapse
+    # to a single usable charge, because a trampoline is not a destination.
+    #
+    # `auditMap` still understands springs, so they remain available for a
+    # game whose loop can use them.
     out["M2_2"] = level(58, [
         (0, 4, 7), (8, 3, 5), (16, 3, 7), (24, 3, 4), (32, 3, 6), (40, 3, 5), (47, 5, 7),
-    ], stars=(1, 3, 5), extras=[(6, 2, "B"), (6, 17, "B"), (5, 33, "B"), (3, 26, "Q"),
+    ], stars=(1, 3, 5), extras=[(3, 26, "Q"),
                                 (5, 12, "C----"), (7, 21, "F"), (6, 21, "!")])
 
     # Moving perches over the deep.
@@ -283,12 +294,12 @@ def build():
     # Lifts carry you to the high road.
     out["M3_2"] = level(60, [
         (0, 4, 7), (9, 3, 7), (17, 3, 6), (25, 3, 5), (33, 3, 6), (41, 3, 7), (48, 5, 7),
-    ], stars=(2, 3, 4), extras=[(4, 6, "V"), (5, 6, "|"), (4, 30, "V"), (5, 30, "|"), (6, 14, "B"), (3, 18, "Q")])
+    ], stars=(2, 3, 4), extras=[(4, 6, "V"), (5, 6, "|"), (4, 30, "V"), (5, 30, "|"), (3, 18, "Q")])
 
     # Everything at once.
     out["M3_3"] = level(62, [
         (0, 4, 7), (8, 2, 6), (15, 2, 5), (22, 2, 6), (29, 2, 5), (36, 2, 6), (43, 2, 5), (50, 5, 7),
-    ], stars=(1, 3, 5), movers=(1, 4), extras=[(4, 26, "==="), (6, 2, "B"), (3, 40, "H")])
+    ], stars=(1, 3, 5), movers=(1, 4), extras=[(4, 26, "==="), (3, 40, "H")])
 
     # ---------------------------------------------------------- world 4 --
     # Sugar Peaks: ice perches — you keep sliding after you land.
@@ -324,7 +335,7 @@ def build():
     ], stars=(1, 3, 5, 7), movers=(1, 5), extras=[(4, 27, "==="),
                                    (4, 34, "V"), (5, 34, "|"),
                                    (5, 15, "%%"), (5, 30, "%%"),
-                                   (6, 2, "B"), (6, 55, "B"), (3, 20, "H"), (3, 52, "Q")])
+                                   (3, 20, "H"), (3, 52, "Q")])
 
     # The gauntlet: everything the game has, arranged so each hazard has its
     # own beat rather than arriving all at once.
@@ -336,7 +347,7 @@ def build():
                                    (7, 36, "F"), (6, 36, "!"),
                                    (4, 43, "X--"),
                                    (5, 51, "C-----"),
-                                   (6, 5, "B"), (6, 59, "B"),
+                                   
                                    (3, 24, "P"), (3, 47, "P"), (3, 38, "H")])
 
     return out
