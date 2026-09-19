@@ -7,7 +7,7 @@
  * do what the model says and that the win check fires.
  */
 import { chromium } from "playwright";
-import { CHROMIUM } from "./browser.mjs";
+import { CHROMIUM, dismissCoach } from "./browser.mjs";
 import http from "node:http"; import fs from "node:fs"; import path from "node:path";
 const ROOT = process.cwd();
 const T = { ".html":"text/html", ".js":"text/javascript", ".css":"text/css", ".woff2":"font/woff2" };
@@ -28,6 +28,7 @@ let bad = 0;
 for (let i = 0; i < LEVELS.length; i++) {
   await p.goto(`http://127.0.0.1:${port}/src/games/balance.html?level=${i}`, { waitUntil: "networkidle" });
   await p.waitForTimeout(200);
+  await dismissCoach(p);
   const out = await p.evaluate(async (deck) => {
     const s = window.__scene;
     s.phase = "play";

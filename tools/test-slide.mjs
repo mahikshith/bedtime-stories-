@@ -4,7 +4,7 @@
  * the rules and the win check rather than the gesture handling.
  */
 import { chromium } from "playwright";
-import { CHROMIUM } from "./browser.mjs";
+import { CHROMIUM, dismissCoach } from "./browser.mjs";
 import http from "node:http"; import fs from "node:fs"; import path from "node:path";
 const ROOT = process.cwd();
 const T = { ".html":"text/html", ".js":"text/javascript", ".css":"text/css", ".woff2":"font/woff2" };
@@ -22,6 +22,7 @@ for (const level of [0, 1, 2]) {
   await p.goto(`http://127.0.0.1:${srv.address().port}/src/games/slide.html?level=${level}`,
     { waitUntil: "networkidle" });
   await p.waitForTimeout(400);
+  await dismissCoach(p);
   await p.mouse.click(210, 500);           // dismiss intro
   await p.waitForTimeout(200);
 

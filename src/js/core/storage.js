@@ -23,6 +23,8 @@ const FRESH = {
   /** best[gameId] = best score */
   best: {},
   wordsLearned: [],      // words cleared with a correct spoken match
+  /** Games whose how-to-play has been shown once; see core/coach.js. */
+  tutorialsSeen: [],
   settings: {
     sound: true,
     music: true,
@@ -134,6 +136,23 @@ export const save = {
     let n = 0;
     while ((g[n] ?? 0) > 0) n++;
     return n;
+  },
+
+  /**
+   * Has this child been shown how to play `gameId` yet?
+   *
+   * Read before the first frame, so the tutorial can run itself exactly once
+   * per game rather than every time the game is opened. `?? []` because a
+   * save written before this field existed is still perfectly valid — it just
+   * means nothing has been seen.
+   */
+  seenTutorial(gameId) { return (state.tutorialsSeen ?? []).includes(gameId); },
+
+  markTutorial(gameId) {
+    state.tutorialsSeen = state.tutorialsSeen ?? [];
+    if (state.tutorialsSeen.includes(gameId)) return;
+    state.tutorialsSeen.push(gameId);
+    persist();
   },
 
   learnWord(word) {

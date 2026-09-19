@@ -33,6 +33,17 @@ export class Engine {
     this.dpr = 1;
 
     this.scene = null;
+    /**
+     * A layer drawn above the scene that gets first refusal on input.
+     *
+     * The tutorial and the pause menu belong to every game equally, and the
+     * alternative was the same panel pasted into ten scenes — which is how
+     * the back corner ended up 74px in nine games and 70px in the tenth.
+     * An overlay is paused-by-default over the scene: while one is `blocking`
+     * the scene stops updating, so a child reading "how to play" does not
+     * come back to a bird that drowned while they read it.
+     */
+    this.overlay = null;
     this.running = false;
     this._pd = this._pm = this._pu = null;
     this.time = 0; // seconds of simulated time
@@ -72,6 +83,7 @@ export class Engine {
     };
 
     this.scene?.resize?.(this.view);
+    this.overlay?.resize?.(this.view);
   }
 
   /** Convert a DOM pointer event to logical game coordinates. */
@@ -94,6 +106,7 @@ export class Engine {
     scene?.enter?.(this);
     this._bindPointer(scene);
     scene?.resize?.(this.view);
+    this.overlay?.resize?.(this.view);
     return scene;
   }
 
@@ -113,10 +126,17 @@ export class Engine {
    * finish, or the thing they were holding stays stuck to their finger.
    */
   _bindPointer(scene) {
-    if (!scene?.down && !scene?.move && !scene?.up) return;
-    this._pd = (e) => scene.down?.(this.toLocal(e), e);
-    this._pm = (e) => scene.move?.(this.toLocal(e), e);
-    this._pu = (e) => scene.up?.(this.toLocal(e), e);
+    // Bound unconditionally now: even a scene with no handlers of its own has
+    // to let the overlay above it be tapped.
+    const route = (name, p, e) => {
+      // An overlay that handled the event swallows it, so the scene never
+      // sees the tap that opened a menu on top of it.
+      if (this.overlay?.[name]?.(p, e) === true) return;
+      scene?.[name]?.(p, e);
+    };
+    this._pd = (e) => route("down", this.toLocal(e), e);
+    this._pm = (e) => route("move", this.toLocal(e), e);
+    this._pu = (e) => route("up", this.toLocal(e), e);
     this.canvas.addEventListener("pointerdown", this._pd);
     window.addEventListener("pointermove", this._pm);
     window.addEventListener("pointerup", this._pu);
@@ -147,7 +167,10 @@ export class Engine {
 
       while (this._acc >= STEP) {
         this.time += STEP;
-        this.scene?.update?.(STEP, this);
+        // The overlay keeps animating while it holds the game still, because
+        // a frozen hand demonstrating a gesture teaches nothing.
+        this.overlay?.update?.(STEP, this);
+        if (!this.overlay?.blocking) this.scene?.update?.(STEP, this);
         this._acc -= STEP;
       }
       this.render(this._acc / STEP);
@@ -167,6 +190,7 @@ export class Engine {
     ctx.scale(this.scale, this.scale);
     ctx.translate(-this.view.x, -this.view.y);
     this.scene?.draw?.(ctx, this, alpha);
+    this.overlay?.draw?.(ctx, this, alpha);
     ctx.restore();
   }
 

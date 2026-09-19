@@ -23,6 +23,7 @@
 import { Engine } from "./engine.js";
 import { install as installAudio } from "./audio.js";
 import { save } from "./storage.js";
+import { Coach } from "./coach.js";
 import { boot as bootNative, onBack, haptics } from "./native.js";
 
 /**
@@ -70,10 +71,38 @@ export async function boot({
 
   const exit = () => { location.href = home; };
 
+  /**
+   * How-to-play, pause, restart and leave — for every game, from one place.
+   *
+   * Three games came back from a real phone as "I did not understand the
+   * concept of the game at all", which is not a difficulty problem: a board
+   * with no verb on it tells a child nothing, and a child who cannot read
+   * gets nothing from a panel of text either. The coach demonstrates the
+   * gesture on the real board and speaks the goal aloud.
+   *
+   * Restart reloads rather than rebuilding the scene. A scene is free to
+   * accumulate whatever state it likes — that is the point of owning it — so
+   * the only way to be certain "start over" really starts over, in ten games
+   * written at different times, is to go round again from the top.
+   */
+  const coach = new Coach({
+    game,
+    onRestart: () => location.reload(),
+    onExit: exit,
+  });
+  engine.overlay = coach;
+  coach.resize(engine.view);
+
   // Android's hardware back leaves the level, rather than closing the app.
   // Without this, pressing back inside a game quits to the home screen, which
   // to a child is indistinguishable from the game crashing.
-  onBack(() => { exit(); return true; });
+  onBack(() => {
+    // Back closes whatever the coach has open before it leaves the level,
+    // so a child who opened the menu by accident is one press from the game.
+    if (coach?.blocking) { coach.close(); return true; }
+    exit();
+    return true;
+  });
 
   /**
    * Finish the level. Whatever the game reports is carried to the results
@@ -96,7 +125,11 @@ export async function boot({
     if (p.x < engine.view.x + BACK_HIT && p.y < engine.view.y + BACK_HIT) {
       e.stopImmediatePropagation();
       haptics.tap();
-      exit();
+      // The corner is under the coach's scrim while a panel is up, so tapping
+      // there means "close this", not "leave the level" — otherwise opening
+      // the menu by accident costs the child their progress.
+      if (coach.blocking) coach.close();
+      else exit();
     }
   });
 
@@ -105,8 +138,12 @@ export async function boot({
   // The verification tools drive the real handlers through these.
   window.__scene = active;
   window.__engine = engine;
+  window.__coach = coach;
 
   engine.setScene(active);
   engine.start();
-  return { engine, scene: active };
+  // After `start`, so the first frame the child sees is the real game with
+  // the tutorial over it — a tutorial on an empty screen demonstrates nothing.
+  coach.maybeIntroduce();
+  return { engine, scene: active, coach };
 }

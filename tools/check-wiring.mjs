@@ -11,7 +11,7 @@
  * One boot means one test can cover all ten pages.
  */
 import { chromium } from "playwright";
-import { CHROMIUM } from "./browser.mjs";
+import { CHROMIUM, dismissCoach } from "./browser.mjs";
 import http from "node:http"; import fs from "node:fs"; import path from "node:path";
 const ROOT = process.cwd();
 const T = { ".html":"text/html", ".js":"text/javascript", ".css":"text/css", ".woff2":"font/woff2", ".svg":"image/svg+xml" };
@@ -39,6 +39,7 @@ for (const game of GAMES) {
   await p.goto(`http://127.0.0.1:${port}/src/games/${game}.html?bird=berry&band=mid&level=0`,
     { waitUntil:"networkidle" });
   await p.waitForTimeout(500);
+  await dismissCoach(p);
 
   const seen = await p.evaluate(() => ({
     scene: !!window.__scene,

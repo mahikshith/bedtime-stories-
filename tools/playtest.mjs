@@ -7,7 +7,7 @@
  * -> land -> next word, and that a level can be finished at all.
  */
 import { chromium } from "playwright";
-import { CHROMIUM } from "./browser.mjs";
+import { CHROMIUM, dismissCoach } from "./browser.mjs";
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -40,6 +40,7 @@ page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 
 await page.goto(`http://127.0.0.1:${port}/src/games/say-jump.html?level=${level}`, { waitUntil: "networkidle" });
 await page.waitForTimeout(600);
+await dismissCoach(page);
 
 /** Expose the live scene so the harness can read game state. */
 const peek = () => page.evaluate(() => {

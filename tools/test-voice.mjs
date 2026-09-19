@@ -14,7 +14,7 @@
  * speaking longer sends the bird further.
  */
 import { chromium } from "playwright";
-import { CHROMIUM } from "./browser.mjs";
+import { CHROMIUM, dismissCoach } from "./browser.mjs";
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -60,6 +60,7 @@ async function run(speakMs) {
 
   await page.goto(`http://127.0.0.1:${port}/src/games/say-jump.html?level=0`, { waitUntil: "networkidle" });
   await page.waitForTimeout(600);
+await dismissCoach(page);
   await page.mouse.click(210, 500);
   await page.waitForTimeout(500);
 

@@ -20,3 +20,20 @@ const CONTAINER = "/opt/pw-browsers/chromium";
 export const CHROMIUM =
   process.env.CHROMIUM_BIN ||
   (fs.existsSync(CONTAINER) ? CONTAINER : undefined);
+
+/**
+ * Get the how-to-play overlay out of the way, the way a child does.
+ *
+ * Every game now opens with a tutorial the first time it is played, and that
+ * tutorial deliberately freezes the scene and swallows taps — otherwise a
+ * five-year-old reading it would come back to a drowned bird. Which means
+ * every harness that drives a game has to dismiss it first, exactly as a real
+ * player would, or it sits watching an intro screen and reports the game is
+ * broken.
+ *
+ * Call it after the page settles and before driving any input.
+ */
+export async function dismissCoach(page) {
+  await page.evaluate(() => window.__coach?.close?.());
+  await page.waitForTimeout(120);   // let the scrim finish fading out
+}

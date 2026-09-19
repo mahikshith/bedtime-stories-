@@ -202,14 +202,21 @@ export class TiltMazeScene {
         const nx = clamp(b.x, wx, wx + tile), ny = clamp(b.y, wy, wy + tile);
         const dx = b.x - nx, dy = b.y - ny;
         if (dx * dx + dy * dy >= r * r) continue;
+        // Bounce only off a real impact. A ball being HELD against a wall by
+        // the tilt arrives with a tiny velocity every frame, and reflecting
+        // that put it back out at a third of it — so a ball resting in a
+        // corner buzzed against the wall for ever instead of settling, and
+        // its velocity read as pointing away from the wall the whole time
+        // the child was leaning into it.
+        const rest = tile * 0.9;
         if (axis === "x") {
           b.x = b.vx > 0 ? wx - r : wx + tile + r;
           if (Math.abs(b.vx) > tile * 3) sfx.tick();
-          b.vx = -b.vx * S.bounce;
+          b.vx = Math.abs(b.vx) > rest ? -b.vx * S.bounce : 0;
         } else {
           b.y = b.vy > 0 ? wy - r : wy + tile + r;
           if (Math.abs(b.vy) > tile * 3) sfx.tick();
-          b.vy = -b.vy * S.bounce;
+          b.vy = Math.abs(b.vy) > rest ? -b.vy * S.bounce : 0;
         }
       }
     }
@@ -526,9 +533,12 @@ export class TiltMazeScene {
     const belowY = (this.origin?.y ?? 0) + (this.boardSize?.h ?? 0) + 52;
     text(ctx, `${this.board.name}`, view.x + view.w / 2, belowY,
       { size: 20, color: alpha("#FFFFFF", 0.75) });
-    if (!this.usingGyro) {
+    // Asked live rather than cached from boot: `requestGyro()` resolves after
+    // a fixed wait, and a sensor that woke up slightly later than that used to
+    // leave a phone being told to drag while its own tilt was working fine.
+    if (!this.tilt.live) {
       text(ctx, this.tilt.source === "keys" ? "Arrow keys to steer" : "Drag the screen to steer",
-        view.x + view.w / 2, belowY + 34, { size: 16, color: alpha("#FFFFFF", 0.5) });
+        view.x + view.w / 2, belowY + 34, { size: 20, color: alpha("#FFFFFF", 0.62) });
     } else {
       text(ctx, "Tilt your phone to roll", view.x + view.w / 2, belowY + 34,
         { size: 16, color: alpha("#FFFFFF", 0.5) });

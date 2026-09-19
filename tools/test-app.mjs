@@ -15,7 +15,7 @@
  *   node tools/test-app.mjs     (run `npm run build` first, or use test:app)
  */
 import { chromium } from "playwright";
-import { CHROMIUM } from "./browser.mjs";
+import { CHROMIUM, dismissCoach } from "./browser.mjs";
 import http from "node:http"; import fs from "node:fs"; import path from "node:path";
 
 const ROOT = path.join(process.cwd(), "www");
@@ -70,6 +70,7 @@ p.on("pageerror", (e) => errs.push(e.message));
 p.on("console", (m) => { if (m.type() === "error" && !/favicon/.test(m.text())) errs.push(m.text()); });
 
 await p.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: "networkidle" });
+await dismissCoach(p);
 await p.evaluate(() => localStorage.setItem("wordquest.save.v1",
   JSON.stringify({ band: "mid", bird: "chick" })));
 await p.reload({ waitUntil: "networkidle" });
@@ -101,6 +102,7 @@ check("it still works with the network cut", offlineTiles >= 9, `${offlineTiles}
 await p.goto(`http://127.0.0.1:${port}/src/games/balance.html?level=0`,
   { waitUntil: "domcontentloaded" }).catch(() => {});
 await p.waitForTimeout(900);
+await dismissCoach(p);
 const playable = await p.evaluate(() => Boolean(window.__scene && window.__engine)).catch(() => false);
 check("a game is playable offline", playable);
 await c.setOffline(false);

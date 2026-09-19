@@ -8,7 +8,7 @@
  * if any of them silently fails, the game is broken in the way that matters.
  */
 import { chromium } from "playwright";
-import { CHROMIUM } from "./browser.mjs";
+import { CHROMIUM, dismissCoach } from "./browser.mjs";
 import http from "node:http"; import fs from "node:fs"; import path from "node:path";
 const ROOT = process.cwd();
 const T = { ".html":"text/html", ".js":"text/javascript", ".css":"text/css", ".woff2":"font/woff2", ".svg":"image/svg+xml" };
@@ -26,6 +26,7 @@ const errs=[]; p.on("pageerror",e=>errs.push(e.message));
 p.on("console", m => { if (m.type()==="error" && !/favicon|CERT/.test(m.text())) errs.push(m.text()); });
 
 await p.goto(`http://127.0.0.1:${port}/src/games/town.html`, { waitUntil:"networkidle" });
+await dismissCoach(p);
 // start from a clean world every run
 await p.evaluate(() => localStorage.removeItem("wordquest.town.v1"));
 await p.reload({ waitUntil:"networkidle" });
