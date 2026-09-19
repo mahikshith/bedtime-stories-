@@ -25,6 +25,7 @@ import { clamp, approach, lerp, easeOutBack } from "../../core/engine.js";
 import { C, alpha, mix } from "../../core/palette.js";
 import { fillRound, roundRect, circle, text } from "../../core/draw.js";
 import { drawBird, birdBlink } from "../../art/bird.js";
+import { lacquerHall } from "../../art/backdrops.js";
 import { sfx, speak, startMusic, stopMusic } from "../../core/audio.js";
 import { save } from "../../core/storage.js";
 import { Fx } from "../../core/fx.js";
@@ -239,11 +240,7 @@ export class SlideScene {
 
   draw(ctx, engine) {
     const view = engine.view;
-    const g = ctx.createLinearGradient(0, view.y, 0, view.y + view.h);
-    g.addColorStop(0, "#241018");
-    g.addColorStop(1, "#120A0E");
-    ctx.fillStyle = g;
-    ctx.fillRect(view.x, view.y, view.w, view.h);
+    lacquerHall(ctx, view, this.t);
 
     this.drawBoard(ctx);
     for (const b of this.blocks) this.drawBlock(ctx, b);

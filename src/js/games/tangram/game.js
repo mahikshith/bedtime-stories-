@@ -27,6 +27,7 @@ import { clamp, approach, lerp, easeOutBack, shuffle } from "../../core/engine.j
 import { C, alpha, mix } from "../../core/palette.js";
 import { fillRound, circle, text, star as starShape } from "../../core/draw.js";
 import { drawBird, birdBlink } from "../../art/bird.js";
+import { silkGarden } from "../../art/backdrops.js";
 import { sfx, speak, startMusic, stopMusic } from "../../core/audio.js";
 import { save } from "../../core/storage.js";
 import { Fx } from "../../core/fx.js";
@@ -377,12 +378,7 @@ export class TangramScene {
 
   draw(ctx, engine) {
     const view = engine.view;
-    const g = ctx.createLinearGradient(0, view.y, 0, view.y + view.h);
-    g.addColorStop(0, "#16323F");
-    g.addColorStop(1, "#0B1A21");
-    ctx.fillStyle = g;
-    ctx.fillRect(view.x, view.y, view.w, view.h);
-    this.drawSilk(ctx, view);
+    silkGarden(ctx, view, this.t);
 
     this.drawTarget(ctx);
     // The tray is a backdrop, so it goes down before the pieces that sit in it.
@@ -395,20 +391,6 @@ export class TangramScene {
     if (this.state === "won") this.drawWon(ctx, view);
   }
 
-  /** A faint woven backdrop — the puzzle is a thing on a table, not in a void. */
-  drawSilk(ctx, view) {
-    ctx.save();
-    ctx.globalAlpha = 0.045;
-    ctx.strokeStyle = "#9FE8FF";
-    ctx.lineWidth = 1;
-    for (let x = view.x; x < view.x + view.w; x += 26) {
-      ctx.beginPath(); ctx.moveTo(x, view.y); ctx.lineTo(x, view.y + view.h); ctx.stroke();
-    }
-    for (let y = view.y; y < view.y + view.h; y += 26) {
-      ctx.beginPath(); ctx.moveTo(view.x, y); ctx.lineTo(view.x + view.w, y); ctx.stroke();
-    }
-    ctx.restore();
-  }
 
   /**
    * The silhouette, drawn from the solution so outline and answer can never

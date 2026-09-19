@@ -25,6 +25,7 @@ import { clamp, approach, lerp, easeOutBack } from "../../core/engine.js";
 import { C, alpha, mix } from "../../core/palette.js";
 import { fillRound, roundRect, circle, ellipse, text } from "../../core/draw.js";
 import { drawBird, birdBlink } from "../../art/bird.js";
+import { starLab } from "../../art/backdrops.js";
 import { sfx, speak, startMusic, stopMusic } from "../../core/audio.js";
 import { save } from "../../core/storage.js";
 import { Fx } from "../../core/fx.js";
@@ -240,12 +241,7 @@ export class BalanceScene {
 
   draw(ctx, engine) {
     const view = engine.view;
-    const g = ctx.createLinearGradient(0, view.y, 0, view.y + view.h);
-    g.addColorStop(0, "#2B1B4A");
-    g.addColorStop(0.6, "#3E2A66");
-    g.addColorStop(1, "#1C1233");
-    ctx.fillStyle = g;
-    ctx.fillRect(view.x, view.y, view.w, view.h);
+    starLab(ctx, view, this.t);
 
     this.layout();
     this.drawScale(ctx, view);
@@ -301,8 +297,11 @@ export class BalanceScene {
       const y = this.panTop;
       const solved = this.state[side].length === 1 && this.state[side][0] === BOX;
       ctx.save();
-      fillRound(ctx, x, y + 6, this.panW, this.panH, 24, "#221541");
-      fillRound(ctx, x, y, this.panW, this.panH, 24, alpha("#4A3378", 0.85));
+      // Opaque and darker than the night sky behind them, so the two sides of
+      // the equation read as trays rather than as patches of sky.
+      fillRound(ctx, x, y + 7, this.panW, this.panH, 24, "#150C2C");
+      fillRound(ctx, x, y, this.panW, this.panH, 24, "#2A1B52");
+      fillRound(ctx, x + 5, y + 5, this.panW - 10, this.panH - 10, 20, "#392468");
       if (solved) {
         ctx.lineWidth = 4;
         ctx.strokeStyle = alpha(C.grass.light, 0.6 + Math.sin(this.t * 5) * 0.3);

@@ -23,6 +23,7 @@ import { TiltInput } from "../../core/tilt.js";
 import { C, TOKENS, alpha, mix } from "../../core/palette.js";
 import { fillRound, roundRect, circle, ellipse, text, star as starShape } from "../../core/draw.js";
 import { drawBird, birdBlink } from "../../art/bird.js";
+import { workshop } from "../../art/backdrops.js";
 import { sfx, speak, startMusic, stopMusic } from "../../core/audio.js";
 import { save, starsFromAccuracy } from "../../core/storage.js";
 import { Fx } from "../../core/fx.js";
@@ -368,13 +369,7 @@ export class TiltMazeScene {
     if (!this.maze) this.buildMaze();
     const b = this.board, tile = this.tile;
 
-    // backdrop
-    const g = ctx.createLinearGradient(0, view.y, 0, view.y + view.h);
-    g.addColorStop(0, "#1B2930");
-    g.addColorStop(1, "#0E181D");
-    ctx.fillStyle = g;
-    ctx.fillRect(view.x, view.y, view.w, view.h);
-    this.drawAmbient(ctx, view);
+    workshop(ctx, view, this.t);
 
     // board tray, tilted very slightly with the device for physicality
     const tx = this.tilt.x * 5, ty = this.tilt.y * 5;
@@ -405,16 +400,6 @@ export class TiltMazeScene {
     if (this.state === "won") this.drawWon(ctx, view);
   }
 
-  drawAmbient(ctx, view) {
-    ctx.save();
-    ctx.globalAlpha = 0.5;
-    for (let i = 0; i < 14; i++) {
-      const x = view.x + ((i * 137) % view.w);
-      const y = view.y + ((i * 219 + this.t * 14) % view.h);
-      circle(ctx, x, y, 2 + (i % 3), alpha("#8FD4FF", 0.4));
-    }
-    ctx.restore();
-  }
 
   drawExit(ctx) {
     const tile = this.tile;

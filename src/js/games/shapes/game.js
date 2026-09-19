@@ -25,6 +25,7 @@ import { clamp, approach, lerp, easeOutBack, shuffle, rand } from "../../core/en
 import { C, alpha, mix } from "../../core/palette.js";
 import { fillRound, circle, text, star as starShape } from "../../core/draw.js";
 import { drawBird, birdBlink } from "../../art/bird.js";
+import { toyRoom } from "../../art/backdrops.js";
 import { sfx, speak, startMusic, stopMusic } from "../../core/audio.js";
 import { save } from "../../core/storage.js";
 import { Fx } from "../../core/fx.js";
@@ -303,12 +304,7 @@ export class ShapesScene {
 
   draw(ctx, engine) {
     const view = engine.view;
-    const g = ctx.createLinearGradient(0, view.y, 0, view.y + view.h);
-    g.addColorStop(0, "#FFE9B8");
-    g.addColorStop(0.55, "#FFD1A8");
-    g.addColorStop(1, "#FFB9A0");
-    ctx.fillStyle = g;
-    ctx.fillRect(view.x, view.y, view.w, view.h);
+    toyRoom(ctx, view, this.t);
 
     this.drawBoard(ctx, view);
     for (const h of this.holes) this.drawHole(ctx, h);
@@ -325,24 +321,30 @@ export class ShapesScene {
     const top = view.y + 190;
     const h = this.tray.y - top - 24;
     ctx.save();
-    ctx.shadowColor = "rgba(120,60,20,0.35)";
-    ctx.shadowBlur = 28;
-    ctx.shadowOffsetY = 10;
-    fillRound(ctx, view.x + 26, top, view.w - 52, h, 30, "#C98A4B");
+    ctx.shadowColor = "rgba(70,32,8,0.55)";
+    ctx.shadowBlur = 34;
+    ctx.shadowOffsetY = 14;
+    // Inset enough that the room is visible down both sides — a board bleeding
+    // edge to edge hides the very backdrop it is meant to sit in.
+    fillRound(ctx, view.x + 52, top, view.w - 104, h, 30, "#6B3C1C");
     ctx.restore();
-    fillRound(ctx, view.x + 26, top, view.w - 52, h, 30, "#E3A868");
-    fillRound(ctx, view.x + 38, top + 12, view.w - 76, h - 24, 24, "#F2C48E");
+    // Deeper wood than the room behind it. On the previous, paler timber the
+    // tray dissolved into the toyRoom backdrop and stopped reading as an
+    // object a child could put something into.
+    fillRound(ctx, view.x + 52, top, view.w - 104, h, 30, "#A05F2A");
+    fillRound(ctx, view.x + 58, top + 6, view.w - 116, h - 12, 26, "#C47E3C");
+    fillRound(ctx, view.x + 66, top + 14, view.w - 132, h - 28, 22, "#E0A257");
     // wood grain
     ctx.save();
-    ctx.globalAlpha = 0.12;
-    ctx.strokeStyle = "#8A5320";
+    ctx.globalAlpha = 0.16;
+    ctx.strokeStyle = "#6B3C1C";
     ctx.lineWidth = 3;
     for (let i = 0; i < 7; i++) {
       const y = top + 30 + i * (h / 7);
       ctx.beginPath();
-      ctx.moveTo(view.x + 46, y);
+      ctx.moveTo(view.x + 72, y);
       ctx.bezierCurveTo(view.x + view.w * 0.35, y - 7, view.x + view.w * 0.65, y + 7,
-                        view.x + view.w - 46, y);
+                        view.x + view.w - 72, y);
       ctx.stroke();
     }
     ctx.restore();
@@ -355,11 +357,11 @@ export class ShapesScene {
     ctx.save();
     ctx.globalAlpha = 0.85;
     shapePath(ctx, h.key, h.x, h.y + 5, r * 1.04);
-    ctx.fillStyle = "#8A5320";
+    ctx.fillStyle = "#6B3C1C";
     ctx.fill();
     ctx.restore();
     shapePath(ctx, h.key, h.x, h.y, r);
-    ctx.fillStyle = h.filled ? alpha(SHAPES[h.key].color.dark, 0.35) : "#5E3411";
+    ctx.fillStyle = h.filled ? alpha(SHAPES[h.key].color.dark, 0.4) : "#3A1F07";
     ctx.fill();
 
     if (!h.filled) {
@@ -435,8 +437,13 @@ export class ShapesScene {
     fillRound(ctx, view.x - 10, t.y, view.w + 20, t.h + 20, 30, alpha("#8A5320", 0.28));
     ctx.restore();
     const left = this.holes.length - this.placed;
-    text(ctx, left ? `${left} TO GO` : "ALL DONE!", view.x + view.w / 2, t.y + 26,
-      { size: 16, color: left ? "#7A4A1E" : C.grass.dark });
+    // Sits on the rug, so it needs its own plate to stay readable.
+    const label = left ? `${left} TO GO` : "ALL DONE!";
+    const lw = label.length * 11 + 28;
+    fillRound(ctx, view.x + view.w / 2 - lw / 2, t.y + 12, lw, 28, 14,
+      alpha("#4A2410", 0.55));
+    text(ctx, label, view.x + view.w / 2, t.y + 27,
+      { size: 16, color: left ? "#FFE8C4" : C.grass.light });
   }
 
   drawBird(ctx, view) {
@@ -449,7 +456,7 @@ export class ShapesScene {
   }
 
   drawHud(ctx, view) {
-    text(ctx, "✕", view.x + 38, view.y + 44, { size: 30, color: "#7A4A1E" });
+    text(ctx, "✕", view.x + 38, view.y + 44, { size: 30, color: "#5A3214" });
     text(ctx, this.def.name.toUpperCase(), view.x + view.w / 2 + 40, view.y + 74,
       { size: 28, color: "#5E3411" });
     text(ctx, this.def.teaches, view.x + view.w / 2 + 40, view.y + 112,

@@ -1,0 +1,26 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="/src/assets/fonts.css">
+<style>body{margin:0;background:#111;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:8px}
+canvas{width:100%;display:block;border-radius:8px}</style></head><body>
+<script type="module">
+import { BACKDROPS } from "/src/js/art/backdrops.js";
+import { text } from "/src/js/core/draw.js";
+const W=300,H=520,dpr=2;
+for (const [name, fn] of Object.entries(BACKDROPS)) {
+  const c=document.createElement("canvas");
+  c.width=W*dpr;c.height=H*dpr;document.body.append(c);
+  const x=c.getContext("2d");x.scale(dpr,dpr);
+  const view={x:0,y:0,w:W,h:H};
+  fn(x,view,2.4);
+  // label
+  x.fillStyle="rgba(0,0,0,0.6)";x.fillRect(0,0,W,30);
+  text(x,name,W/2,15,{size:15,color:"#fff"});
+  // a mock play area, to check the backdrop doesn't fight the game
+  x.save();x.globalAlpha=0.9;
+  x.fillStyle="rgba(255,255,255,0.13)";
+  x.strokeStyle="rgba(255,255,255,0.5)";x.lineWidth=2;x.setLineDash([6,6]);
+  x.fillRect(W*0.12,H*0.3,W*0.76,H*0.4);x.strokeRect(W*0.12,H*0.3,W*0.76,H*0.4);
+  text(x,"play area",W/2,H*0.5,{size:13,color:"rgba(255,255,255,0.75)"});
+  x.restore();
+}
+</script></body></html>

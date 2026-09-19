@@ -22,6 +22,7 @@ import { clamp, approach, lerp, easeOutBack, easeOutCubic } from "../../core/eng
 import { C, alpha, mix } from "../../core/palette.js";
 import { fillRound, roundRect, circle, text, star as starShape } from "../../core/draw.js";
 import { drawBird, birdBlink } from "../../art/bird.js";
+import { neonGrid } from "../../art/backdrops.js";
 import { sfx, speak, startMusic, stopMusic } from "../../core/audio.js";
 import { save } from "../../core/storage.js";
 import { Fx } from "../../core/fx.js";
@@ -119,7 +120,7 @@ export class RobotScene {
     // Room for the strips, palette and buttons, sized from what is actually
     // on this level rather than a fixed guess.
     const strips = 1 + (this.def.slots.p1 ? 1 : 0) + (this.def.slots.p2 ? 1 : 0);
-    this.programTop = view.y + view.h - (170 + strips * 86);
+    this.programTop = view.y + view.h - (175 + strips * 96);
 
     const headroom = view.y + 130;
     const availW = view.w - 60;
@@ -334,13 +335,7 @@ export class RobotScene {
 
   draw(ctx, engine) {
     const view = engine.view;
-    const g = ctx.createLinearGradient(0, view.y, 0, view.y + view.h);
-    g.addColorStop(0, "#1B2C52");
-    g.addColorStop(0.6, "#2A3F6E");
-    g.addColorStop(1, "#151F3A");
-    ctx.fillStyle = g;
-    ctx.fillRect(view.x, view.y, view.w, view.h);
-    this.drawStars(ctx, view);
+    neonGrid(ctx, view, this.t);
 
     this.drawBoard(ctx);
     this.drawProgram(ctx, view);
@@ -352,16 +347,6 @@ export class RobotScene {
     if (this.state === "failed") this.drawFailed(ctx, view);
   }
 
-  drawStars(ctx, view) {
-    ctx.save();
-    for (let i = 0; i < 28; i++) {
-      const x = view.x + ((i * 191) % view.w);
-      const y = view.y + ((i * 97) % (view.h * 0.5));
-      ctx.globalAlpha = 0.25 + Math.sin(this.t * 2 + i) * 0.18;
-      circle(ctx, x, y, 1.6 + (i % 3) * 0.7, "#CFE6FF");
-    }
-    ctx.restore();
-  }
 
   /** Isometric board: tiles are drawn back to front so they stack correctly. */
   drawBoard(ctx) {
@@ -503,16 +488,22 @@ export class RobotScene {
     let y = this.programTop;
 
     ctx.save();
-    fillRound(ctx, view.x - 10, y - 14, view.w + 20, view.h, 26, alpha("#0B1220", 0.85));
+    // Near-opaque: the program strip is the working surface and must not have
+    // a neon grid glowing through the empty slots.
+    fillRound(ctx, view.x - 10, y - 20, view.w + 20, view.h, 26, "#0A1020");
+    fillRound(ctx, view.x - 10, y - 20, view.w + 20, 4, 2, alpha(C.jade.base, 0.7));
     ctx.restore();
 
     const strips = [["main", "PROGRAM"], ["p1", "P1"], ["p2", "P2"]];
     for (const [key, label] of strips) {
       const slots = this.program[key];
       if (!slots.length) continue;
-      text(ctx, label, view.x + pad, y + 14, { size: 13, color: alpha("#FFFFFF", 0.55), align: "left" });
-      const size = Math.min(58, (view.w - pad * 2 - 54) / Math.max(slots.length, 1) - 6);
-      const x0 = view.x + pad + 50;
+      // The label sits ABOVE its row rather than beside it: "PROGRAM" is wider
+      // than any gutter worth giving up on a phone, and it was running into
+      // the first slot.
+      text(ctx, label, view.x + pad, y - 6, { size: 13, color: alpha(C.jade.light, 0.9), align: "left" });
+      const size = Math.min(58, (view.w - pad * 2) / Math.max(slots.length, 1) - 6);
+      const x0 = view.x + pad;
       for (let i = 0; i < slots.length; i++) {
         const r = { x: x0 + i * (size + 6), y: y - size * 0.1, w: size, h: size, list: key, index: i };
         this.slotRects.push(r);
@@ -523,17 +514,17 @@ export class RobotScene {
         ctx.save();
         ctx.setLineDash([5, 5]);
         ctx.lineWidth = 2;
-        ctx.strokeStyle = this.drag?.over === r ? C.sun.base : alpha("#FFFFFF", 0.28);
+        ctx.strokeStyle = this.drag?.over === r ? C.sun.base : alpha("#FFFFFF", 0.42);
         roundRect(ctx, r.x, r.y, r.w, r.h, 12);
         ctx.stroke();
         ctx.restore();
         if (slots[i]) this.drawBlock(ctx, slots[i], r.x, r.y, r.w, running ? 1.1 : 1, running);
       }
-      y += size + 30;
+      y += size + 40;
     }
 
     // palette
-    text(ctx, "BLOCKS", view.x + pad, y + 10, { size: 13, color: alpha("#FFFFFF", 0.55), align: "left" });
+    text(ctx, "BLOCKS", view.x + pad, y + 10, { size: 14, color: alpha(C.jade.light, 0.9), align: "left" });
     const ops = this.def.ops;
     const psize = Math.min(64, (view.w - pad * 2) / ops.length - 8);
     const px0 = view.x + (view.w - (ops.length * (psize + 8) - 8)) / 2;
