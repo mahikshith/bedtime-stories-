@@ -9,14 +9,6 @@
 import { save } from "./core/storage.js";
 import { BANDS } from "./core/words.js";
 import { drawBird, BIRDS, BIRD_IDS } from "./art/bird.js";
-import { LEVELS } from "./games/say-jump/levels.js";
-import { BOARDS } from "./games/tilt-maze/levels.js";
-import { RUNS } from "./games/word-mob/levels.js";
-import { PUZZLES } from "./games/tangram/puzzles.js";
-import { LAYOUTS } from "./games/slide/layouts.js";
-import { LEVEL_COUNT as SHAPE_LEVELS } from "./games/shapes/game.js";
-import { LEVELS as ROBOT_LEVELS } from "./games/robot/levels.js";
-import { LEVELS as BALANCE_LEVELS } from "./games/balance/levels.js";
 import { install as installAudio, sfx, unlock } from "./core/audio.js";
 import { C } from "./core/palette.js";
 
@@ -25,7 +17,16 @@ installAudio();
 /* ------------------------------------------------------------- catalogue */
 
 /**
- * Every game, with the age bands it suits. `levels` returns the per-level
+ * Every game, with the age bands it suits.
+ *
+ * `levels` is async and imports its content on demand. It used to be a static
+ * import at the top of this file, which meant opening the MENU parsed every
+ * level table in the app — and, for Shape Sorter, a whole game implementation
+ * and everything it draws with. A menu's cost should not grow with every game
+ * added to it. Now the hub loads one game's content, when a child opens that
+ * game's path, and none at all if they just tap a card and play.
+ *
+ * `levels` returns the per-level
  * list so the path can be drawn from the same source the game plays.
  */
 const GAMES = [
@@ -35,7 +36,8 @@ const GAMES = [
     control: "voice", bands: ["tiny", "mid", "big"],
     face: C.grass.base, edge: C.grass.dark,
     href: "src/games/say-jump.html",
-    levels: () => LEVELS.map((l) => ({ name: l.name, teaches: l.teaches })),
+    levels: async () => (await import("./games/say-jump/levels.js"))
+      .LEVELS.map((l) => ({ name: l.name, teaches: l.teaches })),
   },
   {
     id: "tilt-maze", title: "Tilt Maze", icon: "🌀",
@@ -43,7 +45,8 @@ const GAMES = [
     control: "tilt", bands: ["mid", "big"],
     face: C.sea.base, edge: C.sea.dark,
     href: "src/games/tilt-maze.html",
-    levels: () => BOARDS.map((b) => ({ name: b.name, teaches: b.teaches })),
+    levels: async () => (await import("./games/tilt-maze/levels.js"))
+      .BOARDS.map((b) => ({ name: b.name, teaches: b.teaches })),
   },
   {
     id: "word-mob", title: "Word Mob", icon: "🐥",
@@ -51,7 +54,8 @@ const GAMES = [
     control: "tap", bands: ["mid", "big"],
     face: C.flame.base, edge: C.flame.dark,
     href: "src/games/word-mob.html",
-    levels: () => RUNS.map((r) => ({ name: r.name, teaches: r.teaches })),
+    levels: async () => (await import("./games/word-mob/levels.js"))
+      .RUNS.map((r) => ({ name: r.name, teaches: r.teaches })),
   },
   {
     id: "shapes", title: "Shape Sorter", icon: "🔶",
@@ -59,9 +63,8 @@ const GAMES = [
     control: "tap", bands: ["tiny", "mid"],
     face: C.flame.base, edge: C.flame.dark,
     href: "src/games/shapes.html",
-    levels: () => Array.from({ length: SHAPE_LEVELS }, (_, i) => ({
-      name: `Board ${i + 1}`, teaches: "Match the shape to its hole",
-    })),
+    levels: async () => (await import("./games/shapes/levels.js"))
+      .LEVELS.map((l) => ({ name: l.name, teaches: l.teaches })),
   },
   {
     id: "balance", title: "Balance", icon: "⚖️",
@@ -69,7 +72,8 @@ const GAMES = [
     control: "tap", bands: ["mid", "big"],
     face: C.grape.base, edge: C.grape.dark,
     href: "src/games/balance.html",
-    levels: () => BALANCE_LEVELS.map((l) => ({ name: l.name, teaches: l.teaches })),
+    levels: async () => (await import("./games/balance/levels.js"))
+      .LEVELS.map((l) => ({ name: l.name, teaches: l.teaches })),
   },
   {
     id: "robot", title: "Robot Path", icon: "🤖",
@@ -77,7 +81,8 @@ const GAMES = [
     control: "tap", bands: ["mid", "big"],
     face: C.jade.base, edge: C.jade.dark,
     href: "src/games/robot.html",
-    levels: () => ROBOT_LEVELS.map((l) => ({ name: l.name, teaches: l.teaches })),
+    levels: async () => (await import("./games/robot/levels.js"))
+      .LEVELS.map((l) => ({ name: l.name, teaches: l.teaches })),
   },
   {
     id: "slide", title: "Sliding Blocks", icon: "🧩",
@@ -85,7 +90,8 @@ const GAMES = [
     control: "tap", bands: ["mid", "big"],
     face: C.cherry.base, edge: C.cherry.dark,
     href: "src/games/slide.html",
-    levels: () => LAYOUTS.map((l) => ({ name: l.name, teaches: `Best: ${l.par} moves` })),
+    levels: async () => (await import("./games/slide/layouts.js"))
+      .LAYOUTS.map((l) => ({ name: l.name, teaches: `Best: ${l.par} moves` })),
   },
   {
     id: "tangram", title: "Tangram", icon: "🔷",
@@ -93,10 +99,11 @@ const GAMES = [
     control: "tap", bands: ["tiny", "mid", "big"],
     face: C.sun.base, edge: C.sun.dark,
     href: "src/games/tangram.html",
-    levels: () => PUZZLES.map((p) => ({
-      name: p.name,
-      teaches: ["", "Match the pieces", "Fit them in", "No clues"][p.tier],
-    })),
+    levels: async () => (await import("./games/tangram/puzzles.js"))
+      .PUZZLES.map((p) => ({
+        name: p.name,
+        teaches: ["", "Match the pieces", "Fit them in", "No clues"][p.tier],
+      })),
   },
   {
     // No levels, no stars, no way to finish — so it gets one node on the path
@@ -107,7 +114,7 @@ const GAMES = [
     control: "tap", bands: ["tiny", "mid", "big"],
     face: C.clay.base, edge: C.clay.dark,
     href: "src/games/town.html",
-    levels: () => [{ name: "Tinker Town", teaches: "Play with anything, any way" }],
+    levels: async () => [{ name: "Tinker Town", teaches: "Play with anything, any way" }],
   },
   {
     id: "echo-pop", title: "Echo Pop", icon: "🫧",
@@ -115,7 +122,7 @@ const GAMES = [
     control: "voice", bands: ["tiny", "mid"],
     face: C.candy.base, edge: C.candy.dark,
     href: "src/games/echo-pop.html",
-    levels: () => [{ name: "Bubble Time", teaches: "Find the thing you hear" }],
+    levels: async () => [{ name: "Bubble Time", teaches: "Find the thing you hear" }],
   },
 ];
 
@@ -198,10 +205,11 @@ function unitBanner(band) {
 }
 
 function gameSection(g) {
+  // No section heading: with the paths collapsed it sat directly above a card
+  // carrying the same name in larger type, which is a rule and a label of pure
+  // repetition between a child and the next game.
   const sec = el("section", "section");
-  const head = el("div", "section__head");
-  head.append(el("div", "section__rule"), el("div", "section__label", g.title.toUpperCase()), el("div", "section__rule"));
-  sec.append(head);
+  const open = save.state.openGame === g.id;
 
   const card = el("button", "game-card");
   const chip = CONTROL_CHIP[g.control];
@@ -215,48 +223,76 @@ function gameSection(g) {
        <span class="chip ${chip.cls}">${chip.label}</span>
        <span class="chip">⭐ ${stars}</span>
      </div>`));
+  // Tapping the card plays. That is the whole point of the card, and it stays
+  // one tap: a three-year-old should never have to open a menu to reach a
+  // game, and the level path below is for choosing a *different* level.
   card.onclick = () => launch(g, save.unlockedLevel(g.id));
   sec.append(card);
-  sec.append(levelPath(g));
+
+  const toggle = el("button", "path-toggle" + (open ? " path-toggle--open" : ""));
+  toggle.setAttribute("aria-expanded", String(open));
+  toggle.innerHTML = `<span class="path-toggle__label">${open ? "HIDE LEVELS" : "CHOOSE A LEVEL"}</span>
+                      <span class="path-toggle__chev">▾</span>`;
+  toggle.onclick = () => {
+    sfx.tick?.();
+    save.set({ openGame: open ? null : g.id });
+    render();
+  };
+  sec.append(toggle);
+
+  if (open) sec.append(levelPath(g));
   return sec;
 }
 
 /**
  * The winding node trail. Each node is offset horizontally along a sine so
  * the eye is pulled down the page instead of reading a flat column.
+ *
+ * Only ever built for the one open game, and its content is fetched when it
+ * opens. Rendering ten of these at once made the hub eight thousand pixels
+ * tall, most of it locked nodes a child had to scroll past to reach the games
+ * added most recently.
  */
 function levelPath(g) {
   const path = el("div", "path");
-  const levels = g.levels();
-  const unlocked = save.unlockedLevel(g.id);
+  path.append(el("div", "path__loading", "…"));
 
-  levels.forEach((lv, i) => {
-    const row = el("div", "path__row");
-    // amplitude shrinks on narrow screens so nodes never clip
-    const amp = Math.min(96, window.innerWidth * 0.22);
-    row.style.transform = `translateX(${Math.sin(i * 0.9) * amp}px)`;
+  // The load is async, so the fill has to check it is still wanted: a child
+  // can collapse this or open another game before a slow disk answers.
+  g.levels().then((levels) => {
+    if (save.state.openGame !== g.id || !path.isConnected) return;
+    path.innerHTML = "";
+    const unlocked = save.unlockedLevel(g.id);
 
-    const stars = save.starsFor(g.id, i);
-    const locked = i > unlocked;
-    const current = i === unlocked;
+    levels.forEach((lv, i) => {
+      const row = el("div", "path__row");
+      // amplitude shrinks on narrow screens so nodes never clip
+      const amp = Math.min(96, window.innerWidth * 0.22);
+      row.style.transform = `translateX(${Math.sin(i * 0.9) * amp}px)`;
 
-    const node = el("button", "node" + (locked ? " node--locked" : "") +
-                              (stars ? " node--done" : "") + (current ? " node--current" : ""));
-    node.title = `${lv.name} — ${lv.teaches}`;
-    node.disabled = locked;
-    const disc = el("div", "node__disc", locked ? "🔒" : stars >= 3 ? "👑" : i === levels.length - 1 ? "🏆" : "⭐");
-    if (!locked) {
-      disc.style.setProperty("--face", g.face);
-      disc.style.setProperty("--edge", g.edge);
-    }
-    node.append(disc);
-    if (stars) {
-      node.append(el("div", "node__stars", "⭐".repeat(stars)));
-    }
-    node.onclick = () => launch(g, i);
-    row.append(node);
-    path.append(row);
+      const stars = save.starsFor(g.id, i);
+      const locked = i > unlocked;
+      const current = i === unlocked;
+
+      const node = el("button", "node" + (locked ? " node--locked" : "") +
+                                (stars ? " node--done" : "") + (current ? " node--current" : ""));
+      node.title = `${lv.name} — ${lv.teaches}`;
+      node.disabled = locked;
+      const disc = el("div", "node__disc", locked ? "🔒" : stars >= 3 ? "👑" : i === levels.length - 1 ? "🏆" : "⭐");
+      if (!locked) {
+        disc.style.setProperty("--face", g.face);
+        disc.style.setProperty("--edge", g.edge);
+      }
+      node.append(disc);
+      if (stars) {
+        node.append(el("div", "node__stars", "⭐".repeat(stars)));
+      }
+      node.onclick = () => launch(g, i);
+      row.append(node);
+      path.append(row);
+    });
   });
+
   return path;
 }
 

@@ -29,6 +29,7 @@ import { toyRoom } from "../../art/backdrops.js";
 import { sfx, speak, startMusic, stopMusic } from "../../core/audio.js";
 import { save } from "../../core/storage.js";
 import { Fx } from "../../core/fx.js";
+import { LEVELS } from "./levels.js";
 
 const GAME_ID = "shapes";
 
@@ -53,16 +54,6 @@ export const SHAPES = {
  * Levels are a list of shape keys. Difficulty is the count, then the
  * introduction of same-family pairs that must be told apart.
  */
-const LEVELS = [
-  { name: "One Shape",   teaches: "Put the shape in its hole", keys: ["circle"] },
-  { name: "Two Shapes",  teaches: "Circle and square",         keys: ["circle", "square"] },
-  { name: "Three Shapes", teaches: "Add a triangle",           keys: ["circle", "square", "triangle"] },
-  { name: "Four Shapes", teaches: "A star joins in",           keys: ["circle", "square", "triangle", "star"] },
-  { name: "Look Closely", teaches: "Square or rectangle?",     keys: ["square", "rectangle", "circle", "oval"] },
-  { name: "All Together", teaches: "Every shape you know",     keys: ["circle", "square", "triangle", "star", "heart", "hexagon"] },
-];
-
-export const LEVEL_COUNT = LEVELS.length;
 
 export class ShapesScene {
   constructor({ levelIndex = 0, bird = "chick", onComplete }) {

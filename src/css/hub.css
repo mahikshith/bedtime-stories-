@@ -46,6 +46,29 @@ body.hub {
 .unit__title { font-family: var(--font-display); font-size: 23px; line-height: 1.12; margin-top: 3px; }
 .unit__icon { font-size: 34px; }
 
+/* ------------------------------------------------- open the level path */
+/* Deliberately quiet. The card above it is the thing to press; this is the
+   parent's control, for picking a level other than the next one. */
+.path-toggle {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: calc(100% - 36px);
+  margin: 8px 18px 0;
+  padding: 10px 0;
+  background: none; border: 0;
+  color: var(--text-dim);
+  font: inherit; font-size: 12px; letter-spacing: 1.5px;
+  cursor: pointer;
+  border-radius: 12px;
+}
+.path-toggle:hover { background: rgba(255, 255, 255, 0.05); }
+.path-toggle:active { transform: translateY(1px); }
+.path-toggle__chev { transition: transform 140ms ease; font-size: 14px; }
+.path-toggle--open .path-toggle__chev { transform: rotate(180deg); }
+.path__loading {
+  text-align: center; color: var(--text-dim);
+  font-size: 22px; letter-spacing: 4px; padding: 20px 0;
+}
+
 /* ------------------------------------------------------------ the path */
 /* The winding node trail. Nodes are offset by a sine wave so the eye is
    pulled down the page rather than reading a flat list. */

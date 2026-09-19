@@ -10,6 +10,7 @@ const KEY = "wordquest.save.v1";
 
 const FRESH = {
   band: null,            // 'tiny' | 'mid' | 'big' — null until the child picks
+  openGame: null,        // which game's level path is expanded in the hub
   name: "",
   xp: 0,
   gems: 20,
