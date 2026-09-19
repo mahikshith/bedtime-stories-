@@ -1,0 +1,69 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="/src/assets/fonts.css">
+<style>body{margin:0;background:#BFEAFF}canvas{display:block;width:100%}</style></head>
+<body><canvas id="c"></canvas><script type="module">
+import { Bloop, KIND_IDS } from "/src/js/games/bloop/bloop.js";
+import { Terrain, ground } from "/src/js/games/bloop/terrain.js";
+import { text } from "/src/js/core/draw.js";
+
+const W = 900, H = 940, dpr = 2;
+const c = document.getElementById("c");
+c.width = W * dpr; c.height = H * dpr; c.style.height = H + "px";
+const x = c.getContext("2d"); x.scale(dpr, dpr);
+
+// row 1: one Bloop of each colour, resting
+// row 2: flock sizes
+// row 3: squash states
+// row 4: a real roll over terrain
+const terr = new Terrain([{ points: ground([[0,760],[180,840],[360,720],[560,850],[760,740],[900,800]], 960) }]);
+const roller = new Bloop({ x: 60, y: 660, kind: "berry", count: 4 });
+
+let t = 0;
+function frame() {
+  t += 1 / 60;
+  x.fillStyle = "#BFEAFF"; x.fillRect(0, 0, W, H);
+  text(x, "BLOOP LAB", W / 2, 22, { size: 16, color: "#0B4A63" });
+
+  KIND_IDS.forEach((k, i) => {
+    const b = new Bloop({ x: 80 + i * 130, y: 110, kind: k });
+    b.squash = Math.sin(t * 2 + i) * 0.12; b.squashA = Math.PI / 2;
+    if (i % 2) b.happy = 1;
+    b.draw(x, t + i);
+  });
+  text(x, "six colours — singing ones have their eyes shut", W / 2, 165, { size: 12, color: "#0B4A63" });
+
+  [1, 2, 4, 8, 14, 20].forEach((n, i) => {
+    const b = new Bloop({ x: 90 + i * 140, y: 300, kind: "sun", count: n });
+    b.draw(x, t + i * 0.4);
+    text(x, String(n), 90 + i * 140, 400, { size: 13, color: "#0B4A63" });
+  });
+  text(x, "one body wearing everybody's faces", W / 2, 422, { size: 12, color: "#0B4A63" });
+
+  [-0.35, -0.18, 0, 0.18, 0.35].forEach((s, i) => {
+    const b = new Bloop({ x: 150 + i * 150, y: 530, kind: "sky", count: 3 });
+    b.squash = s; b.squashA = Math.PI / 2;
+    b.draw(x, t);
+  });
+  text(x, "squashed  →  round  →  stretched", W / 2, 610, { size: 12, color: "#0B4A63" });
+
+  // live roll
+  x.save();
+  x.beginPath(); x.rect(0, 640, W, H - 640); x.clip();
+  const g = { x: Math.sin(t * 0.7) * 900, y: 1700 };
+  roller.step(1 / 60, g, terr);
+  if (roller.x > W + 60) { roller.x = -60; roller.vx = 0; }
+  if (roller.x < -120) { roller.x = W + 40; }
+  x.fillStyle = "#3E9418";
+  x.beginPath();
+  const p = terr.shapes[0].points;
+  x.moveTo(p[0][0], p[0][1]);
+  for (const q of p) x.lineTo(q[0], q[1]);
+  x.closePath(); x.fill();
+  roller.draw(x, t);
+  text(x, "rolling under a tilting gravity", W / 2, 920, { size: 12, color: "#FFFFFF" });
+  x.restore();
+
+  requestAnimationFrame(frame);
+}
+frame();
+</script></body></html>

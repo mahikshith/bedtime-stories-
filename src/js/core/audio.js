@@ -100,6 +100,50 @@ function noise({ dur = 0.2, vol = 0.25, delay = 0, freq = 900, q = 1, sweepTo = 
   src.start(t0);
 }
 
+/**
+ * A sung note: a soft voice with vibrato, for a chorus rather than a beep.
+ *
+ * The kit above is percussive on purpose — short, bright, over quickly. A
+ * chorus needs the opposite: a slow swell, a little wobble in the pitch so
+ * twenty of them do not phase into one flat tone, and a long tail so voices
+ * overlap into a chord instead of arriving as separate events.
+ */
+export function sing(freq, { vol = 0.12, dur = 0.55, delay = 0, detune = 0, vibrato = 4.6 } = {}) {
+  const c = ac();
+  if (!c || !enabled) return;
+  const t0 = c.currentTime + delay;
+
+  const osc = c.createOscillator();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(freq, t0);
+  osc.detune.setValueAtTime(detune, t0);
+
+  // A quiet second oscillator a fifth up gives the voice a body that a lone
+  // sine has not got, without sounding like a synth lead.
+  const harm = c.createOscillator();
+  harm.type = "triangle";
+  harm.frequency.setValueAtTime(freq * 1.5, t0);
+
+  const lfo = c.createOscillator();
+  const lfoGain = c.createGain();
+  lfo.frequency.setValueAtTime(vibrato, t0);
+  lfoGain.gain.setValueAtTime(freq * 0.007, t0);
+  lfo.connect(lfoGain);
+  lfoGain.connect(osc.frequency);
+
+  const g = c.createGain();
+  const hg = c.createGain();
+  hg.gain.setValueAtTime(vol * 0.22, t0);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + dur * 0.22);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+
+  osc.connect(g); harm.connect(hg); hg.connect(g);
+  g.connect(master);
+  osc.start(t0); harm.start(t0); lfo.start(t0);
+  osc.stop(t0 + dur + 0.06); harm.stop(t0 + dur + 0.06); lfo.stop(t0 + dur + 0.06);
+}
+
 /* ------------------------------------------------------------- the kit */
 
 const NOTE = { C4: 261.6, D4: 293.7, E4: 329.6, F4: 349.2, G4: 392.0, A4: 440.0, B4: 493.9,

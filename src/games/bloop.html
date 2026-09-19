@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Bloop Hills</title>
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="stylesheet" href="../assets/fonts.css">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<div class="stage" id="stage"></div>
+<script type="module">
+import { boot } from "../js/core/boot.js";
+import { BloopScene } from "../js/games/bloop/game.js";
+
+boot({
+  game: "bloop",
+  scene: ({ level, bird, done, exit }) => new BloopScene({
+    levelIndex: level, bird, onComplete: done, onExit: exit,
+  }),
+});
+</script>
+</body>
+</html>
