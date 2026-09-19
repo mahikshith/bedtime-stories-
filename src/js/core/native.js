@@ -146,6 +146,97 @@ export const mirror = {
   },
 };
 
+/* --------------------------------------------------------------- speech */
+
+/**
+ * Recognising the word a child actually said.
+ *
+ * This has to be native. `SpeechRecognition` is a Chrome feature and simply
+ * does not exist inside an Android WebView, so the browser API the game was
+ * written against was never going to fire once the app was packaged — the
+ * microphone measured loudness and the word itself was never checked. A game
+ * whose whole premise is saying the word cannot leave that to a loudness
+ * meter: shouting "aaaah" would work exactly as well as saying "frog".
+ *
+ * So: the native recogniser on a device, the browser one where it exists
+ * (desktop Chrome, which is what the tests drive), and neither on a device
+ * that has no recogniser — where the game must still be playable by touch.
+ */
+export const speech = {
+  /** Does this platform have any recogniser at all? */
+  async available() {
+    const sr = plugin("SpeechRecognition");
+    if (sr?.available) {
+      try { return Boolean((await sr.available()).available); } catch { return false; }
+    }
+    return Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+  },
+
+  /** Ask for permission up front, so it is not asked mid-jump. */
+  async request() {
+    const sr = plugin("SpeechRecognition");
+    if (!sr?.requestPermissions) return true;
+    try {
+      const r = await sr.requestPermissions();
+      return r?.speechRecognition === "granted" || r?.speechRecognition === "prompt-with-rationale";
+    } catch { return false; }
+  },
+
+  /**
+   * Listen for one utterance and hand back what was heard, lower-cased.
+   *
+   * Returns an array because every recogniser offers alternatives, and for a
+   * small child the best guess is often not the first one — accepting any of
+   * the top few is the difference between "it never hears me" and "it works".
+   */
+  async listenOnce({ language = "en-US", max = 5 } = {}) {
+    const sr = plugin("SpeechRecognition");
+    if (sr?.start) {
+      try {
+        const r = await sr.start({
+          language, maxResults: max, partialResults: false, popup: false,
+        });
+        return (r?.matches ?? []).map((m) => String(m).toLowerCase());
+      } catch { return []; }
+    }
+    return webListenOnce(language, max);
+  },
+
+  async stop() {
+    const sr = plugin("SpeechRecognition");
+    if (sr?.stop) { try { await sr.stop(); } catch {} }
+  },
+};
+
+/** Browser fallback, used on desktop and by the test suite. */
+function webListenOnce(language, max) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return Promise.resolve([]);
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => { if (!done) { done = true; resolve(v); } };
+    try {
+      const r = new SR();
+      r.lang = language;
+      r.maxAlternatives = max;
+      r.interimResults = false;
+      r.continuous = false;
+      r.onresult = (e) => {
+        const out = [];
+        for (const res of e.results) {
+          for (let i = 0; i < res.length; i++) out.push(res[i].transcript.toLowerCase().trim());
+        }
+        finish(out);
+      };
+      r.onerror = () => finish([]);
+      r.onend = () => finish([]);
+      r.start();
+      // Never leave a child waiting on a recogniser that has stopped replying.
+      setTimeout(() => { try { r.stop(); } catch {} finish([]); }, 6000);
+    } catch { finish([]); }
+  });
+}
+
 /* ------------------------------------------------------------ bootstrap */
 
 /*

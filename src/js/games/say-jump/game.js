@@ -30,6 +30,7 @@ import { C, TOKENS, PAIRS, alpha, mix } from "../../core/palette.js";
 import { roundRect, fillRound, circle, text, outlinedText, star as starShape } from "../../core/draw.js";
 import { VoiceInput, matchWord } from "../../core/voice.js";
 import { sfx, speak, stopSpeaking, startMusic, stopMusic } from "../../core/audio.js";
+import { speech } from "../../core/native.js";
 import { wordsForLevel, stretched } from "../../core/words.js";
 import { save, starsFromAccuracy } from "../../core/storage.js";
 import { Fx } from "../../core/fx.js";
@@ -63,6 +64,20 @@ export class SayJumpScene {
     this.t = 0;
     this.speakT = 0;        // glow on the pronunciation button
     this.sayButton = null;  // hit box, recorded when the card is drawn
+
+    /**
+     * Whether a real speech recogniser is driving the game.
+     *
+     * When it is, saying the RIGHT WORD is what makes the bird jump, which is
+     * the point of the game. Without one the loudness meter takes over and
+     * any loud noise counts — playable, but it is not the same game, so the
+     * screen says which one you are in rather than leaving it a mystery.
+     */
+    this.listening = false;
+    this.heardWrong = null;
+    this.wrongT = 0;
+    this.listenStart = 0;
+    this.misses = 0;        // consecutive failed attempts on this word
     this.stateT = 0;
 
     this.fx = new Fx();
@@ -147,6 +162,17 @@ export class SayJumpScene {
       if (save.state.settings.speechCheck) this.voice.startRecognition();
     }
 
+    // A native recogniser, if this device has one. SpeechRecognition is a
+    // Chrome feature and does not exist inside an Android WebView, so the
+    // browser API the game was written against never fired once packaged —
+    // the microphone only ever measured loudness and the word itself was
+    // never checked. Shouting "aaaah" worked exactly as well as saying "frog".
+    this.speechOn = await speech.available() && await speech.request();
+    if (this.speechOn) {
+      this.voice.stopRecognition?.();
+      if (this.state === "prompt") this.beginListening();
+    }
+
     // Pointer input is routed by the engine; space bar mirrors it, because a
     // laptop with no touchscreen still has to be able to play.
     this._kd = (e) => { if (e.code === "Space" && !e.repeat) this.down(); };
@@ -157,7 +183,9 @@ export class SayJumpScene {
 
   destroy() {
     this.voice.stop();
+    speech.stop();
     clearTimeout(this._sylTimer);
+    clearTimeout(this._retryTimer);
     stopSpeaking();
     stopMusic();
     window.removeEventListener("keydown", this._kd);
@@ -167,7 +195,13 @@ export class SayJumpScene {
   setState(s) {
     this.state = s;
     this.stateT = 0;
-    if (s === "prompt") this.askWord();
+    if (s === "prompt") {
+      this.askWord();
+      this.heardWrong = null;
+      this.misses = 0;       // a new word deserves a fresh set of tries
+      this.beginListening();
+    }
+    if (s === "air" || s === "done") speech.stop();
   }
 
   /* -------------------------------------------------------------- words */
@@ -276,6 +310,68 @@ export class SayJumpScene {
   }
 
   /**
+   * Listen for the word, and jump only if it is the word.
+   *
+   * The native recogniser wants the microphone to itself on Android, so this
+   * runs INSTEAD of the loudness meter rather than alongside it, and reach
+   * comes from how long the child spoke instead of how loud they were — which
+   * keeps "saaaay it looong to go further" working without two things
+   * fighting over one microphone.
+   */
+  async beginListening() {
+    if (!this.speechOn || this.listening) return;
+    if (this.state !== "prompt" && this.state !== "charge") return;
+    this.listening = true;
+    this.listenStart = performance.now();
+    const want = this.word?.word;
+
+    const heard = await speech.listenOnce();
+    this.listening = false;
+    if (!want || this.word?.word !== want) return;          // moved on since
+    if (this.state !== "prompt" && this.state !== "charge") return;
+
+    const spokenMs = performance.now() - this.listenStart;
+    const best = heard.map((h) => matchWord(h, want)).sort((a, b) => b.score - a.score)[0];
+
+    if (best?.match) {
+      this.heardWrong = null;
+      this.heard = best.heard;
+      save.learnWord(want);
+      // Longer utterance, longer jump. Clamped so a two-year-old who says it
+      // once, quickly and correctly still clears the gap.
+      const held = clamp((spokenMs - 380) / 1200, 0, 1);
+      this.launch(0.42 + held * 0.58, true);
+      return;
+    }
+
+    // Wrong word, or nothing heard. Nothing bad happens: no heart, no fall,
+    // no restart. The bird waits, the card says what it thought it heard, and
+    // the HEAR IT button pulses to offer another listen. Punishing a small
+    // child for mispronouncing a word in a game that exists to teach them
+    // that word would be exactly backwards.
+    this.heardWrong = heard[0] ?? "";
+    this.wrongT = 2.2;
+    this.speakT = Math.max(this.speakT, 0.9);
+    sfx.tick?.();
+
+    // Bounded, and not a tight loop. A recogniser that fails instantly —
+    // no microphone, an unsupported device, a browser that exposes the API
+    // and then refuses — would otherwise be retried for ever, and the child
+    // would watch a bird that never moves while the phone got warm.
+    //
+    // After three misses the game stops insisting: the touch path takes over
+    // so the level is always finishable, and the prompt says so.
+    this.misses++;
+    if (this.misses >= 3) {
+      this.speechOn = false;
+      this.wrongT = 0;
+      return;
+    }
+    clearTimeout(this._retryTimer);
+    this._retryTimer = setTimeout(() => this.beginListening(), 700);
+  }
+
+  /**
    * Say the word out loud so the child can copy it.
    *
    * Slower and a little lower than the app's usual voice: this is a model to
@@ -332,6 +428,7 @@ export class SayJumpScene {
   update(dt) {
     this.t += dt;
     this.speakT = Math.max(0, this.speakT - dt);
+    this.wrongT = Math.max(0, this.wrongT - dt);
     this.stateT += dt;
     this.fx.update(dt);
     this.weather.update(dt);
@@ -648,11 +745,7 @@ export class SayJumpScene {
     if (this.state === "prompt" || this.state === "charge") this.drawWordCard(ctx, view);
     if (this.state === "intro") this.drawIntro(ctx, view);
     if (this.state === "done") this.drawDone(ctx, view);
-    if (!this.voiceReady && this.state !== "intro") {
-      text(ctx, "No microphone — hold the screen to charge",
-        view.x + view.w / 2, view.y + view.h * 0.70 + 194,
-        { size: 15, color: alpha(TOKENS.snow, 0.6) });
-    }
+    if (this.state === "prompt" || this.state === "charge") this.drawListenState(ctx, view);
   }
 
   drawHeart(ctx, x, y, r, filled) {
@@ -783,6 +876,50 @@ export class SayJumpScene {
   }
 
   /** The word the child has to say, with a picture and a stretched spelling. */
+  /**
+   * What the game is waiting for, in words a child can act on.
+   *
+   * This replaces a fifteen-pixel line reading "No microphone — hold the
+   * screen to charge", pinned to the very bottom of the screen. It was too
+   * small to read, in the place least likely to be looked at, and it used the
+   * word "charge" — which means nothing to a four-year-old.
+   */
+  drawListenState(ctx, view) {
+    const cy = view.y + view.h * 0.70 + 200;
+    let label, colour, icon;
+
+    if (this.wrongT > 0) {
+      label = this.heardWrong ? `I heard "${this.heardWrong}" — try again!` : "I did not catch that — try again!";
+      colour = TOKENS.bee;
+      icon = "👂";
+    } else if (this.listening) {
+      label = "Listening… say it!";
+      colour = C.jade.light;
+      icon = "🎤";
+    } else if (this.speechOn) {
+      label = "Say the word to jump";
+      colour = alpha(TOKENS.snow, 0.7);
+      icon = "🎤";
+    } else {
+      label = "Hold the screen to jump";
+      colour = alpha(TOKENS.snow, 0.7);
+      icon = "👆";
+    }
+
+    const w = label.length * 11 + 76;
+    const x = view.x + view.w / 2 - w / 2;
+    ctx.save();
+    // A soft pulse while listening, so a child can see the game is waiting
+    // for them rather than ignoring them.
+    if (this.listening) ctx.globalAlpha = 0.72 + Math.sin(this.t * 5) * 0.28;
+    fillRound(ctx, x, cy - 24, w, 48, 24, alpha("#0B1418", 0.75));
+    ctx.font = "24px system-ui, 'Apple Color Emoji', 'Noto Color Emoji', sans-serif";
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(icon, x + 20, cy);
+    text(ctx, label, x + 58, cy, { size: 19, color: colour, align: "left" });
+    ctx.restore();
+  }
+
   drawWordCard(ctx, view) {
     const w = Math.min(430, view.w - 150);
     const h = 168;

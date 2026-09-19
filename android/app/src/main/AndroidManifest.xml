@@ -59,6 +59,18 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
+    <!--
+      Speech recognition. Android 11+ requires an app to declare which other
+      apps it talks to, and the recogniser lives in one of them; without this
+      queries block, SpeechRecognizer reports "not available", and saying the
+      word silently does nothing on exactly the devices it should work on.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
     <!-- Tilt Maze reads the accelerometer. Optional: it falls back to drag. -->
     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
 </manifest>
