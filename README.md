@@ -57,8 +57,8 @@ web fallback and the fallback is the path CI runs.
 | **Word Mob** | 5–11 | 👆 drag | Steer a flock through the right answer gate. |
 | **Echo Pop** | 2–7 | 🎤 voice / 👆 tap | Say or tap the thing you hear. |
 | **Shape Sorter** | 2–7 | 👆 drag | Shape names, and matching a form to its hole. |
-| **Tangram** 七巧板 | 4–11 | 👆 drag | Spatial reasoning, rotation, part-and-whole. |
-| **Sliding Blocks** 华容道 | 5–11 | 👆 drag | Planning and sequencing. Pure look-ahead. |
+| **Tangram** | 4–11 | 👆 drag | Spatial reasoning, rotation, part-and-whole. |
+| **Sliding Blocks** | 5–11 | 👆 drag | Planning and sequencing. Pure look-ahead. |
 | **Robot Path** | 5–11 | 👆 drag | Sequencing, debugging, procedures, recursion. |
 | **Balance** | 5–11 | 👆 drag | Algebra — before any notation appears. |
 | **Tinker Town** | 2–11 | 👆 drag | Nothing, on purpose. Object names, cause and effect. |
@@ -119,7 +119,7 @@ discrimination (square against rectangle, circle against oval). Same age rules
 as Echo Pop: nothing can be lost, and a wrong hole gives a soft bounce and the
 shape's name again.
 
-### Tangram (七巧板)
+### Tangram
 
 The classic seven-piece dissection. Compose a silhouette from the pieces:
 drag to place, tap to rotate 45°, flip the parallelogram when it will not fit.
@@ -131,7 +131,7 @@ being validated geometrically, which keeps the challenge on "which piece goes
 where" instead of on fingertip precision. Snapping respects each piece's own
 rotational symmetry, so a square is never rejected for being square.
 
-### Sliding Blocks (华容道)
+### Sliding Blocks
 
 Huarong Dao, the Chinese sliding-block classic. Free the big block through the
 gap at the bottom. This is pure planning — no reaction, no vocabulary, no

@@ -88,7 +88,7 @@ const GAMES = [
   },
   {
     id: "slide", title: "Sliding Blocks", icon: "🧩",
-    sub: "华容道 — slide the blocks to free the big one.",
+    sub: "Slide the blocks out of the way to free the big red one.",
     control: "tap", bands: ["mid", "big"],
     face: C.cherry.base, edge: C.cherry.dark,
     href: "src/games/slide.html",
@@ -97,7 +97,7 @@ const GAMES = [
   },
   {
     id: "tangram", title: "Tangram", icon: "🔷",
-    sub: "七巧板 — fit seven shapes together to build the picture.",
+    sub: "Fit seven shapes together to build the picture.",
     control: "tap", bands: ["tiny", "mid", "big"],
     face: C.sun.base, edge: C.sun.dark,
     href: "src/games/tangram.html",

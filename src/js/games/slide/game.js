@@ -1,5 +1,5 @@
 /**
- * Huarong Dao (华容道) — the Chinese sliding-block puzzle.
+ * Sliding Blocks — the classic sliding-block escape puzzle.
  *
  * Slide the blocks around to free the big one through the gap at the bottom.
  * The classic layout, Heng Dao Li Ma, takes 116 single-cell moves at minimum;
@@ -349,7 +349,7 @@ export class SlideScene {
   drawHud(ctx, view) {
     const pad = 24;
     text(ctx, "✕", view.x + pad + 14, view.y + pad + 18, { size: 30, color: "#FFFFFF" });
-    text(ctx, "华容道", view.x + view.w / 2, view.y + 46, { size: 26, color: C.sun.base });
+    text(ctx, "SLIDING BLOCKS", view.x + view.w / 2, view.y + 46, { size: 22, color: C.sun.base });
     text(ctx, this.def.name.toUpperCase(), view.x + view.w / 2, view.y + 82,
       { size: 22, color: "#FFFFFF" });
 
@@ -383,7 +383,7 @@ export class SlideScene {
     ctx.fillRect(view.x, view.y, view.w, view.h);
     ctx.globalAlpha = 1 - out;
     const cy = view.y + view.h * 0.4;
-    text(ctx, "华容道", view.x + view.w / 2, cy - 96, { size: 34, color: C.sun.base });
+    text(ctx, "SLIDING BLOCKS", view.x + view.w / 2, cy - 96, { size: 28, color: C.sun.base });
     text(ctx, "SLIDING BLOCKS", view.x + view.w / 2, cy - 54,
       { size: 16, color: alpha("#FFFFFF", 0.55) });
     text(ctx, this.def.name, view.x + view.w / 2, cy,

@@ -147,6 +147,116 @@ body.hub {
 .section__rule { flex: 1; height: 2px; background: var(--ink-line); border-radius: 2px; }
 .section__label { font-size: 13px; letter-spacing: 1.6px; color: var(--text-dim); }
 
+/* ------------------------------------------------------------- modals */
+/* The age picker and the bird picker both open in one of these. It had no
+   styles either, which is the real reason the age could not be changed after
+   it was first set: the CHANGE button worked perfectly and opened an
+   invisible dialog. */
+.modal {
+  position: fixed; inset: 0; z-index: 100;
+  display: grid; place-items: end center;
+  padding: 18px;
+  background: rgba(6, 12, 16, 0.72);
+  opacity: 0;
+  transition: opacity 180ms var(--ease);
+  overscroll-behavior: contain;
+}
+.modal[data-open] { opacity: 1; }
+
+.modal__panel {
+  width: 100%; max-width: 560px;
+  max-height: 88vh; overflow-y: auto;
+  padding: 24px 20px calc(22px + var(--safe-bottom, 0px));
+  border-radius: 28px 28px 22px 22px;
+  background: var(--ink);
+  border: 3px solid var(--ink-line);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+  transform: translateY(26px);
+  transition: transform 200ms var(--ease);
+}
+.modal[data-open] .modal__panel { transform: none; }
+
+.modal__title {
+  margin: 0;
+  font-family: var(--font-display); font-size: 27px; line-height: 1.15;
+}
+.modal__sub {
+  margin: 6px 0 18px;
+  font-size: 15px; line-height: 1.35; color: var(--text-dim);
+}
+
+/* --------------------------------------------------------- bird picker */
+.bird-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+  gap: 12px;
+}
+.bird-pick {
+  display: grid; place-items: center;
+  padding: 10px 0;
+  border-radius: 20px;
+  background: var(--ink-raised);
+  border: 3px solid var(--ink-line);
+  cursor: pointer;
+  transition: transform 120ms var(--ease), border-color 120ms var(--ease);
+}
+.bird-pick canvas { width: 68px; height: 68px; display: block; }
+.bird-pick:active { transform: scale(0.94); }
+.bird-pick[aria-pressed="true"] {
+  border-color: #FFC61E;
+  background: rgba(255, 198, 30, 0.12);
+}
+
+/* ------------------------------------------------------- the age picker */
+/* These had no styles at all, which is why the first screen a child ever saw
+   was three unstyled white boxes with black text. It never failed a test
+   because an unstyled button is still clickable and still logs no errors —
+   the tooling checked that the age picker WORKED and never that it looked
+   like anything. */
+.choice-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.choice {
+  display: flex; flex-direction: column;
+  padding: 0 0 16px;
+  border-radius: 22px;
+  background: var(--ink-raised);
+  border: 3px solid var(--ink-line);
+  box-shadow: 0 7px 0 rgba(0, 0, 0, 0.35);
+  color: inherit; font: inherit; text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 120ms var(--ease), box-shadow 120ms var(--ease);
+}
+.choice:active { transform: translateY(5px); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); }
+.choice[aria-pressed="true"] {
+  border-color: var(--sun, #FFC61E);
+  box-shadow: 0 7px 0 rgba(0, 0, 0, 0.35), 0 0 0 4px rgba(255, 198, 30, 0.25);
+}
+
+/* The age range is the thing a parent scans for, so it gets the colour band
+   and the biggest type on the card. */
+.choice__age {
+  padding: 12px 18px;
+  font-family: var(--font-display);
+  font-size: 26px;
+  letter-spacing: 0.5px;
+  color: #17120A;
+}
+.choice__name {
+  padding: 14px 18px 0;
+  font-family: var(--font-display);
+  font-size: 21px;
+  color: var(--text);
+}
+.choice__desc {
+  padding: 6px 18px 0;
+  font-size: 15px; line-height: 1.35;
+  color: var(--text-dim);
+}
+
 /* ---------------------------------------------------------- game tiles */
 /* Two to a row. Ten full-width cards was a scroll with no end in sight, and
    the games added most recently were the ones nobody reached. */

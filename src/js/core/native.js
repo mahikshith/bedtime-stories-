@@ -87,7 +87,13 @@ export async function ready() {
     try {
       await sb.setStyle({ style: "DARK" });
       await sb.setBackgroundColor({ color: "#101A1F" });
-      await sb.setOverlaysWebView({ overlay: true });
+      // NOT overlaid. Every game draws its "leave the level" target in the
+      // top-left corner of its own canvas, and with the web view running under
+      // the system bar that target sat directly beneath the clock — taps went
+      // to Android, not to the game, so back simply did not work. Letting the
+      // status bar have its own strip costs a few pixels and makes the one
+      // control a child is told about reachable.
+      await sb.setOverlaysWebView({ overlay: false });
     } catch {}
   }
   const sp = plugin("SplashScreen");

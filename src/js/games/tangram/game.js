@@ -1,5 +1,5 @@
 /**
- * Tangram (七巧板) — the classic Chinese seven-piece dissection.
+ * Tangram — the classic seven-piece dissection puzzle.
  *
  * Why this game is here: shape-rotation practice is one of the few
  * interventions with measured transfer to arithmetic, and the tangram is the
@@ -537,7 +537,7 @@ export class TangramScene {
     ctx.fillRect(view.x, view.y, view.w, view.h);
     ctx.globalAlpha = 1 - out;
     const cy = view.y + view.h * 0.4;
-    text(ctx, "七巧板", view.x + view.w / 2, cy - 96, { size: 30, color: C.sun.base });
+    text(ctx, "TANGRAM", view.x + view.w / 2, cy - 96, { size: 30, color: C.sun.base });
     text(ctx, "TANGRAM", view.x + view.w / 2, cy - 56, { size: 16, color: alpha("#FFFFFF", 0.55) });
     text(ctx, `Make the ${this.puzzle.name}`, view.x + view.w / 2, cy,
       { size: 42 * easeOutBack(k), color: "#FFFFFF" });

@@ -238,10 +238,16 @@ export class SayJumpScene {
   }
 
   down() {
-    // Touch fallback so the game is playable with no mic (and testable).
     if (this.state === "intro") { this.setState("walk"); return; }
     if (this.state === "done") { this.finish(); return; }
-    if (this.voiceReady && this.voice.ready) return;
+    // Touch ALWAYS works, even when the microphone is listening.
+    //
+    // It used to be switched off the moment the mic initialised, on the theory
+    // that a working mic makes the button redundant. It does not: a quiet
+    // child, a noisy room, a broken mic or — as happened — an audio graph that
+    // silently never started all leave the child holding a game that ignores
+    // them completely, with nothing on screen explaining why. Having both is
+    // never worse, and the child gets to choose.
     if (this.state === "prompt" || this.state === "charge") {
       this.holding = true;
       this.holdCharge = 0;

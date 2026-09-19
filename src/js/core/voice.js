@@ -36,6 +36,19 @@ export class VoiceInput {
     this.denied = false;
     this.error = null;
 
+    /**
+     * Whether the audio graph is actually running.
+     *
+     * Separate from `ready` on purpose, and the distinction is what was
+     * broken: a browser starts an AudioContext SUSPENDED until the page has
+     * been touched, and this one is created when the level loads — before the
+     * child has tapped anything. Permission was granted, getUserMedia
+     * resolved, `ready` went true, and the analyser then returned silence for
+     * ever. Saying the word did nothing and there was no error anywhere.
+     */
+    this.live = false;
+    this._resumeHooked = false;
+
     this.level = 0;
     this.raw = 0;
     this.peak = 0;
@@ -96,7 +109,7 @@ export class VoiceInput {
 
     const AC = window.AudioContext || window.webkitAudioContext;
     this._ctx = new AC();
-    if (this._ctx.state === "suspended") await this._ctx.resume().catch(() => {});
+    await this._wake();
     const src = this._ctx.createMediaStreamSource(this._stream);
 
     // High-pass at 85 Hz kills desk rumble and handling noise without
@@ -114,6 +127,43 @@ export class VoiceInput {
 
     this.ready = true;
     return true;
+  }
+
+  /**
+   * Get the audio graph running, and keep trying on every touch until it is.
+   *
+   * One attempt is not enough: at the moment the level loads there has usually
+   * been no gesture on this page yet, so resume() is refused. The listeners
+   * below mean the very next thing the child touches — the tap that starts the
+   * level — switches the microphone on, and they never learn it was off.
+   */
+  async _wake() {
+    if (!this._ctx) return false;
+    if (this._ctx.state === "running") { this.live = true; return true; }
+    try { await this._ctx.resume(); } catch {}
+    this.live = this._ctx.state === "running";
+
+    if (!this.live && !this._resumeHooked) {
+      this._resumeHooked = true;
+      const retry = () => {
+        this._ctx?.resume().then(() => {
+          this.live = this._ctx.state === "running";
+          if (this.live) {
+            for (const ev of ["pointerdown", "touchend", "keydown"]) {
+              window.removeEventListener(ev, retry, true);
+            }
+            // The room's noise floor has to be measured with the microphone
+            // actually on, not from the silence of a suspended graph.
+            this._calibrating = true;
+            this._calibSamples = [];
+          }
+        }).catch(() => {});
+      };
+      for (const ev of ["pointerdown", "touchend", "keydown"]) {
+        window.addEventListener(ev, retry, true);
+      }
+    }
+    return this.live;
   }
 
   /** Optional layer: check whether the child said the right word. */
@@ -155,6 +205,13 @@ export class VoiceInput {
   /** Call once per frame. */
   update(dt) {
     if (!this.ready || !this._analyser) return;
+
+    // A suspended graph reads as perfect silence, which is indistinguishable
+    // from a child who is not speaking — so check rather than assume.
+    if (!this.live) {
+      if (this._ctx?.state === "running") this.live = true;
+      else { this._wake(); return; }
+    }
 
     this._analyser.getFloatTimeDomainData(this._buf);
     let sum = 0;
@@ -240,6 +297,7 @@ export class VoiceInput {
     this._ctx?.close().catch(() => {});
     this._stream = null; this._ctx = null; this._analyser = null;
     this.ready = false;
+    this.live = false;
   }
 }
 
