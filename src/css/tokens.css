@@ -74,9 +74,22 @@
   --pop: cubic-bezier(0.34, 1.56, 0.64, 1); /* overshoot, used for everything */
   --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
 
-  /* Safe areas for notched phones. */
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* Safe areas.
+   *
+   * `env(safe-area-inset-*)` is NOT enough on Android. It reports the DISPLAY
+   * CUTOUT, not the system bars — so on any phone without a notch, which is
+   * most of them, it is 0 while the status bar is very much still there on
+   * top of the game. That is why the HUD-under-the-clock bug survived two
+   * fixes: nothing in CSS could see the problem.
+   *
+   * `--sys-*` is set by core/native.js on the native shell, and `max()` takes
+   * whichever is actually bigger — the measured bar on a plain phone, the real
+   * cutout inset on a notched one. On the web both are 0 and this is a no-op.
+   */
+  --sys-top: 0px;
+  --sys-bottom: 0px;
+  --safe-top: max(env(safe-area-inset-top, 0px), var(--sys-top));
+  --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--sys-bottom));
 }
 
 /* Light theme is a straight surface swap — brand colours are unchanged. */

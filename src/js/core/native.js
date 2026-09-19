@@ -257,8 +257,38 @@ function webListenOnce(language, max) {
  */
 
 /** Call once, as early as a page can. */
+/**
+ * Tell CSS how tall the system bars are, because CSS cannot find out.
+ *
+ * On Android `env(safe-area-inset-top)` is the DISPLAY CUTOUT inset, not the
+ * status bar inset. A phone without a notch reports 0 while the clock and the
+ * battery sit squarely on top of the game — which is why the HUD-under-the-
+ * status-bar bug survived being "fixed" twice: every fix was written in CSS,
+ * and CSS could not see the bar.
+ *
+ * These are floors, not measurements. Android's status bar is 24dp by the
+ * platform default and CSS pixels are dp in the web view, so 30px clears it
+ * with room to spare; the gesture pill wants about 16dp, so 18px clears that.
+ * A device whose cutout is genuinely bigger reports it through `env()`, and
+ * the `max()` in tokens.css takes whichever is larger. Deliberately NOT
+ * measured by toggling the overlay and diffing `innerHeight`: that delta
+ * silently includes the navigation bar on three-button devices, so it would
+ * push the HUD a nav-bar's height down the screen on exactly the phones the
+ * floor already handles correctly.
+ *
+ * iOS is left alone. There `env()` reports the real safe area, status bar
+ * included, so a floor could only ever be wrong.
+ */
+function declareSystemBars() {
+  if (platform() !== "android") return;
+  const r = document.documentElement.style;
+  r.setProperty("--sys-top", "30px");
+  r.setProperty("--sys-bottom", "18px");
+}
+
 export async function boot({ portrait = true } = {}) {
   if (!isNative()) return;
+  declareSystemBars();
   if (portrait) await lockPortrait();
   await ready();
 }
