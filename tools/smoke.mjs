@@ -4,6 +4,7 @@
  * frame 200, a missing export, a stale property name after a refactor.
  */
 import { chromium } from "playwright";
+import { CHROMIUM } from "./browser.mjs";
 import http from "node:http"; import fs from "node:fs"; import path from "node:path";
 
 const ROOT = process.cwd();
@@ -57,7 +58,7 @@ const PAGES = [
   { name: "result",      url: "/src/result.html?game=say-jump&level=0&stars=2&words=4&asked=5" },
 ];
 
-const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" });
+const browser = await chromium.launch({ executablePath: CHROMIUM });
 let failed = 0;
 
 for (const page of PAGES) {

@@ -15,6 +15,7 @@
  *   node tools/make-icons.mjs
  */
 import { chromium } from "playwright";
+import { CHROMIUM } from "./browser.mjs";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -39,7 +40,7 @@ const page = async (browser, size, maskable) => {
   return { ctx, p };
 };
 
-const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" });
+const browser = await chromium.launch({ executablePath: CHROMIUM });
 
 for (const size of [48, 72, 96, 144, 192, 256, 384, 512, 1024]) {
   const { ctx, p } = await page(browser, size, false);

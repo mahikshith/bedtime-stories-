@@ -15,6 +15,7 @@
  *   node tools/test-app.mjs     (run `npm run build` first, or use test:app)
  */
 import { chromium } from "playwright";
+import { CHROMIUM } from "./browser.mjs";
 import http from "node:http"; import fs from "node:fs"; import path from "node:path";
 
 const ROOT = path.join(process.cwd(), "www");
@@ -61,7 +62,7 @@ check("parked work is absent from the build",
 
 /* ----------------------------------------------------- runtime assertions */
 
-const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" });
+const b = await chromium.launch({ executablePath: CHROMIUM });
 const c = await b.newContext({ viewport: { width: 420, height: 880 } });
 const p = await c.newPage();
 const errs = [];

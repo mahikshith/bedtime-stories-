@@ -7,6 +7,7 @@
  * stepping, the win detection and the slot layout.
  */
 import { chromium } from "playwright";
+import { CHROMIUM } from "./browser.mjs";
 import http from "node:http"; import fs from "node:fs"; import path from "node:path";
 const ROOT = process.cwd();
 const T = { ".html":"text/html", ".js":"text/javascript", ".css":"text/css", ".woff2":"font/woff2" };
@@ -18,7 +19,7 @@ await new Promise(r=>srv.listen(0,r));
 const port = srv.address().port;
 
 const { LEVELS } = await import("../src/js/games/robot/levels.js");
-const b = await chromium.launch({ executablePath:"/opt/pw-browsers/chromium" });
+const b = await chromium.launch({ executablePath: CHROMIUM });
 const c = await b.newContext({viewport:{width:420,height:880}});
 const p = await c.newPage();
 const errs=[]; p.on("pageerror",e=>errs.push(e.message));

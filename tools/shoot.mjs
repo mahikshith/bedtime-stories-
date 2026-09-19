@@ -5,6 +5,7 @@
  *   node tools/shoot.mjs <page-path> <out.png> [ms] [width] [height]
  */
 import { chromium } from "playwright";
+import { CHROMIUM } from "./browser.mjs";
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -32,7 +33,7 @@ const port = server.address().port;
 // The image ships a Chromium build that may not match the npm package's
 // pinned revision, so point at it explicitly rather than downloading one.
 const browser = await chromium.launch({
-  executablePath: process.env.CHROMIUM_BIN || "/opt/pw-browsers/chromium",
+  executablePath: CHROMIUM,
   args: ["--autoplay-policy=no-user-gesture-required", "--font-render-hinting=none"],
 });
 const ctx = await browser.newContext({

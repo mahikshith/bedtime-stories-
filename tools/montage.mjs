@@ -8,6 +8,7 @@
  *   node tools/montage.mjs <dir> <out.png> [name,name,...]
  */
 import { chromium } from "playwright";
+import { CHROMIUM } from "./browser.mjs";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -24,7 +25,7 @@ const imgs = files.map((f) => ({
 }));
 
 const cols = Math.min(3, imgs.length);
-const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" });
+const b = await chromium.launch({ executablePath: CHROMIUM });
 const page = await (await b.newContext({ viewport: { width: 430 * cols, height: 900 } })).newPage();
 await page.setContent(`<body style="margin:0;background:#101418;display:grid;
   grid-template-columns:repeat(${cols},1fr);gap:6px;padding:6px">

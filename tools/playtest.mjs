@@ -7,6 +7,7 @@
  * -> land -> next word, and that a level can be finished at all.
  */
 import { chromium } from "playwright";
+import { CHROMIUM } from "./browser.mjs";
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -30,7 +31,7 @@ const shotDir = process.argv[3] ?? "/tmp/pt";
 const holdMs = +(process.argv[4] ?? 700);
 fs.mkdirSync(shotDir, { recursive: true });
 
-const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" });
+const browser = await chromium.launch({ executablePath: CHROMIUM });
 const ctx = await browser.newContext({ viewport: { width: 420, height: 880 }, deviceScaleFactor: 2 });
 const page = await ctx.newPage();
 const errors = [];

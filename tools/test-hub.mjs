@@ -11,6 +11,7 @@
  * playing is still a single tap.
  */
 import { chromium } from "playwright";
+import { CHROMIUM } from "./browser.mjs";
 import http from "node:http"; import fs from "node:fs"; import path from "node:path";
 const ROOT = process.cwd();
 const T = { ".html":"text/html", ".js":"text/javascript", ".css":"text/css", ".woff2":"font/woff2", ".svg":"image/svg+xml" };
@@ -21,7 +22,7 @@ const srv = http.createServer((q,r)=>{const u=decodeURIComponent(q.url.split("?"
 await new Promise(r=>srv.listen(0,r));
 const port = srv.address().port;
 
-const b = await chromium.launch({ executablePath:"/opt/pw-browsers/chromium" });
+const b = await chromium.launch({ executablePath: CHROMIUM });
 const c = await b.newContext({ viewport:{ width:420, height:880 } });
 const p = await c.newPage();
 const errs = [];

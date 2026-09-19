@@ -11,6 +11,7 @@
  * One boot means one test can cover all ten pages.
  */
 import { chromium } from "playwright";
+import { CHROMIUM } from "./browser.mjs";
 import http from "node:http"; import fs from "node:fs"; import path from "node:path";
 const ROOT = process.cwd();
 const T = { ".html":"text/html", ".js":"text/javascript", ".css":"text/css", ".woff2":"font/woff2", ".svg":"image/svg+xml" };
@@ -24,7 +25,7 @@ const port = srv.address().port;
 const GAMES = ["say-jump","tilt-maze","word-mob","echo-pop","shapes",
                "tangram","slide","robot","balance","town"];
 
-const b = await chromium.launch({ executablePath:"/opt/pw-browsers/chromium" });
+const b = await chromium.launch({ executablePath: CHROMIUM });
 let failed = 0;
 
 for (const game of GAMES) {

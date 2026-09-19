@@ -8,6 +8,7 @@
  *   node tools/weigh.mjs [page-path ...]
  */
 import { chromium } from "playwright";
+import { CHROMIUM } from "./browser.mjs";
 import http from "node:http"; import fs from "node:fs"; import path from "node:path";
 const ROOT = process.cwd();
 const T = { ".html":"text/html", ".js":"text/javascript", ".css":"text/css", ".woff2":"font/woff2", ".svg":"image/svg+xml" };
@@ -20,7 +21,7 @@ const port = srv.address().port;
 
 const pages = process.argv.slice(2);
 const list = pages.length ? pages : ["/index.html"];
-const b = await chromium.launch({ executablePath:"/opt/pw-browsers/chromium" });
+const b = await chromium.launch({ executablePath: CHROMIUM });
 
 for (const page of list) {
   const c = await b.newContext({ viewport:{ width:420, height:880 } });

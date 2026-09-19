@@ -9,6 +9,7 @@
  *   node tools/shoot-town.mjs <out-dir>
  */
 import { chromium } from "playwright";
+import { CHROMIUM } from "./browser.mjs";
 import http from "node:http"; import fs from "node:fs"; import path from "node:path";
 const ROOT = process.cwd();
 const T = { ".html":"text/html", ".js":"text/javascript", ".css":"text/css", ".woff2":"font/woff2", ".svg":"image/svg+xml" };
@@ -21,7 +22,7 @@ const port = srv.address().port;
 const out = process.argv[2] ?? "/tmp/town";
 fs.mkdirSync(out, { recursive: true });
 
-const b = await chromium.launch({ executablePath:"/opt/pw-browsers/chromium",
+const b = await chromium.launch({ executablePath: CHROMIUM,
   args:["--font-render-hinting=none"] });
 const c = await b.newContext({ viewport:{width:420,height:880}, deviceScaleFactor:2 });
 const p = await c.newPage();

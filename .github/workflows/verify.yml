@@ -1,0 +1,48 @@
+# Prove the games still work, in a real browser, on every push.
+#
+# This repo's discipline is that authored content is verified rather than
+# eyeballed: level solvability is proved by search, and then proved again by
+# playing the real game in Chromium. Running it here means a broken level or a
+# rewired page fails the push rather than a child.
+
+name: Verify
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Content and games
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # Content first: these are pure search over the level tables and fail
+      # fast, so a broken level is reported before ten minutes of browser work.
+      - name: Prove every authored level is solvable
+        run: npm run verify
+
+      - name: Play every game in a browser
+        run: npm test
+
+      - name: Build and check the shipped bundle
+        run: npm run test:app

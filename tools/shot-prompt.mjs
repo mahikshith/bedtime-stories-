@@ -1,5 +1,6 @@
 /** Capture the word-prompt and mid-charge UI, which a static screenshot misses. */
 import { chromium } from "playwright";
+import { CHROMIUM } from "./browser.mjs";
 import http from "node:http"; import fs from "node:fs"; import path from "node:path";
 const ROOT = process.cwd();
 const T = { ".html":"text/html", ".js":"text/javascript", ".css":"text/css", ".woff2":"font/woff2" };
@@ -10,7 +11,7 @@ const srv = http.createServer((q,r)=>{const u=decodeURIComponent(q.url.split("?"
 await new Promise(r=>srv.listen(0,r)); const port=srv.address().port;
 const out = process.argv[3] ?? "/tmp/prompt";
 fs.mkdirSync(out,{recursive:true});
-const b = await chromium.launch({ executablePath:"/opt/pw-browsers/chromium" });
+const b = await chromium.launch({ executablePath: CHROMIUM });
 const c = await b.newContext({viewport:{width:420,height:880},deviceScaleFactor:2});
 const p = await c.newPage();
 await p.goto(`http://127.0.0.1:${port}/src/games/say-jump.html?level=${process.argv[2]??0}`,{waitUntil:"networkidle"});
