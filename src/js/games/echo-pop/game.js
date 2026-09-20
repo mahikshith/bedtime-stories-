@@ -49,7 +49,15 @@ export class EchoPopScene {
 
     this.bubbles = [];
     this.target = null;
-    this.voice = new VoiceInput({ sensitivity: save.state.settings.voiceSensitivity, onThreshold: 0.13 });
+    // A lower bar than the default, and a shorter one: this game is for two
+    // to five year olds, whose words are quieter and much shorter than an
+    // older child's. Still above the old 0.13, which was low enough that the
+    // room itself kept answering the question.
+    this.voice = new VoiceInput({
+      sensitivity: save.state.settings.voiceSensitivity,
+      onThreshold: 0.18,
+      onSustainMs: 70,
+    });
     this.voiceReady = false;
     this.lastPrompt = 0;
     this.birdMood = "idle";

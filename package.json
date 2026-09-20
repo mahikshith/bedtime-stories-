@@ -17,7 +17,7 @@
     "shoot": "node tools/shoot.mjs",
     "weigh": "node tools/weigh.mjs",
     "test:touch": "node tools/stress-touch.mjs",
-    "test:voice": "node tools/test-mic-gate.mjs && node tools/test-voice.mjs"
+    "test:voice": "node tools/test-mic-gate.mjs && node tools/test-mic-noise.mjs && node tools/test-voice.mjs"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.2",

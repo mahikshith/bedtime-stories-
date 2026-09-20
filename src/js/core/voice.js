@@ -32,16 +32,40 @@ const FFT = 1024;
  */
 const RECOG_GUARD_MS = 320;
 
+/**
+ * Noise floor bounds.
+ *
+ * FLOOR_MAX was 0.08, which is quiet-room loud. A genuinely noisy room sits
+ * above it, so the floor was pinned below the noise and every frame read as
+ * speech — the meter sat at the top and nothing the child did changed it.
+ * Letting it go higher means the game can still be played in a kitchen.
+ */
+const FLOOR_GAIN = 1.8;
+const FLOOR_MIN = 0.006;
+const FLOOR_MAX = 0.2;
+
+/**
+ * Four seconds of room at 60Hz, and the percentile taken from it.
+ *
+ * Long enough that a held word — capped at `maxUtteranceMs`, 2.6s — can never
+ * be more than a fraction of the window, so the quiet fifth of it is still
+ * the room rather than the child.
+ */
+const ROOM_FRAMES = 240;
+const ROOM_PERCENTILE = 0.2;
+
 export class VoiceInput {
   constructor({
-    onThreshold = 0.16,   // level that starts an utterance
-    offThreshold = 0.09,  // level that ends one (hysteresis, avoids flutter)
+    onThreshold = 0.22,   // level that starts an utterance
+    offThreshold = 0.11,  // level that ends one (hysteresis, avoids flutter)
+    onSustainMs = 90,     // how long it must STAY there before we believe it
     releaseMs = 140,      // quiet time before an utterance is considered over
     chargeRate = 1.9,     // how fast sustained sound fills the meter
     sensitivity = 1,      // per-child gain, tuned in settings
     maxUtteranceMs = 2600,// hard stop so a held shout can't charge forever
   } = {}) {
-    Object.assign(this, { onThreshold, offThreshold, releaseMs, chargeRate, sensitivity, maxUtteranceMs });
+    Object.assign(this, { onThreshold, offThreshold, onSustainMs, releaseMs,
+                          chargeRate, sensitivity, maxUtteranceMs });
 
     this.ready = false;
     this.denied = false;
@@ -71,6 +95,22 @@ export class VoiceInput {
     this.floor = 0.012;
     this._calibrating = true;
     this._calibSamples = [];
+    /**
+     * The last few seconds of room, sampled only while nobody is speaking.
+     *
+     * The floor used to be measured ONCE at startup and then allowed to drift
+     * downward only. A room that got louder after that — a television, a
+     * sibling, a car — left the floor stranded underneath the new noise, the
+     * meter pinned open and an utterance firing on nothing. That is the
+     * "it recognizes external noises" half of the report, and no threshold
+     * would have fixed it: the threshold was being measured from the wrong
+     * number.
+     */
+    this._room = [];
+    this._roomAt = 0;
+
+    /** How long the level has been above `onThreshold` without a break. */
+    this._hotMs = 0;
 
     /**
      * True while the app's own voice is coming out of the speaker.
@@ -271,13 +311,45 @@ export class VoiceInput {
         if (this._calibSamples.length > 30) {
           const sorted = this._calibSamples.slice().sort((a, b) => a - b);
           const median = sorted[Math.floor(sorted.length / 2)];
-          this.floor = clamp(median * 1.7, 0.006, 0.08);
+          this.floor = clamp(median * FLOOR_GAIN, FLOOR_MIN, FLOOR_MAX);
           this._calibrating = false;
         }
       }
-    } else if (!this.muted && !this.speaking && rms < this.floor) {
-      // Keep drifting toward a quieter floor if the room settles.
-      this.floor = approach(this.floor, Math.max(0.006, rms * 1.7), 0.35, dt);
+    } else if (!this.muted) {
+      /**
+       * Keep a rolling picture of the room — INCLUDING while we think someone
+       * is speaking.
+       *
+       * The obvious version of this only samples between utterances, so that
+       * a child holding a long "aaah" cannot raise the floor into their own
+       * voice. It deadlocks. Room noise loud enough to cross the threshold
+       * starts an utterance that never ends, no samples are taken, the floor
+       * never rises, and the meter sits pinned at the top for as long as the
+       * television is on — which is exactly the fault being fixed.
+       *
+       * A low percentile over a long window is what makes sampling through
+       * speech safe: speech has gaps and a room does not, and an utterance is
+       * capped at `maxUtteranceMs` anyway, so a held shout can never be more
+       * than a fraction of the window.
+       */
+      this._room.push(rms);
+      if (this._room.length > ROOM_FRAMES) this._room.shift();
+      this._roomAt += dt;
+      if (this._roomAt >= 0.25 && this._room.length >= 30) {
+        const elapsed = this._roomAt;
+        this._roomAt = 0;
+        const sorted = this._room.slice().sort((a, b) => a - b);
+        const quiet = sorted[Math.floor(sorted.length * ROOM_PERCENTILE)];
+        const want = clamp(quiet * FLOOR_GAIN, FLOOR_MIN, FLOOR_MAX);
+        // `elapsed`, not `dt`: this runs four times a second, so passing one
+        // frame's worth of time would move the floor a fifteenth as fast as
+        // these rates say and the room would never be caught up with.
+        //
+        // Rises slowly and falls quickly. Being slow to trust a louder room
+        // costs a few false starts; being slow to trust a quieter one costs
+        // a child who has gone unheard since the television was switched off.
+        this.floor = approach(this.floor, want, want > this.floor ? 0.9 : 1.6, elapsed);
+      }
     }
 
     // Perceptual curve: raw RMS is bunched near zero, so a square root opens
@@ -311,11 +383,35 @@ export class VoiceInput {
     }
 
     if (!this.speaking) {
-      if (this.level >= this.onThreshold) {
+      /**
+       * A SPIKE IS NOT A WORD.
+       *
+       * A door, a dropped toy, a chair on a hard floor and a hand brushing
+       * the phone all clear any threshold you care to set — for about two
+       * frames. Speech does not: even the shortest word a child says holds
+       * energy for a tenth of a second. Waiting for the level to STAY up
+       * rejects the whole class of impulse noise without making the game any
+       * harder to trigger deliberately, which raising the threshold alone
+       * would have done.
+       */
+      // Measured on the RAW level, not the smoothed one. `this.level` has a
+      // deliberately slow release so the bar falls gracefully, and that alone
+      // stretches a two-frame knock into something that stays above the
+      // threshold for a seventh of a second — long enough to pass a sustain
+      // test built on it. The smoothing is for the eye; the decision is made
+      // on what the microphone actually heard this frame.
+      if (target >= this.onThreshold) this._hotMs += dt * 1000;
+      else this._hotMs = 0;
+
+      if (this._hotMs >= this.onSustainMs) {
         this.speaking = true;
         this.peak = this.level;
-        this.charge = 0;
-        this.utteranceMs = 0;
+        // Credit the sustain window rather than throwing it away: the child
+        // was already speaking through it, and starting from zero would make
+        // every short word quieter than it really was.
+        this.utteranceMs = this._hotMs;
+        this.charge = clamp(this.level * this.chargeRate * (this._hotMs / 1000), 0, 1);
+        this._hotMs = 0;
         this._quietMs = 0;
         this.onStart?.();
       }
@@ -331,7 +427,34 @@ export class VoiceInput {
       } else {
         this._quietMs = 0;
       }
-      if (this.utteranceMs >= this.maxUtteranceMs) this._end();
+      if (this.utteranceMs >= this.maxUtteranceMs) {
+        /**
+         * An utterance that runs the full length is evidence about the room.
+         *
+         * The rolling window takes a few seconds to accept that a room has
+         * got louder, and it has to: a percentile short enough to react
+         * instantly is short enough for a child holding "saaaay" to raise the
+         * floor into their own voice and cut themselves off. During those
+         * seconds a television fires one utterance, hits this cap, and fires
+         * another — which is the bird jumping twice at nothing.
+         *
+         * So take the hint. Two and a half seconds of unbroken sound is a
+         * room, not a word, and the floor can be moved straight up to meet
+         * it. The window is emptied with it so the old quiet samples cannot
+         * immediately drag the floor back down; it refills from whatever the
+         * room is actually doing now, and falls again when the room does.
+         *
+         * The utterance is still DELIVERED. "Say it for longer to go
+         * further" is the mechanic, and a child who genuinely held a sound
+         * for the full duration has earned the jump — they simply get a
+         * higher floor on the next one, which costs them nothing if they
+         * were the loud thing in the room.
+         */
+        this.floor = clamp(Math.max(this.floor, rms * FLOOR_GAIN), FLOOR_MIN, FLOOR_MAX);
+        this._room.length = 0;
+        this._roomAt = 0;
+        this._end();
+      }
     }
 
     this.onLevel?.(this.level, this.charge);
@@ -346,6 +469,7 @@ export class VoiceInput {
     };
     this.speaking = false;
     this._quietMs = 0;
+    this._hotMs = 0;
     this.onUtterance?.(result);
     // Let the meter fall back visibly rather than snapping to zero.
     this.charge = 0;
@@ -358,6 +482,7 @@ export class VoiceInput {
     this.charge = 0;
     this.peak = 0;
     this._quietMs = 0;
+    this._hotMs = 0;
   }
 
   stop() {
