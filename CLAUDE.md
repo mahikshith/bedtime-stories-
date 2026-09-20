@@ -63,9 +63,9 @@ the surrounding density.
 ```
 npm test          # styles, smoke across 27 pages, wiring, hub, slide, robot, balance, town
 npm run verify    # level audits: say-jump reachability, robot solutions, balance solvability
+npm run test:touch              # every game driven by a real finger, on an Android profile
+npm run test:voice              # the mic gate, and the voice jump with no loudness signal
 node tools/test-winnable.mjs    # plays all 15 Say & Jump levels to the end
-node tools/test-mic-gate.mjs    # the app must not hear its own voice
-node tools/test-voice.mjs       # voice jump with the recogniser owning the mic
 node tools/test-tilt.mjs        # tilt on phones with no gyroscope
 node tools/test-coach.mjs       # the tutorial works, not merely draws
 ```
@@ -97,8 +97,15 @@ fires pointer events with zero jitter, never fires `pointercancel`, and never
 lands two fingers at once. A real tap moves 3–10px between down and up. Robot
 Path and Sliding Blocks both branch on `moved < 20`, and both shipped
 drag-only while every tool passed. Ten green tools and a broken game are not a
-contradiction. Use a touch context (`hasTouch: true`, `page.touchscreen`) for
-anything input-shaped.
+contradiction. `tools/stress-touch.mjs` is the answer: real touch through
+`Input.dispatchTouchEvent` on an Android device profile. Anything
+input-shaped belongs there, not behind `page.mouse`.
+
+**A rule so conservative it never fires is the same as no rule.** The first
+tap fix for Sliding Blocks only moved a block with exactly ONE free
+direction, because anything else is a guess. Level one is a single block on
+an open board — four free directions — so the tutorial level still did
+nothing. Check a new rule against the levels a child actually meets first.
 
 **CSS cannot see the Android status bar.** `env(safe-area-inset-top)` reports
 the *display cutout*, so a phone without a notch reports 0 while the status

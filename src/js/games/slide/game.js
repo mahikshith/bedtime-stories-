@@ -213,7 +213,8 @@ export class SlideScene {
     if (!d || d.moved || !pt) return;
 
     /**
-     * A TAP slides the block, if there is only one way it can go.
+     * A TAP slides the block: one free direction picks itself, and otherwise
+     * WHERE on the block you tapped chooses.
      *
      * The puzzle was drag-only, and a drag has to clear a third of a cell on
      * the dominant axis before anything happens — so a tap, or a short
@@ -221,18 +222,40 @@ export class SlideScene {
      * "sometimes it responds, sometimes it is not" is: it responded exactly
      * when the finger happened to travel far enough.
      *
-     * Only an UNAMBIGUOUS tap moves anything. A block with two free
-     * directions cannot be resolved from a tap, and guessing would move the
-     * wrong one — there, the drag is still the answer, and the nudge
-     * animation shows the block is live.
+     * The first version of this fix only moved a block with exactly ONE free
+     * direction, on the reasoning that anything else is a guess. Driving the
+     * game with a real finger showed what that costs: level one is a single
+     * 2x2 block on an open board, so it has FOUR free directions and the tap
+     * did nothing at all. The tutorial level, the first thing a child ever
+     * touches in this game, sat there.
+     *
+     * So the tap is read as an aim. Tapping the right-hand side of a block
+     * means right — the same thing dragging it means, without having to
+     * travel far enough to prove it. Only a tap in the dead centre of a block
+     * that genuinely has a choice is still ambiguous, and that one nudges.
      */
     const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([x, y]) => this.canMove(d.block, x, y));
-    if (dirs.length === 1) {
-      this.doMove(d.block, dirs[0][0], dirs[0][1]);
+    const slide = (mx, my) => {
+      this.doMove(d.block, mx, my);
       this.juice?.hit("light", { freeze: false });
-      return;
+    };
+
+    if (dirs.length === 1) { slide(dirs[0][0], dirs[0][1]); return; }
+
+    if (dirs.length > 1) {
+      const cx = this.origin.x + (d.block.x + d.block.w / 2) * this.cell;
+      const cy = this.origin.y + (d.block.y + d.block.h / 2) * this.cell;
+      const dx = pt.x - cx, dy = pt.y - cy;
+      // A dead zone in the middle, or a tap that lands centrally on a big
+      // block would pick a direction out of rounding noise.
+      if (Math.hypot(dx, dy) > this.cell * 0.18) {
+        const [mx, my] = Math.abs(dx) > Math.abs(dy)
+          ? [Math.sign(dx), 0] : [0, Math.sign(dy)];
+        if (dirs.some(([a, b]) => a === mx && b === my)) { slide(mx, my); return; }
+      }
     }
-    // Stuck, or spoilt for choice: wiggle so the tap is visibly received.
+
+    // Stuck, or aimed at a wall: wiggle so the tap is visibly received.
     d.block.nudge = { x: dirs[0]?.[0] ?? 0, y: dirs[0]?.[1] ?? 0, t: 1 };
     sfx.tick();
   }

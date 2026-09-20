@@ -15,7 +15,9 @@
     "test": "node tools/check-styles.mjs && node tools/smoke.mjs && node tools/check-wiring.mjs && node tools/test-hub.mjs && node tools/test-slide.mjs && node tools/test-robot.mjs && node tools/test-balance.mjs && node tools/test-town.mjs",
     "test:app": "npm run build && node tools/test-app.mjs",
     "shoot": "node tools/shoot.mjs",
-    "weigh": "node tools/weigh.mjs"
+    "weigh": "node tools/weigh.mjs",
+    "test:touch": "node tools/stress-touch.mjs",
+    "test:voice": "node tools/test-mic-gate.mjs && node tools/test-voice.mjs"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.2",
