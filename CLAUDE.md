@@ -11,6 +11,7 @@ Read these first, in this order, and do not duplicate them here:
 | `docs/STACK.md` | Why there is no bundler, how to get a build onto a phone |
 | `docs/DESIGN.md` | Why the character walks itself, why nothing is timed, the age bands |
 | `HANDOFF.md` | Where the work stands right now, and what is next |
+| `MEMORY.md` | What has already been decided, tried, and rejected — and why every tuned number is the number it is |
 
 ---
 
@@ -61,10 +62,10 @@ the surrounding density.
 ## Verifying
 
 ```
-npm test          # styles, smoke across 27 pages, wiring, hub, slide, robot, balance, town
-npm run verify    # level audits: say-jump reachability, robot solutions, balance solvability
-npm run test:touch              # every game driven by a real finger, on an Android profile
-npm run test:voice              # the mic gate, and the voice jump with no loudness signal
+npm test           # styles, smoke across 27 pages, wiring, hub, slide, robot, balance, town
+npm run verify     # level audits: say-jump reachability, robot solutions, balance solvability
+npm run test:touch # 10 games driven by a real finger on an Android profile (86 assertions)
+npm run test:voice # the speaker gate, room noise, TTS health, and the voice jump
 node tools/test-winnable.mjs    # plays all 15 Say & Jump levels to the end
 node tools/test-tilt.mjs        # tilt on phones with no gyroscope
 node tools/test-coach.mjs       # the tutorial works, not merely draws
@@ -119,6 +120,15 @@ signal at all, so anything keyed off `voice.speaking` is dead. Say & Jump
 drives reach from *how long the child spoke* in that mode instead. This is an
 OS behaviour, not a web one — Expo would not change it.
 
+**The voice stack is three cooperating modules, not three features.**
+`audio.js` owns the speaker gate and is the only module that knows when a
+sound is playing; `voice.js` disbelieves the microphone while that gate is
+shut and tracks the room as a live percentile; `native.js` provides the real
+TTS engine and reports whether anything came out. Changing one without the
+others is how the microphone ends up hearing the app again. The constants
+involved are load-bearing in non-obvious ways — read the "Numbers" section of
+`MEMORY.md` before touching any of them.
+
 **The speaker is two inches from the microphone.** Anything the app says is
 the loudest thing in the room. `audio.js` owns the gate (`duckMic`,
 `speakerBusy`, `speakerIdle`) and both input paths must consult it before
@@ -161,6 +171,11 @@ git push -u origin <branch>
 
 Retry a failed push up to four times with exponential backoff (2s, 4s, 8s,
 16s) for network errors only.
+
+When a session ends, leave `HANDOFF.md` current and add anything durable to
+`MEMORY.md` — a decision and its reasoning, an approach that failed, a number
+and why it is that number. A fact learned from the device and not written down
+gets paid for twice.
 
 Commit messages are prose: what was wrong, why it was wrong, and what the fix
 turns on — the same standard as the comments. End every commit with the
