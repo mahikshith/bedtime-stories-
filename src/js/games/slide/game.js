@@ -207,7 +207,35 @@ export class SlideScene {
     }
   }
 
-  up() { this.drag = null; }
+  up(pt) {
+    const d = this.drag;
+    this.drag = null;
+    if (!d || d.moved || !pt) return;
+
+    /**
+     * A TAP slides the block, if there is only one way it can go.
+     *
+     * The puzzle was drag-only, and a drag has to clear a third of a cell on
+     * the dominant axis before anything happens — so a tap, or a short
+     * imprecise one from a small hand, did nothing at all. That is what
+     * "sometimes it responds, sometimes it is not" is: it responded exactly
+     * when the finger happened to travel far enough.
+     *
+     * Only an UNAMBIGUOUS tap moves anything. A block with two free
+     * directions cannot be resolved from a tap, and guessing would move the
+     * wrong one — there, the drag is still the answer, and the nudge
+     * animation shows the block is live.
+     */
+    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([x, y]) => this.canMove(d.block, x, y));
+    if (dirs.length === 1) {
+      this.doMove(d.block, dirs[0][0], dirs[0][1]);
+      this.juice?.hit("light", { freeze: false });
+      return;
+    }
+    // Stuck, or spoilt for choice: wiggle so the tap is visibly received.
+    d.block.nudge = { x: dirs[0]?.[0] ?? 0, y: dirs[0]?.[1] ?? 0, t: 1 };
+    sfx.tick();
+  }
 
   /* --------------------------------------------------------------- loop */
 

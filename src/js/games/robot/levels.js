@@ -20,7 +20,7 @@
 
 export const LEVELS = [
   {
-    id: "r1", name: "Switch It On", teaches: "Drag blocks, then press PLAY",
+    id: "r1", name: "Switch It On", teaches: "Tap a block to add it, then press PLAY",
     map: ["000a"], start: { x: 0, y: 0, dir: 0 },
     ops: ["FWD", "LIGHT"], slots: { main: 6 },
     solution: { main: ["FWD", "FWD", "FWD", "LIGHT"] },

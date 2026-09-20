@@ -173,14 +173,14 @@ export class RobotScene {
       const op = this.program[r.list][r.index];
       if (!op) return;
       this.program[r.list][r.index] = null;
-      this.drag = { op, x: pt.x, y: pt.y, from: r };
+      this.drag = { op, x: pt.x, y: pt.y, from: r, start: { x: pt.x, y: pt.y } };
       sfx.tick();
       return;
     }
     // Or take a fresh one from the palette.
     for (const r of this.paletteRects) {
       if (!inRect(pt, r)) continue;
-      this.drag = { op: r.op, x: pt.x, y: pt.y, from: null };
+      this.drag = { op: r.op, x: pt.x, y: pt.y, from: null, start: { x: pt.x, y: pt.y } };
       sfx.tick();
       return;
     }
@@ -197,7 +197,9 @@ export class RobotScene {
     const d = this.drag;
     if (!d) return;
     this.drag = null;
+    const moved = d.start ? Math.hypot(pt.x - d.start.x, pt.y - d.start.y) : 999;
     const target = this.slotRects.find((r) => inRect(pt, r));
+
     if (target) {
       // Dropping onto a filled slot swaps rather than overwrites, so a child
       // reordering a program never silently loses a block.
@@ -206,9 +208,46 @@ export class RobotScene {
       if (existing && d.from) this.program[d.from.list][d.from.index] = existing;
       sfx.pop();
       this.juice?.hit("light", { freeze: false, punch: 0.25 });
-    } else if (d.from) {
-      sfx.whoosh();   // dragged out of the strip: deleted
+      return;
     }
+
+    /**
+     * A TAP on the palette appends, instead of doing nothing.
+     *
+     * This game was drag-only: press a block, carry it across the screen, and
+     * release it inside a 64px slot. Tapping one did nothing at all, which is
+     * what a player does first — and what the tutorial told them to do. The
+     * reasonable conclusion is that the controls are broken, which is exactly
+     * what came back from the device: "no matter how many controls I touched,
+     * the bird is not moving".
+     *
+     * Dragging into a small target is also a harder motor task than a
+     * five-year-old has, and it is not the skill this game is teaching. The
+     * skill is the ORDER of the instructions. So a tap appends to the first
+     * free slot and dragging still reorders, which is strictly more forgiving
+     * than either on its own.
+     */
+    if (!d.from && moved < 20) {
+      const i = this.program.main.indexOf(null);
+      if (i >= 0) {
+        this.program.main[i] = d.op;
+        sfx.pop();
+        this.juice?.hit("light", { freeze: false, punch: 0.25 });
+      } else {
+        sfx.wrong();                       // the strip is full
+        this.juice?.hit("light", { freeze: false });
+      }
+      return;
+    }
+
+    // A tap on a FILLED slot puts the block back rather than binning it: a
+    // child poking at their own program must not lose it by touching it.
+    if (d.from && moved < 20) {
+      this.program[d.from.list][d.from.index] = d.op;
+      return;
+    }
+
+    if (d.from) sfx.whoosh();              // dragged clear of the strip: deleted
   }
 
   clearProgram() {
