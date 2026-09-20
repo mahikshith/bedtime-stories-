@@ -29,7 +29,7 @@ import { drawBird, birdBlink, BIRDS } from "../../art/bird.js";
 import { C, TOKENS, PAIRS, alpha, mix } from "../../core/palette.js";
 import { roundRect, fillRound, circle, text, outlinedText, star as starShape } from "../../core/draw.js";
 import { VoiceInput, matchWord } from "../../core/voice.js";
-import { sfx, speak, stopSpeaking, startMusic, stopMusic } from "../../core/audio.js";
+import { sfx, speak, stopSpeaking, startMusic, stopMusic, speakerIdle, duckMic } from "../../core/audio.js";
 import { speech, haptics } from "../../core/native.js";
 import { wordsForLevel, stretched } from "../../core/words.js";
 import { save, starsFromAccuracy } from "../../core/storage.js";
@@ -85,6 +85,12 @@ export class SayJumpScene {
     this.heardWrong = null;
     this.wrongT = 0;
     this.listenStart = 0;
+    /**
+     * Bumped whenever a listen is superseded — the word changed, or HEAR IT
+     * was pressed. A listen whose generation is stale is discarded instead of
+     * being scored, so abandoning one never costs the child a miss.
+     */
+    this._listenGen = 0;
 
     /**
      * How far the "say it" meter has filled while the recogniser listens.
@@ -279,6 +285,12 @@ export class SayJumpScene {
     this.word = this.words[this.stopIndex % this.words.length];
     this.heard = "";
     this.voice.clearTranscript();
+    // Drop anything still listening for the PREVIOUS word. Leaving it running
+    // would both hold the re-entrancy guard shut — so the new word is never
+    // listened for — and let a late answer to the old word score the new one.
+    this._listenGen++;
+    if (this.listening) { this.listening = false; speech.stop(); }
+    clearTimeout(this._retryTimer);
     this.wordsAsked++;
     // Read it aloud — the child has to hear the target to produce it.
     speak(this.word.word);
@@ -600,12 +612,40 @@ export class SayJumpScene {
   async beginListening() {
     if (!this.speechOn || this.listening) return;
     if (this.state !== "prompt" && this.state !== "charge") return;
+
+    // WAIT FOR THE PHONE TO STOP TALKING.
+    //
+    // `askWord` reads the target aloud and then calls this in the same breath.
+    // Without the wait, the recogniser is opened while "cat" is still coming
+    // out of the speaker two inches away, hears it, and reports a match — so
+    // the game answered its own question and the bird jumped before the child
+    // had opened their mouth. That is the "it is recognizing noises from the
+    // speaker" reported from the device.
+    //
+    // The generation counter is the only guard over the wait, deliberately.
+    // Two callers may both be parked here and the newest should always win,
+    // which a boolean cannot express: whichever one woke first would clear
+    // the flag and leave the other parked behind an already-open gate — and
+    // that is how "the recogniser simply never opens again" happens.
+    const gen = ++this._listenGen;
+    await speakerIdle();
+    if (gen !== this._listenGen) return;                    // superseded
+    // Everything checked before the await has to be checked again after it.
+    // A second is a long time in this game: the child can have given up and
+    // tapped instead, the three misses can have used themselves up, or the
+    // level can have moved on entirely.
+    if (!this.speechOn || this.listening) return;
+    if (this.state !== "prompt" && this.state !== "charge") return;
+
+    // Only now does the clock start: `listenCharge` is how long the CHILD
+    // spoke for, and it must not include the time the app spent speaking.
     this.listening = true;
     this.listenStart = performance.now();
     const want = this.word?.word;
 
     const heard = await speech.listenOnce();
     this.listening = false;
+    if (gen !== this._listenGen) return;                    // abandoned, not a miss
     if (!want || this.word?.word !== want) return;          // moved on since
     if (this.state !== "prompt" && this.state !== "charge") return;
 
@@ -659,16 +699,31 @@ export class SayJumpScene {
    */
   sayWordAloud() {
     if (!this.word) return;
+
+    // Abandon any listen in flight. The recogniser is about to be handed the
+    // app's own pronunciation, and scoring that as the child's attempt would
+    // either hand them a free jump or — worse — spend one of their three
+    // tries on a word they never said.
+    this._listenGen++;
+    if (this.listening) { this.listening = false; speech.stop(); }
+    clearTimeout(this._retryTimer);
+
     stopSpeaking();
     this.speakT = 1.1;
     sfx.pop();
     speak(this.word.word, { rate: 0.62, pitch: 1.05 });
     if (this.word.syl?.length > 1) {
       clearTimeout(this._sylTimer);
+      // Hold the gate across the pause between the word and its syllables.
+      // Without this the gap reads as "speaker idle", the microphone opens,
+      // and it is promptly fed "cas, tle".
+      duckMic(900);
       this._sylTimer = setTimeout(() => {
         speak(this.word.syl.join(", "), { rate: 0.5, pitch: 1.1 });
       }, 900);
     }
+    // Re-arm once the phone is quiet: `beginListening` does the waiting.
+    this.beginListening();
   }
 
   /** A hazard bounced off the star's shield: noise and sparkle, no damage. */

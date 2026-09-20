@@ -18,8 +18,19 @@
  */
 
 import { clamp, approach } from "./engine.js";
+import { speakerBusy } from "./audio.js";
 
 const FFT = 1024;
+
+/**
+ * Grace period after the speaker goes quiet during which a transcript is
+ * still treated as the app's own voice.
+ *
+ * A recogniser reports what it heard some tens of milliseconds after it heard
+ * it, so the result for the app's last syllable arrives after the gate has
+ * already opened.
+ */
+const RECOG_GUARD_MS = 320;
 
 export class VoiceInput {
   constructor({
@@ -60,6 +71,18 @@ export class VoiceInput {
     this.floor = 0.012;
     this._calibrating = true;
     this._calibSamples = [];
+
+    /**
+     * True while the app's own voice is coming out of the speaker.
+     *
+     * The phone's microphone is two inches from its speaker, so anything the
+     * app says is by far the loudest thing in the room. Everything downstream
+     * of this flag — the meter, the noise floor, the utterance detector and
+     * the transcript — has to disbelieve the microphone while it is set, or
+     * the game ends up reacting to itself. See the gate in audio.js.
+     */
+    this.muted = false;
+    this._unmutedAt = -1e9;
 
     this._quietMs = 0;
     this._stream = null;
@@ -213,6 +236,21 @@ export class VoiceInput {
       else { this._wake(); return; }
     }
 
+    // What the app itself is putting through the speaker. Checked every frame
+    // rather than pushed from audio.js, because the gate is extended from
+    // several places and a subscription taken at the start of an utterance
+    // would miss the extensions.
+    const wasMuted = this.muted;
+    this.muted = speakerBusy();
+    if (wasMuted && !this.muted) this._unmutedAt = performance.now();
+
+    if (this.muted && this.speaking) {
+      // Mid-utterance when the app started talking — the child pressed HEAR IT
+      // while speaking. Abandon it silently rather than firing `onUtterance`
+      // with a charge that is part child and part loudspeaker.
+      this.cancel();
+    }
+
     this._analyser.getFloatTimeDomainData(this._buf);
     let sum = 0;
     for (let i = 0; i < this._buf.length; i++) sum += this._buf[i] * this._buf[i];
@@ -220,15 +258,24 @@ export class VoiceInput {
     this.raw = rms;
 
     // First half-second with no speech establishes the room's noise floor.
+    //
+    // NOT while the app is talking. This calibration runs when the level
+    // loads, which is exactly when the game reads the target word aloud, so
+    // the floor was being set to the volume of the app's own voice — after
+    // which a real child sat permanently underneath it and the meter never
+    // moved again. Silent, sticky, and indistinguishable from a broken
+    // microphone.
     if (this._calibrating) {
-      this._calibSamples.push(rms);
-      if (this._calibSamples.length > 30) {
-        const sorted = this._calibSamples.slice().sort((a, b) => a - b);
-        const median = sorted[Math.floor(sorted.length / 2)];
-        this.floor = clamp(median * 1.7, 0.006, 0.08);
-        this._calibrating = false;
+      if (!this.muted) {
+        this._calibSamples.push(rms);
+        if (this._calibSamples.length > 30) {
+          const sorted = this._calibSamples.slice().sort((a, b) => a - b);
+          const median = sorted[Math.floor(sorted.length / 2)];
+          this.floor = clamp(median * 1.7, 0.006, 0.08);
+          this._calibrating = false;
+        }
       }
-    } else if (!this.speaking && rms < this.floor) {
+    } else if (!this.muted && !this.speaking && rms < this.floor) {
       // Keep drifting toward a quieter floor if the room settles.
       this.floor = approach(this.floor, Math.max(0.006, rms * 1.7), 0.35, dt);
     }
@@ -236,10 +283,32 @@ export class VoiceInput {
     // Perceptual curve: raw RMS is bunched near zero, so a square root opens
     // up the quiet end where most children actually sit.
     const above = Math.max(0, rms - this.floor);
-    const target = clamp(Math.sqrt(above * 9.5) * this.sensitivity, 0, 1);
+    // Drive the meter to zero while the app is talking instead of holding it
+    // where it was, so the bar falls away during the prompt and is already at
+    // the bottom by the time the child's turn starts. Freezing it would leave
+    // a full bar sitting there looking like credit the child has not earned.
+    const target = this.muted
+      ? 0
+      : clamp(Math.sqrt(above * 9.5) * this.sensitivity, 0, 1);
     // Fast attack, slower release, so the meter feels responsive but steady.
     const rate = target > this.level ? 34 : 13;
     this.level = approach(this.level, target, rate, dt);
+
+    // Anything the recogniser picked up while the speaker was live is the
+    // app's own pronunciation, not an answer. The grace period after the gate
+    // opens covers the result that arrives a frame or two late.
+    if (this.muted || performance.now() - this._unmutedAt < RECOG_GUARD_MS) {
+      this.transcript = "";
+      this.lastTranscript = "";
+    }
+
+    if (this.muted) {
+      // No utterance may begin. Report the (falling) level so the UI still
+      // animates, then stop: every branch below this point exists to decide
+      // what the child said, and right now the only voice is ours.
+      this.onLevel?.(this.level, this.charge);
+      return;
+    }
 
     if (!this.speaking) {
       if (this.level >= this.onThreshold) {

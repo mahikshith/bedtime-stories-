@@ -84,6 +84,10 @@ await dismissCoach(page);
     s.speechOn = false;
     clearTimeout(s._retryTimer);
     s.listening = false;
+    // Also cancel a listen parked waiting for the speaker to go quiet. It is
+    // invisible from out here — `s.listening` is still false while it waits —
+    // and when it wakes it would clear `listenCharge` mid-measurement.
+    s._listenGen++;
     await wait(60);
 
     // Now play the child's part: hold the listen state open for `ms`.

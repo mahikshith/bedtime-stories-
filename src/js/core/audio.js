@@ -287,6 +287,101 @@ if (typeof window !== "undefined" && "speechSynthesis" in window) {
   speechSynthesis.onvoiceschanged = () => { voicesCache = speechSynthesis.getVoices(); };
 }
 
+/* ------------------------------------------- the speaker/microphone gate */
+
+/**
+ * WHY THIS EXISTS.
+ *
+ * A phone has one speaker and one microphone, and they are two inches apart.
+ * When the app says "cat" out loud, the microphone hears "cat" — loudly, far
+ * louder than the child sitting across the room. Nothing in this app used to
+ * know that, and three separate faults came out of it:
+ *
+ *   1. The loudness meter spiked while the app spoke, so the charge bar
+ *      filled and the bird jumped with the child silent. Reported from the
+ *      device as "it is easily recognizing noises from the speaker".
+ *
+ *   2. The noise floor is calibrated from the first half-second of samples.
+ *      If that half-second landed while the app was talking, the floor was
+ *      set to the volume of the app's own voice — after which a real child
+ *      was permanently below the floor and the meter never moved again.
+ *      This is the worse of the two, because it is silent and it persists.
+ *
+ *   3. The recogniser heard it too. `askWord` speaks the word and starts
+ *      listening in the same breath, so the recogniser was handed the app's
+ *      own pronunciation and returned a match. The game was answering its
+ *      own question, and the child's attempt never mattered either way.
+ *
+ * So output declares itself here, and both input paths ask before trusting
+ * what they hear. This is the only module that knows when a sound is playing,
+ * which is why the gate lives here rather than in voice.js.
+ *
+ * TAIL. The gate stays shut a fraction after the audio stops. A speaker cone
+ * takes a moment to settle, a room takes longer, and a recogniser started on
+ * the same frame the utterance ends will still catch the last syllable.
+ */
+
+const TAIL_MS = 280;
+let outputUntil = 0;
+let speakGen = 0;
+
+const now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+
+/**
+ * How long a phrase will take to say, near enough.
+ *
+ * Deliberately an over-estimate: the cost of guessing long is a short pause
+ * before the child may speak, and the cost of guessing short is the app
+ * hearing itself — which is the entire bug this is here to prevent.
+ */
+function speechMs(str, rate = 1) {
+  return (320 + String(str).length * 95) / Math.max(0.3, rate);
+}
+
+/** Hold the gate shut for `ms` from now. Never shortens an existing hold. */
+export function duckMic(ms) {
+  outputUntil = Math.max(outputUntil, now() + ms);
+}
+
+/** Open the gate immediately — for when output is known to have stopped. */
+export function unduckMic() { outputUntil = 0; }
+
+/**
+ * Bring the gate forward to `ms` from now, but never push it back.
+ *
+ * The counterpart to `duckMic`. Estimates are over-generous on purpose, so
+ * once the engine reports that it has actually finished, the hold should
+ * shrink to the tail rather than keeping the child muted for the rest of a
+ * guess that turned out to be long.
+ */
+export function releaseMic(ms = TAIL_MS) {
+  outputUntil = Math.min(outputUntil, now() + ms);
+}
+
+/** True while the app's own sound is (or has just been) coming out. */
+export function speakerBusy() { return now() < outputUntil; }
+
+/** Milliseconds until the speaker is clear; 0 when it already is. */
+export function speakerBusyMs() { return Math.max(0, outputUntil - now()); }
+
+/**
+ * Resolve once the speaker is quiet.
+ *
+ * Polls rather than using a callback list, because the gate is extended from
+ * several places (a word, then its syllables a beat later) and a promise
+ * captured at the start would resolve in the gap between them.
+ */
+export function speakerIdle() {
+  return new Promise((resolve) => {
+    const tick = () => {
+      const left = speakerBusyMs();
+      if (left <= 0) resolve();
+      else setTimeout(tick, Math.min(left + 10, 120));
+    };
+    tick();
+  });
+}
+
 /**
  * Say a word out loud. This is the whole point of a vocabulary game: the child
  * must hear the target before they try to produce it.
@@ -296,21 +391,36 @@ if (typeof window !== "undefined" && "speechSynthesis" in window) {
 export function speak(str, { rate = 0.85, pitch = 1.15, volume = 1 } = {}) {
   return new Promise((resolve) => {
     if (!enabled || typeof window === "undefined" || !("speechSynthesis" in window)) return resolve();
+    // Shut the gate BEFORE the first phoneme, not on `onstart`: some engines
+    // fire onstart late enough that the first syllable is already out.
+    const gen = ++speakGen;
+    duckMic(speechMs(str, rate) + TAIL_MS);
     try {
+      // Bumping the generation first matters: `cancel()` below ends the
+      // previous utterance, and that one's `onend` must not be allowed to
+      // open the gate we have just shut for this one.
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(str);
       const v = pickVoice();
       if (v) u.voice = v;
       u.rate = rate; u.pitch = pitch; u.volume = volume; u.lang = v?.lang || "en-US";
-      u.onend = () => resolve();
-      u.onerror = () => resolve();
+      // The estimate above is a floor, not a promise. A long word at rate 0.5
+      // outlasts it, so keep pushing the gate forward while we know we are
+      // still talking, and release it a tail after the engine says we are not.
+      u.onstart = () => { if (gen === speakGen) duckMic(speechMs(str, rate) + TAIL_MS); };
+      u.onend = () => { if (gen === speakGen) releaseMic(); resolve(); };
+      u.onerror = () => { if (gen === speakGen) releaseMic(); resolve(); };
       speechSynthesis.speak(u);
       // Safety net: some engines never fire onend.
       setTimeout(resolve, 400 + str.length * 120);
-    } catch { resolve(); }
+    } catch { unduckMic(); resolve(); }
   });
 }
 
 export function stopSpeaking() {
+  speakGen++;
   if (typeof window !== "undefined" && "speechSynthesis" in window) speechSynthesis.cancel();
+  // `cancel()` does not reliably fire `onend`, so without this the gate would
+  // stay shut for the whole estimated length of a phrase nobody is saying.
+  releaseMic();
 }
