@@ -151,6 +151,99 @@ export const mirror = {
   },
 };
 
+/* ------------------------------------------------------------------ tts */
+
+/**
+ * Saying a word out loud, on a platform where the browser may not.
+ *
+ * WHY THIS IS NOT JUST `speechSynthesis`. Android's WebView exposes the
+ * SpeechSynthesis API whether or not the device has a working TTS engine
+ * behind it. `speak()` accepts the utterance, resolves, and nothing comes out
+ * of the speaker — no error, no exception, no voices in `getVoices()`. From
+ * inside the page it is indistinguishable from success, which is why HEAR IT
+ * could be reported as doing nothing while every test passed: there is
+ * nothing in the web API to test against.
+ *
+ * The native plugin talks to Android's TextToSpeech service directly, so when
+ * it is present it is the one to use. When it is not — every browser, and the
+ * CI that runs the whole verification suite over plain HTTP — the web path is
+ * still there.
+ *
+ * `available()` is deliberately pessimistic on the web: no voices means no
+ * engine, and the caller would rather know than mime.
+ */
+export const tts = {
+  /** True when the native engine is here, so the web quirks do not apply. */
+  get native() { return Boolean(plugin("TextToSpeech")?.speak); },
+
+  /**
+   * Is anything going to come out of the speaker?
+   *
+   * @returns {Promise<boolean>}
+   */
+  async available() {
+    const t = plugin("TextToSpeech");
+    if (t?.getSupportedLanguages) {
+      try { return Boolean((await t.getSupportedLanguages())?.languages?.length); }
+      catch { return Boolean(t.speak); }
+    }
+    if (t?.speak) return true;
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return false;
+    return (await voices()).length > 0;
+  },
+
+  /**
+   * Speak, and report whether it actually happened.
+   *
+   * @returns {Promise<boolean>} false when nothing was said, so the caller can
+   *                             show the child something instead of silence.
+   */
+  async speak(text, { rate = 0.85, pitch = 1.15, volume = 1, lang = "en-US" } = {}) {
+    const t = plugin("TextToSpeech");
+    if (t?.speak) {
+      try {
+        // The native plugin's rate is 1.0-centred like the web's, but its
+        // range is narrower in practice; clamping keeps a slow syllable
+        // read-out from being refused outright.
+        await t.speak({ text, lang, rate: Math.max(0.5, Math.min(2, rate)), pitch, volume });
+        return true;
+      } catch { return false; }
+    }
+    return false;   // caller falls back to speechSynthesis
+  },
+
+  async stop() {
+    const t = plugin("TextToSpeech");
+    if (t?.stop) { try { await t.stop(); } catch {} }
+  },
+};
+
+/**
+ * The browser's voice list, which arrives late.
+ *
+ * `getVoices()` returns an empty array on the first call in Chrome and in
+ * Android's WebView, and fills in asynchronously. Reading it once at startup
+ * and caching the empty result is a real way to end up with no voice
+ * selected for the life of the session.
+ */
+function voices(timeoutMs = 1200) {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return resolve([]);
+    const now = speechSynthesis.getVoices();
+    if (now.length) return resolve(now);
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      resolve(speechSynthesis.getVoices() || []);
+    };
+    speechSynthesis.addEventListener?.("voiceschanged", finish, { once: true });
+    setTimeout(finish, timeoutMs);
+  });
+}
+
+export { voices as ttsVoices };
+
 /* --------------------------------------------------------------- speech */
 
 /**

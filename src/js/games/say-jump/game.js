@@ -29,7 +29,7 @@ import { drawBird, birdBlink, BIRDS } from "../../art/bird.js";
 import { C, TOKENS, PAIRS, alpha, mix } from "../../core/palette.js";
 import { roundRect, fillRound, circle, text, outlinedText, star as starShape } from "../../core/draw.js";
 import { VoiceInput, matchWord } from "../../core/voice.js";
-import { sfx, speak, stopSpeaking, startMusic, stopMusic, speakerIdle, duckMic } from "../../core/audio.js";
+import { sfx, speak, stopSpeaking, startMusic, stopMusic, speakerIdle, duckMic, speechWorking } from "../../core/audio.js";
 import { speech, haptics } from "../../core/native.js";
 import { wordsForLevel, stretched } from "../../core/words.js";
 import { save, starsFromAccuracy } from "../../core/storage.js";
@@ -711,6 +711,10 @@ export class SayJumpScene {
     stopSpeaking();
     this.speakT = 1.1;
     sfx.pop();
+    // Always acknowledge the press in the hand, not only in the ear: on a
+    // phone with no speech engine this and the button's own beat are the
+    // only confirmation the child gets that they hit it.
+    haptics.tap();
     speak(this.word.word, { rate: 0.62, pitch: 1.05 });
     if (this.word.syl?.length > 1) {
       clearTimeout(this._sylTimer);
@@ -1652,8 +1656,18 @@ export class SayJumpScene {
       // the stretched form teaches "hold the vowel to jump further"
       text(ctx, stretched(W.word).toUpperCase() + " →", x + 124, y + 116,
         { size: 22, color: alpha(TOKENS.snow, 0.55), align: "left" });
+      /**
+       * The syllables, promoted when they are the only way in.
+       *
+       * On a device with no working text-to-speech engine, HEAR IT cannot
+       * help and "cas · tle" is all a child who cannot read the word has
+       * left. Small and dim is fine as a hint beside a working button; it is
+       * not fine as the primary route, so it grows and brightens when the
+       * button cannot do its job.
+       */
+      const mute = speechWorking() === false;
       text(ctx, W.syl.join(" · "), x + 124, y + 144,
-        { size: 16, color: TOKENS.textDim, align: "left" });
+        { size: mute ? 22 : 16, color: mute ? TOKENS.snow : TOKENS.textDim, align: "left" });
 
       // The "say it for me" button.
       //
@@ -1675,10 +1689,13 @@ export class SayJumpScene {
       circle(ctx, 0, 4, sb.r, alpha("#000000", 0.35));
       circle(ctx, 0, 0, sb.r, this.speakT > 0 ? this.theme.accent : alpha(this.theme.accent, 0.9));
       circle(ctx, 0, -sb.r * 0.28, sb.r * 0.72, alpha("#FFFFFF", 0.18));
-      text(ctx, "🔊", 0, 2, { size: 34, color: "#17120A" });
+      text(ctx, mute ? "🔇" : "🔊", 0, 2, { size: 34, color: "#17120A" });
       ctx.restore();
-      text(ctx, "HEAR IT", sb.cx, sb.cy + sb.r + 18,
-        { size: 12, color: alpha(TOKENS.snow, 0.75) });
+      // Say which it is. A button that looks identical whether or not it
+      // works is how "I pressed it and nothing happened" becomes a mystery
+      // instead of a fact about the phone.
+      text(ctx, mute ? "NO VOICE" : "HEAR IT", sb.cx, sb.cy + sb.r + 18,
+        { size: 13, color: alpha(TOKENS.snow, mute ? 0.55 : 0.75) });
     }
     ctx.restore();
 

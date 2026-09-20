@@ -9,7 +9,7 @@
  * to the first pointerdown/keydown by `install()`.
  */
 
-import { haptics } from "./native.js";
+import { haptics, tts, ttsVoices } from "./native.js";
 
 let ctx = null;
 let master = null;
@@ -270,22 +270,39 @@ export function stopMusic() {
 
 /* -------------------------------------------------------------- speech */
 
-let voicesCache = null;
+/**
+ * The voice list arrives late, so ask for it once at startup and keep the
+ * promise. `getVoices()` returns [] on the first call in Chrome and in
+ * Android's WebView and fills in asynchronously; caching that empty result
+ * is a real way to have no voice selected for the whole session.
+ */
+let voicesReady = null;
+const getVoices = () => (voicesReady ??= ttsVoices());
+if (typeof window !== "undefined") getVoices();
 
-function pickVoice() {
-  if (!("speechSynthesis" in window)) return null;
-  if (!voicesCache || !voicesCache.length) voicesCache = speechSynthesis.getVoices();
-  if (!voicesCache.length) return null;
-  const en = voicesCache.filter((v) => /^en/i.test(v.lang));
+function pickVoice(list) {
+  if (!list?.length) return null;
+  const en = list.filter((v) => /^en/i.test(v.lang));
   // Prefer a female/child-ish voice where the platform exposes one; kids
   // respond to it and it matches the mascot.
   const nice = en.find((v) => /(samantha|karen|zira|female|google us english)/i.test(v.name));
-  return nice || en[0] || voicesCache[0];
+  return nice || en[0] || list[0];
 }
 
-if (typeof window !== "undefined" && "speechSynthesis" in window) {
-  speechSynthesis.onvoiceschanged = () => { voicesCache = speechSynthesis.getVoices(); };
-}
+/**
+ * Whether anything actually comes out of the speaker.
+ *
+ * null until something has been tried. Android's WebView accepts an
+ * utterance, resolves, and stays silent when the device has no TTS engine —
+ * there is no error and no exception, so the only way to know is to notice
+ * that `onstart` never fired. Games use this to show a child something
+ * instead of a button that does nothing.
+ */
+let ttsHealthy = null;
+export const speechWorking = () => ttsHealthy;
+
+/** How long to wait for `onstart` before concluding nothing was said. */
+const SILENT_MS = 1100;
 
 /* ------------------------------------------- the speaker/microphone gate */
 
@@ -389,37 +406,85 @@ export function speakerIdle() {
  *                          is unavailable, so callers never stall)
  */
 export function speak(str, { rate = 0.85, pitch = 1.15, volume = 1 } = {}) {
+  if (!enabled || typeof window === "undefined") return Promise.resolve(false);
+  // Shut the gate BEFORE the first phoneme, not on `onstart`: some engines
+  // fire onstart late enough that the first syllable is already out. Bumping
+  // the generation first matters too — cancelling the previous utterance
+  // must not let ITS `onend` open the gate we just shut for this one.
+  const gen = ++speakGen;
+  duckMic(speechMs(str, rate) + TAIL_MS);
+  return say(str, { rate, pitch, volume }, gen);
+}
+
+async function say(str, opts, gen) {
+  // The native engine first where there is one. Android's WebView will accept
+  // an utterance and stay silent; the platform's own TextToSpeech service
+  // will not, and it is the difference between HEAR IT working on a phone and
+  // only appearing to.
+  if (tts.native) {
+    try { await tts.stop(); } catch {}
+    const said = await tts.speak(str, opts);
+    if (gen === speakGen) releaseMic();
+    if (said) { ttsHealthy = true; return true; }
+    ttsHealthy = false;
+    // Fall through: a plugin that refused is still worth a web attempt.
+  }
+  return webSpeak(str, opts, gen);
+}
+
+/**
+ * The browser path, which has to be watched rather than trusted.
+ *
+ * Nothing in the SpeechSynthesis API reports "accepted and said nothing",
+ * which is precisely what a device with no TTS engine does. The only signal
+ * is that `onstart` never arrives, so that is what is timed.
+ */
+async function webSpeak(str, { rate, pitch, volume }, gen) {
+  if (!("speechSynthesis" in window)) { ttsHealthy = false; return false; }
+  const list = await getVoices();
   return new Promise((resolve) => {
-    if (!enabled || typeof window === "undefined" || !("speechSynthesis" in window)) return resolve();
-    // Shut the gate BEFORE the first phoneme, not on `onstart`: some engines
-    // fire onstart late enough that the first syllable is already out.
-    const gen = ++speakGen;
-    duckMic(speechMs(str, rate) + TAIL_MS);
+    let started = false, done = false;
+    const finish = (ok) => {
+      if (done) return;
+      done = true;
+      if (gen === speakGen) releaseMic();
+      resolve(ok);
+    };
     try {
-      // Bumping the generation first matters: `cancel()` below ends the
-      // previous utterance, and that one's `onend` must not be allowed to
-      // open the gate we have just shut for this one.
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(str);
-      const v = pickVoice();
-      if (v) u.voice = v;
+      const v = pickVoice(list);
+      // Assigning the voice is the one line here that can throw: the setter
+      // rejects anything that is not a live SpeechSynthesisVoice, and a list
+      // can go stale when the engine reloads underneath us. Losing a voice
+      // preference is nothing; losing the whole utterance to the catch below
+      // — which is what happened — means the app goes silent and blames the
+      // device for it.
+      try { if (v) u.voice = v; } catch {}
       u.rate = rate; u.pitch = pitch; u.volume = volume; u.lang = v?.lang || "en-US";
-      // The estimate above is a floor, not a promise. A long word at rate 0.5
+      // The estimate is a floor, not a promise. A long word at rate 0.5
       // outlasts it, so keep pushing the gate forward while we know we are
       // still talking, and release it a tail after the engine says we are not.
-      u.onstart = () => { if (gen === speakGen) duckMic(speechMs(str, rate) + TAIL_MS); };
-      u.onend = () => { if (gen === speakGen) releaseMic(); resolve(); };
-      u.onerror = () => { if (gen === speakGen) releaseMic(); resolve(); };
+      u.onstart = () => {
+        started = true;
+        ttsHealthy = true;
+        if (gen === speakGen) duckMic(speechMs(str, rate) + TAIL_MS);
+      };
+      u.onend = () => finish(started);
+      u.onerror = () => { ttsHealthy = false; finish(false); };
       speechSynthesis.speak(u);
+      // Nothing started: there is no engine behind the API.
+      setTimeout(() => { if (!started) { ttsHealthy = false; finish(false); } }, SILENT_MS);
       // Safety net: some engines never fire onend.
-      setTimeout(resolve, 400 + str.length * 120);
-    } catch { unduckMic(); resolve(); }
+      setTimeout(() => finish(started), 400 + str.length * 120);
+    } catch { ttsHealthy = false; unduckMic(); finish(false); }
   });
 }
 
 export function stopSpeaking() {
   speakGen++;
   if (typeof window !== "undefined" && "speechSynthesis" in window) speechSynthesis.cancel();
+  tts.stop();
   // `cancel()` does not reliably fire `onend`, so without this the gate would
   // stay shut for the whole estimated length of a phrase nobody is saying.
   releaseMic();

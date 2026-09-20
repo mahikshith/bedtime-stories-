@@ -17,7 +17,7 @@
     "shoot": "node tools/shoot.mjs",
     "weigh": "node tools/weigh.mjs",
     "test:touch": "node tools/stress-touch.mjs",
-    "test:voice": "node tools/test-mic-gate.mjs && node tools/test-mic-noise.mjs && node tools/test-voice.mjs"
+    "test:voice": "node tools/test-mic-gate.mjs && node tools/test-mic-noise.mjs && node tools/test-tts.mjs && node tools/test-voice.mjs"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.2",
@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@capacitor-community/speech-recognition": "^7.0.1",
+    "@capacitor-community/text-to-speech": "^8.0.2",
     "@capacitor/android": "^8.5.2",
     "@capacitor/app": "^8.1.1",
     "@capacitor/core": "^8.5.2",

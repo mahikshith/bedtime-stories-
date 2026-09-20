@@ -126,6 +126,17 @@ believing the mic. Note the hold is bounded by a length estimate on purpose:
 a TTS engine that never fires `onend` must not be able to wedge the mic shut
 forever.
 
+**Android's WebView will accept speech and say nothing.** The whole
+SpeechSynthesis API is present whether or not the device has a TTS engine
+behind it: `speak()` is accepted, resolves, `getVoices()` is empty, no error
+is raised. From inside the page it is indistinguishable from success, which is
+why HEAR IT could be reported as dead while every test passed. The native
+`@capacitor-community/text-to-speech` plugin is the fix; the safety net is
+that `onstart` never arriving marks `speechWorking()` false, and the UI says
+so rather than offering a button that does nothing. Also note `getVoices()`
+returns `[]` on its first call and fills in asynchronously — caching that
+empty result is a real way to have no voice for the whole session.
+
 **A gyro-less phone fires `deviceorientation` forever with null angles.**
 `core/tilt.js` races `deviceorientation`, `deviceorientationabsolute` and
 `devicemotion` and takes whichever answers with real numbers.
