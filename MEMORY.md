@@ -200,6 +200,12 @@ zone of `cell * 0.18` around the block's centre.
   and an offline fallback to `/index.html` can make a game page try to import
   `/src/games/src/js/hub.js`. Match precached static files with `ignoreSearch`
   and run `npm run test:app` with the network cut before shipping.
+- **Voice tests must own the recogniser they drive.** A scene can enter `charge`
+  before a harness samples `prompt`, and its original microphone startup can
+  finish after a fake recogniser is installed. Invalidate that startup, keep
+  the fake listen pending until HEAR IT interrupts it, and measure charge only
+  while the speaker gate reports busy. A fixed wall-clock wait is not that
+  measurement on a loaded CI runner.
 - **Android's speech recogniser takes the microphone exclusively.** While it
   listens there is no loudness signal at all, so anything keyed off
   `voice.speaking` is dead. Say & Jump drives reach from *how long the child

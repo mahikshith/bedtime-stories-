@@ -246,14 +246,23 @@ const recog = await page.evaluate(async () => {
   }
 
   const opens = [];
+  const pending = [];
   let listeningWhileTalking = false;
-  nat.speech.listenOnce = async () => {
+  nat.speech.listenOnce = () => new Promise((resolve) => {
     opens.push({ busy: audio.speakerBusy(), at: Math.round(performance.now()) });
-    await wait(120);
-    return [s.word?.word ?? ""];
+    pending.push(resolve);
+  });
+  nat.speech.stop = async () => {
+    for (const resolve of pending.splice(0)) resolve([]);
   };
-  nat.speech.stop = async () => {};
 
+  // The page may still be finishing its real microphone startup. Take sole
+  // ownership of this scene's listen before the controlled prompt begins.
+  s._voiceGeneration++;
+  s._voicePendingRefresh = false;
+  s._listenGen++;
+  s.listening = false;
+  s.listenCharge = 0;
   s.speechOn = true;
   s.misses = 0;
   clearTimeout(s._retryTimer);
@@ -265,20 +274,21 @@ const recog = await page.evaluate(async () => {
 
   // While the phone is still talking, the recogniser must be shut and the
   // child's "how long did you speak for" clock must not be running.
+  let chargeDuringTalk = 0;
   for (let i = 0; i < 25; i++) {
     await wait(20);
-    if (audio.speakerBusy() && s.listening) listeningWhileTalking = true;
+    if (audio.speakerBusy()) {
+      if (s.listening) listeningWhileTalking = true;
+      chargeDuringTalk = Math.max(chargeDuringTalk, s.listenCharge);
+    }
   }
-  const chargeDuringTalk = s.listenCharge;
 
-  // Let it finish and the listen complete.
+  // Keep this listen pending: HEAR IT is pressed while the recogniser owns the
+  // microphone, so the old result must be abandoned before the next opens.
   for (let i = 0; i < 120 && !opens.length; i++) await wait(20);
-  await wait(300);
 
   // Pressing HEAR IT mid-listen must not be scored as the child's attempt.
   const missesBefore = s.misses;
-  s.setState("prompt");
-  for (let i = 0; i < 60 && s.state !== "prompt"; i++) await wait(20);
   const stateAtPress = s.state;
   const opensBefore = opens.length;
   s.sayWordAloud();
