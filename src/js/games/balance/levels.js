@@ -15,17 +15,17 @@
 export const LEVELS = [
   {
     id: "b1", name: "Say Hello", tier: "creature",
-    teaches: "Drop a card on its shadow — they disappear",
+    teaches: "Tap a friend, then its moon twin",
     left: ["box", "a", "-a"], right: ["b"], deck: [],
   },
   {
     id: "b2", name: "Two Shadows", tier: "creature",
-    teaches: "Clear everything but the box",
+    teaches: "Match each friend with its moon twin",
     left: ["box", "a", "-a", "b", "-b"], right: ["c"], deck: [],
   },
   {
     id: "b3", name: "Make a Shadow", tier: "creature",
-    teaches: "Add the same card to BOTH sides",
+    teaches: "Tap the moon card to add it to BOTH sides",
     left: ["box", "a"], right: ["b"], deck: ["-a"],
   },
   {

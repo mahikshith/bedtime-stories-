@@ -20,11 +20,14 @@ is superseded for this round.
 - Shape Sorter is the first age-band pass: a `tiny` board has up to three
   distinct, larger shapes; `mid` keeps all original keys. Six-piece trays use
   two rows, and cancelled drags return to the tray.
+- Balance's opening lesson now demonstrates its actual same-tray cancellation
+  move. Children can tap a card and its highlighted shadow or drag; a deck tap
+  adds to both trays. Cancelled gestures and stray second fingers cannot score.
 - `PRODUCT.md`, root `DESIGN.md`, and `docs/POLISH-ROADMAP.md` record the new
   product and visual direction, staged game work, and a parent-facing purchase
   concept. No store billing or purchase UI has been added.
 
-`npm run test:controls`, `npm run test:shape-band`, `npm run verify`,
+`npm run test:controls`, `npm run test:shape-band`, `npm run test:balance-input`, `npm run verify`,
 `npm run build`, and `npx cap sync android` pass locally. CI now gates
 Android-profile touch and voice checks. The browser suites and screenshot review are
 blocked here: Chromium is absent and the Playwright download was an invalid

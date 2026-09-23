@@ -3,10 +3,10 @@
  *
  * Get the box alone on its side of the scale. Two moves exist:
  *
- *   drag a card from the deck   it lands on BOTH pans, because the scale must
- *                               stay balanced ("do the same to both sides")
- *   drop a card on its shadow   both vanish ("a thing and its opposite make
- *                               nothing")
+ *   tap or drag a deck card   it lands on BOTH pans, because the scale must
+ *                             stay balanced ("do the same to both sides")
+ *   tap a card and its twin  or drag one onto the other; both vanish ("a thing
+ *                             and its opposite make nothing")
  *
  * That is the entire ruleset, and it is enough to solve linear equations. A
  * child who clears "box + a = b" by adding shadow-a to both sides and
@@ -58,6 +58,7 @@ export class BalanceScene {
 
     this.cards = [];          // laid out each frame from the state
     this.drag = null;
+    this.selected = null;
     this.hintT = 0;
   }
 
@@ -133,17 +134,19 @@ export class BalanceScene {
 
   /* -------------------------------------------------------------- input */
 
-  down(pt) {
+  down(pt, event) {
     if (this.phase === "intro") { this.phase = "play"; this.phaseT = 0; return; }
     if (this.phase === "won") { this.finish(); return; }
+    if (this.drag) return;
     const c = this.cardAt(pt);
     if (!c || c.term === BOX) return;
-    this.drag = { ...c, gx: pt.x - c.x, gy: pt.y - c.y, px: c.x, py: c.y };
+    this.drag = { ...c, gx: pt.x - c.x, gy: pt.y - c.y, px: c.x, py: c.y,
+      startX: pt.x, startY: pt.y, pointerId: event?.pointerId };
     sfx.tick();
   }
 
-  move(pt) {
-    if (!this.drag) return;
+  move(pt, event) {
+    if (!this.drag || (event && this.drag.pointerId !== event.pointerId)) return;
     this.drag.px = pt.x - this.drag.gx;
     this.drag.py = pt.y - this.drag.gy;
     const over = this.cardAt({ x: pt.x, y: pt.y });
@@ -158,46 +161,72 @@ export class BalanceScene {
     return to.term === shadowOf(from.term);
   }
 
-  up(pt) {
+  up(pt, event) {
     const d = this.drag;
-    if (!d) return;
+    if (!d || (event && d.pointerId !== event.pointerId)) return;
     this.drag = null;
+    if (event?.type === "pointercancel") return;
 
     const over = this.cardAt({ x: pt.x, y: pt.y });
-    if (over && this.isCancelTarget(d, over)) {
-      const next = cancel(this.state, d.side, d.index, over.index);
-      if (next) {
-        this.state = next;
-        this.moves++;
-        sfx.pop();
-        this.juice?.hit("light", { freeze: false, punch: 0.25 }); sfx.correct();
-        const cx = (d.px + over.x) / 2 + d.s / 2, cy = (d.py + over.y) / 2 + d.s / 2;
-        this.fx.burst(cx, cy, [C.grass.light, "#FFFFFF"], 20);
-        this.fx.say(cx, cy - 30, "gone!", C.grass.light, 24);
-        this.check();
-        return;
+    const tapped = Math.hypot(pt.x - d.startX, pt.y - d.startY) < 18 &&
+      over?.side === d.side && over?.index === d.index;
+    if (tapped && d.side !== "deck") {
+      // The first lesson used to require a perfect drag on a 78px card. A
+      // toddler can now tap the two matching faces in either order.
+      if (this.selected && this.isCancelTarget(this.selected, d)) {
+        this.cancelPair(this.selected, d);
+        this.selected = null;
+      } else {
+        this.selected = this.selected?.side === d.side && this.selected.index === d.index
+          ? null : { ...d };
+        sfx.tick();
       }
+      return;
+    }
+    if (over && this.isCancelTarget(d, over)) {
+      this.cancelPair(d, over);
+      return;
     }
 
     if (d.side === "deck") {
       // Dropped on the board: the card lands on BOTH pans. This is the whole
       // lesson, so it is animated as two cards flying apart from the drop.
-      const view = this.engine.view;
       const onBoard = pt.y < this.deckY - 20;
-      if (onBoard) {
-        this.state = addBoth(this.state, d.term);
-        this.moves++;
-        sfx.coin();
-        this.juice?.hit("light", { freeze: false });
-        for (const side of ["left", "right"]) {
-          this.fx.ring(this.panX[side], this.panTop + this.panH / 2, C.sun.light, 0.5);
-        }
-        this.fx.say(view.x + view.w / 2, this.beamY - 40, "BOTH SIDES!", C.sun.light, 26);
-        this.check();
+      if (onBoard || tapped) {
+        this.addCard(d.term);
         return;
       }
     }
     sfx.whoosh();
+  }
+
+  cancelPair(from, to) {
+    const next = cancel(this.state, from.side, from.index, to.index);
+    if (!next) return;
+    this.state = next;
+    this.selected = null;
+    this.moves++;
+    sfx.pop();
+    this.juice?.hit("light", { freeze: false, punch: 0.25 }); sfx.correct();
+    const cx = (from.x + to.x) / 2 + from.s / 2;
+    const cy = (from.y + to.y) / 2 + from.s / 2;
+    this.fx.burst(cx, cy, [C.grass.light, "#FFFFFF"], 20);
+    this.fx.say(cx, cy - 30, "gone!", C.grass.light, 24);
+    this.check();
+  }
+
+  addCard(term) {
+    this.state = addBoth(this.state, term);
+    this.selected = null;
+    this.moves++;
+    sfx.coin();
+    this.juice?.hit("light", { freeze: false });
+    for (const side of ["left", "right"]) {
+      this.fx.ring(this.panX[side], this.panTop + this.panH / 2, C.sun.light, 0.5);
+    }
+    const view = this.engine.view;
+    this.fx.say(view.x + view.w / 2, this.beamY - 40, "BOTH SIDES!", C.sun.light, 26);
+    this.check();
   }
 
   check() {
@@ -243,7 +272,10 @@ export class BalanceScene {
 
     for (const c of this.cards) {
       if (this.drag && c.side === this.drag.side && c.index === this.drag.index) continue;
-      this.drawCard(ctx, c.term, c.x, c.y, c.s, c === this.drag?.over);
+      const selected = this.selected?.side === c.side && this.selected.index === c.index;
+      const match = this.selected && this.isCancelTarget(this.selected, c);
+      this.drawCard(ctx, c.term, c.x, c.y, c.s, c === this.drag?.over || selected || match,
+        selected ? 1.08 : 1);
     }
     this.fx.draw(ctx);
     if (this.drag) this.drawCard(ctx, this.drag.term, this.drag.px, this.drag.py, this.drag.s, false, 1.12);
@@ -311,8 +343,8 @@ export class BalanceScene {
     ctx.save();
     fillRound(ctx, view.x + 20, y - 40, view.w - 40, this.cardSize + 72, 24, alpha("#1A1030", 0.75));
     ctx.restore();
-    text(ctx, "DRAG A CARD — IT GOES ON BOTH SIDES", view.x + view.w / 2, y - 18,
-      { size: 14, color: alpha(C.sun.base, 0.9) });
+    text(ctx, "TAP OR DRAG — IT GOES ON BOTH SIDES", view.x + view.w / 2, y - 18,
+      { size: 18, color: alpha(C.sun.base, 0.9) });
   }
 
   /**
@@ -412,8 +444,9 @@ export class BalanceScene {
       { size: 28, color: "#FFFFFF" });
     text(ctx, this.def.teaches, view.x + view.w / 2, view.y + 100,
       { size: 17, color: C.sun.base });
-    text(ctx, "GET THE BOX ALONE", view.x + view.w / 2, view.y + 148,
-      { size: 15, color: alpha("#FFFFFF", 0.55) });
+    text(ctx, this.selected ? "TAP THE GLOWING MATCH" : "MATCH A FRIEND WITH ITS MOON TWIN",
+      view.x + view.w / 2, view.y + 148,
+      { size: 18, color: alpha("#FFFFFF", 0.82) });
     text(ctx, `${this.moves} / ${this.par} best`, view.x + view.w - pad, view.y + pad + 16,
       { size: 18, color: alpha("#FFFFFF", 0.7), align: "right" });
   }

@@ -27,6 +27,8 @@ Shape Sorter now uses three distinct shapes at most for `tiny`, while `mid` reta
 
 For each scene: reproduce device complaints; identify its first 30 seconds and action feedback; author/verify new levels with its existing solver; refresh one coherent set of original Canvas art and sounds; test real touch on Android; record a device verdict. Prioritize Balance and Tinker Town's comprehension, Shape Sorter's multi-object play, then Tangram/Slide/Robot, Tilt Maze, Word Mob and Echo Pop. Keep Tinker Town open-ended.
 
+Balance first interaction: the old coach taught a move the rules do not allow. The first board now teaches the real same-tray day/night match; tapping either card and then its glowing twin cancels them. A deck tap adds a card to both trays. A cancelled or second finger cannot complete another finger's move. `npm run test:balance-input` covers those paths; physical Android comprehension and browser playtest are still pending.
+
 ## 4. New original games
 
 Prototype Feather Kitchen, Moonlight Post, and River Builders separately. Add only a prototype that can teach its core action in five seconds, run offline, and produce delight without timers or purchases. A new game joins the shared boot, art, audio, input, save, coach and verification contracts.

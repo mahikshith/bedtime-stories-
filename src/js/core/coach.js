@@ -219,10 +219,10 @@ export const TUTORIALS = {
   },
   balance: {
     title: "Balance",
-    say: "Both sides must stay equal. Take the same thing off each side until the box is alone!",
+    say: "Tap a bright friend, then tap its sleepy moon twin in the same tray. They disappear together. Get the bird's box alone!",
     steps: [
-      { kind: "tap", x: 0.27, y: 0.42, secs: 1.1 },
-      { kind: "tap", x: 0.73, y: 0.42, secs: 1.1 },
+      { kind: "tap", x: 0.26, y: 0.48, secs: 1.1 },
+      { kind: "tap", x: 0.26, y: 0.55, secs: 1.1 },
     ],
   },
   robot: {

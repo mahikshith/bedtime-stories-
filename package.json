@@ -12,13 +12,14 @@
     "android": "npm run sync && npx cap open android",
     "ios": "npm run sync && npx cap open ios",
     "verify": "node tools/check.mjs && node tools/check-robot.mjs && node tools/check-balance.mjs",
-    "test": "node tools/check-styles.mjs && node tools/test-jump-controls.mjs && node tools/test-shape-band.mjs && node tools/smoke.mjs && node tools/check-wiring.mjs && node tools/test-hub.mjs && node tools/test-slide.mjs && node tools/test-robot.mjs && node tools/test-balance.mjs && node tools/test-town.mjs",
+    "test": "node tools/check-styles.mjs && node tools/test-jump-controls.mjs && node tools/test-shape-band.mjs && node tools/test-balance-input.mjs && node tools/smoke.mjs && node tools/check-wiring.mjs && node tools/test-hub.mjs && node tools/test-slide.mjs && node tools/test-robot.mjs && node tools/test-balance.mjs && node tools/test-town.mjs",
     "test:app": "npm run build && node tools/test-app.mjs",
     "shoot": "node tools/shoot.mjs",
     "weigh": "node tools/weigh.mjs",
     "test:touch": "node tools/stress-touch.mjs",
     "test:controls": "node tools/test-jump-controls.mjs",
     "test:shape-band": "node tools/test-shape-band.mjs",
+    "test:balance-input": "node tools/test-balance-input.mjs",
     "test:voice": "node tools/test-mic-gate.mjs && node tools/test-mic-noise.mjs && node tools/test-tts.mjs && node tools/test-voice.mjs"
   },
   "devDependencies": {
