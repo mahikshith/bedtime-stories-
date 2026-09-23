@@ -8,6 +8,30 @@ already known, or quietly re-breaks something that was fixed on purpose.
 Nothing here is a rule. If a decision is wrong, change it — but change it
 knowing what it cost the first time.
 
+## Current polish decisions
+
+The shell remains Canvas 2D + Capacitor and the build remains a copy. The new
+`PRODUCT.md`, root `DESIGN.md`, and `docs/POLISH-ROADMAP.md` capture an
+Android-first visual system and the order of the unfinished work.
+
+Say & Jump keeps auto-walk as the default between authored word gates. A
+directional pad temporarily overrides it only while held, so adding a touch
+controller does not bypass the level's planned stops. A short tap on JUMP is
+floored to a safe authored landing; touch progression earns a level result
+without adding the word to `wordsLearned`. A cancelled pointer releases the
+controller without jumping. Touch mode skips microphone startup entirely.
+The mode is chosen before play and saved, as well as changeable in-game.
+Microphone startup is serialised across fast mode switches; the VoiceInput
+resume listener is removed on stop so a later Voice mode can wake a new audio
+context on the next gesture.
+
+Shape Sorter's `tiny` versions of later boards use explicit `tinyKeys` because
+simply shortening a list would drop the newly introduced star and the final
+board's heart/hexagon. Keep the same level indices and save keys when a
+parent changes age band. Six-piece mid boards need two tray rows: one row
+made tiles too small to target on a phone. `pointercancel` returns a shape
+rather than silently placing it.
+
 ---
 
 ## The shape almost every bug in this project has had

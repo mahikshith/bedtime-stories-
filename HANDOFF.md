@@ -1,8 +1,39 @@
 # Handoff
 
-State of the work as of `d647b0f`. Read `CLAUDE.md` for how to work here and
+State of the original handoff as of `d647b0f`, with the current branch update below. Read `CLAUDE.md` for how to work here and
 `MEMORY.md` for what has already been decided and tried. This file is only
 *where things stand and what is next*.
+
+## Current branch update — Android-first polish
+
+The user explicitly requested a new branch from `claude/game-feel-studio-polish`.
+`codex/wordquest-android-polish` starts at `7ea4499`; see its latest commit
+for the work below. The earlier instruction to continue on the old branch
+is superseded for this round.
+
+- Say & Jump now offers a persistent Voice / Touch / Both choice on its game
+  screen and in-game. Touch mode skips mic startup and has a large jump button,
+  a walking pad, independent pointer IDs, and a safe cancellation path.
+- The welcome and game shelf use a warmer, more legible hierarchy and make
+  the chosen bird and the next game prominent without putting currencies in
+  the child's first view. The existing Canvas thumbnails remain original.
+- Shape Sorter is the first age-band pass: a `tiny` board has up to three
+  distinct, larger shapes; `mid` keeps all original keys. Six-piece trays use
+  two rows, and cancelled drags return to the tray.
+- `PRODUCT.md`, root `DESIGN.md`, and `docs/POLISH-ROADMAP.md` record the new
+  product and visual direction, staged game work, and a parent-facing purchase
+  concept. No store billing or purchase UI has been added.
+
+`npm run test:controls`, `npm run test:shape-band`, `npm run verify`,
+`npm run build`, and `npx cap sync android` pass locally. CI now gates
+Android-profile touch and voice checks. The browser suites and screenshot review are
+blocked here: Chromium is absent and the Playwright download was an invalid
+archive. Check CI after push and try the resulting APK on a physical Android
+phone before claiming native touch, TTS, or safe-area success.
+
+Next: run the browser and finger suites in CI, fix anything they find, then
+take one remaining age-band game at a time. Keep the original detailed
+handoff below for known gameplay issues and device history.
 
 ---
 

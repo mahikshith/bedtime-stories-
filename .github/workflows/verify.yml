@@ -44,5 +44,14 @@ jobs:
       - name: Play every game in a browser
         run: npm test
 
+      # Mouse-only smoke tests missed drag-only controls on a real phone.
+      # Keep the Android-profile finger path and voice fallbacks on the same
+      # push gate as the content checks.
+      - name: Drive touch on an Android profile
+        run: npm run test:touch
+
+      - name: Check voice fallbacks and speaker gating
+        run: npm run test:voice
+
       - name: Build and check the shipped bundle
         run: npm run test:app

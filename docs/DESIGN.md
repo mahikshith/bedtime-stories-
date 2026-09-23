@@ -18,6 +18,11 @@ Jump points are authored (the `W` markers in the level maps), not derived from
 geometry, so a designer decides where a word is asked for and can pace the
 level around it.
 
+In Touch or Both mode a visible directional pad can guide walking between
+those points, but releasing the pad returns to the authored auto-walk. The
+word gate still stops the bird; a separate large JUMP action gives a quiet
+room or a broken microphone a reliable way through.
+
 ## Why the arc preview exists
 
 "Say it louder and you will jump further" is an abstract claim. A dotted arc

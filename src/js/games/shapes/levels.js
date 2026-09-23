@@ -11,7 +11,7 @@ export const LEVELS = [
   { name: "One Shape",   teaches: "Put the shape in its hole", keys: ["circle"] },
   { name: "Two Shapes",  teaches: "Circle and square",         keys: ["circle", "square"] },
   { name: "Three Shapes", teaches: "Add a triangle",           keys: ["circle", "square", "triangle"] },
-  { name: "Four Shapes", teaches: "A star joins in",           keys: ["circle", "square", "triangle", "star"] },
-  { name: "Look Closely", teaches: "Square or rectangle?",     keys: ["square", "rectangle", "circle", "oval"] },
-  { name: "All Together", teaches: "Every shape you know",     keys: ["circle", "square", "triangle", "star", "heart", "hexagon"] },
+  { name: "Four Shapes", teaches: "A star joins in",           keys: ["circle", "square", "triangle", "star"], tinyKeys: ["circle", "square", "star"] },
+  { name: "Look Closely", teaches: "Square or rectangle?",     keys: ["square", "rectangle", "circle", "oval"], tinyKeys: ["square", "circle", "triangle"], tinyTeaches: "Find the three different shapes" },
+  { name: "All Together", teaches: "Every shape you know",     keys: ["circle", "square", "triangle", "star", "heart", "hexagon"], tinyKeys: ["star", "heart", "hexagon"], tinyTeaches: "New shapes join in" },
 ];

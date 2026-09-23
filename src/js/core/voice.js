@@ -83,6 +83,7 @@ export class VoiceInput {
      */
     this.live = false;
     this._resumeHooked = false;
+    this._resumeRetry = null;
 
     this.level = 0;
     this.raw = 0;
@@ -215,6 +216,8 @@ export class VoiceInput {
             for (const ev of ["pointerdown", "touchend", "keydown"]) {
               window.removeEventListener(ev, retry, true);
             }
+            this._resumeHooked = false;
+            this._resumeRetry = null;
             // The room's noise floor has to be measured with the microphone
             // actually on, not from the silence of a suspended graph.
             this._calibrating = true;
@@ -225,6 +228,7 @@ export class VoiceInput {
       for (const ev of ["pointerdown", "touchend", "keydown"]) {
         window.addEventListener(ev, retry, true);
       }
+      this._resumeRetry = retry;
     }
     return this.live;
   }
@@ -486,6 +490,13 @@ export class VoiceInput {
   }
 
   stop() {
+    if (this._resumeRetry) {
+      for (const ev of ["pointerdown", "touchend", "keydown"]) {
+        window.removeEventListener(ev, this._resumeRetry, true);
+      }
+      this._resumeRetry = null;
+      this._resumeHooked = false;
+    }
     this.stopRecognition();
     this._stream?.getTracks().forEach((t) => t.stop());
     this._ctx?.close().catch(() => {});

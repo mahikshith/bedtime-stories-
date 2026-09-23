@@ -30,6 +30,7 @@ const FRESH = {
     music: true,
     voiceSensitivity: 1,
     speechCheck: true,   // verify the spoken word where supported
+    jumpControl: "both", // voice, touch, or both; touch can skip mic permission
     reducedMotion: false,
   },
 };

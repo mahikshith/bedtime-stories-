@@ -1,9 +1,14 @@
 /* Hub-specific chrome: the world map, level path and pickers. */
 
 body.hub {
+  --ink: #172A29;
+  --ink-raised: #233C39;
+  --ink-line: #44615A;
+  --text: #FFF5DD;
+  --text-dim: #CFDFD5;
   min-height: 100%;
   background:
-    radial-gradient(120% 70% at 50% 0%, #1E3A4A 0%, #101A1F 60%) fixed;
+    radial-gradient(110% 65% at 75% 0%, #34554B 0%, #172A29 64%) fixed;
   overflow-x: hidden;
 }
 
@@ -15,35 +20,81 @@ body.hub {
   display: flex;
   align-items: center;
   gap: 18px;
-  padding: calc(12px + var(--safe-top)) 18px 12px;
-  background: linear-gradient(#101A1F 72%, rgba(16, 26, 31, 0));
+  padding: calc(12px + var(--safe-top)) 20px 12px;
+  background: linear-gradient(#172A29 78%, rgba(23, 42, 41, 0));
 }
 .hud .stat { font-size: 20px; }
 .hud__spacer { flex: 1; }
+.hud__brand { font: 800 24px/1 var(--font-display); letter-spacing: 0.2px; color: var(--text); }
 
 .avatar-btn {
-  width: 46px; height: 46px;
+  width: 52px; height: 52px;
   border: 0; padding: 0;
   border-radius: 50%;
-  background: #1B2930;
-  box-shadow: inset 0 0 0 3px #32454F;
+  background: #35534A;
+  box-shadow: inset 0 0 0 3px #8EAE93;
   cursor: pointer;
   overflow: hidden;
 }
 .avatar-btn canvas { display: block; width: 100%; height: 100%; }
+.avatar-btn:focus-visible, .tile:focus-visible, .choice:focus-visible,
+.shelf-hero__action:focus-visible, .unit__change:focus-visible {
+  outline: 3px solid #F3B86A; outline-offset: 4px;
+}
+
+/* The shelf is a child's choice of worlds, with one invitation before the
+   gallery. No XP counters compete with the picture or the next action. */
+.shelf-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 104px;
+  align-items: end;
+  gap: 4px;
+  margin: 8px 16px 20px;
+  padding: 22px 12px 22px 22px;
+  min-height: 220px;
+  border: 2px solid #66856C;
+  border-radius: 28px;
+  background: linear-gradient(145deg, #345C4A, #213E3C);
+  box-shadow: 0 9px 22px rgba(3, 21, 19, 0.24), inset 0 2px 0 rgba(255, 245, 221, 0.13);
+  overflow: hidden;
+}
+.shelf-hero::before {
+  content: "";
+  position: absolute;
+  right: -40px; top: -90px;
+  width: 210px; height: 210px;
+  border: 2px solid rgba(243, 184, 106, 0.19);
+  border-radius: 50%;
+  box-shadow: 0 0 0 24px rgba(243, 184, 106, 0.045), 0 0 0 56px rgba(243, 184, 106, 0.035);
+  pointer-events: none;
+}
+.shelf-hero__copy { position: relative; z-index: 1; }
+.shelf-hero__title { margin: 0; max-width: 9ch; font: 800 clamp(27px, 7vw, 38px)/0.99 var(--font-display); }
+.shelf-hero__sub { max-width: 25ch; margin: 10px 0 18px; color: #E4EBD8; font-size: 16px; line-height: 1.35; }
+.shelf-hero__action {
+  min-height: 50px; padding: 10px 16px;
+  border: 0; border-radius: 14px;
+  background: #F3B86A; color: #3C291E;
+  box-shadow: 0 4px 0 #8F5428, 0 7px 16px rgba(10, 26, 24, 0.22);
+  font: 800 16px/1.15 var(--font-ui); text-align: left;
+  cursor: pointer;
+}
+.shelf-hero__action:active { transform: translateY(3px); box-shadow: 0 1px 0 #8F5428; }
+.shelf-hero__bird { position: relative; z-index: 1; width: 104px; height: 116px; object-fit: contain; align-self: end; }
 
 /* ---------------------------------------------------------- unit banner */
 .unit {
-  margin: 4px 18px 10px;
-  border-radius: 18px;
-  padding: 18px 22px;
-  color: #fff;
-  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.32);
+  margin: 2px 18px 14px;
+  border-radius: 16px;
+  padding: 12px 4px 12px 2px;
+  color: var(--text);
   display: flex; align-items: center; gap: 14px;
 }
 .unit__text { flex: 1; min-width: 0; }
-.unit__kicker { font-size: 12px; letter-spacing: 1.4px; opacity: 0.85; }
-.unit__title { font-family: var(--font-display); font-size: 23px; line-height: 1.12; margin-top: 3px; }
+.unit__kicker { margin-top: 2px; font-size: 15px; color: var(--text-dim); }
+.unit__title { font-family: var(--font-display); font-size: 22px; line-height: 1.12; }
+.unit__change { min-height: 48px; color: #FFF5DD; font-size: 14px; white-space: nowrap; }
 .unit__icon { font-size: 34px; }
 
 /* ------------------------------------------------- open the level path */
@@ -227,7 +278,7 @@ body.hub {
   display: flex; flex-direction: column;
   padding: 0 0 16px;
   border-radius: 22px;
-  background: var(--ink-raised);
+  background: #26413A;
   border: 3px solid var(--ink-line);
   box-shadow: 0 7px 0 rgba(0, 0, 0, 0.35);
   color: inherit; font: inherit; text-align: left;
@@ -244,7 +295,7 @@ body.hub {
 /* The age range is the thing a parent scans for, so it gets the colour band
    and the biggest type on the card. */
 .choice__age {
-  padding: 12px 18px;
+  padding: 10px 18px;
   font-family: var(--font-display);
   font-size: 26px;
   letter-spacing: 0.5px;
@@ -258,7 +309,7 @@ body.hub {
 }
 .choice__desc {
   padding: 6px 18px 0;
-  font-size: 15px; line-height: 1.35;
+  font-size: 16px; line-height: 1.35;
   color: var(--text-dim);
 }
 
@@ -268,7 +319,7 @@ body.hub {
 .games-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 16px 12px;
   padding: 4px 16px 30px;
   align-items: start;
 }
@@ -276,10 +327,10 @@ body.hub {
 .tile {
   display: flex; flex-direction: column;
   padding: 0 0 12px;
-  border-radius: 20px;
+  border-radius: 18px;
   background: var(--ink-raised);
   border: 2px solid var(--ink-line);
-  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.3);
+  box-shadow: 0 6px 14px rgba(4, 19, 16, 0.27);
   overflow: hidden;
   cursor: pointer;
   color: inherit; font: inherit; text-align: left;
@@ -293,17 +344,39 @@ body.hub {
   line-height: 0;
   border-bottom: 3px solid var(--edge, rgba(0, 0, 0, 0.35));
 }
-.tile__body { padding: 9px 12px 0; }
+.tile__body { padding: 11px 10px 0; }
 .tile__title {
   font-family: var(--font-display);
-  font-size: 16px; line-height: 1.15;
+  font-size: 19px; line-height: 1.12;
   /* Two lines at most; tiles size themselves, so a long name grows its own
      tile rather than reserving a blank line in every other one. */
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
   overflow: hidden;
 }
 .tile__meta { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
-.tile__meta .chip { font-size: 10px; padding: 3px 7px; }
+.tile__meta .chip { font-size: 12px; padding: 4px 7px; }
+
+.welcome { padding: 6px 18px 44px; }
+.welcome__hero {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 15px 18px 24px;
+  text-align: center;
+}
+.welcome__bird { width: 156px; height: 156px; }
+.welcome__title { max-width: 13ch; margin: 12px 0 0; font: 800 clamp(30px, 8vw, 40px)/1.03 var(--font-display); }
+.welcome__sub { max-width: 33ch; margin: 12px 0 0; font-size: 17px; line-height: 1.4; color: var(--text-dim); }
+.welcome__choose { margin: 4px 0 14px; font: 800 23px/1.1 var(--font-display); }
+
+@media (max-width: 370px) {
+  .tile__title { font-size: 17px; }
+  .shelf-hero { grid-template-columns: minmax(0, 1fr) 82px; }
+  .shelf-hero__bird { width: 82px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile, .choice, .shelf-hero__action { transition-duration: 0ms; }
+  .node--current::before { animation: none; }
+}
 
 /* Wider screens fit more across rather than growing the tiles absurdly. */
 @media (min-width: 620px) {
@@ -338,6 +411,22 @@ body.hub {
 .screen__title { font-family: var(--font-display); font-size: 27px; line-height: 1.1; }
 .screen__sub { font-size: 15px; color: var(--text-dim); margin-top: 5px; line-height: 1.35; }
 .screen__meta { display: flex; gap: 8px; margin-top: 10px; }
+
+.control-picker { margin: 19px 20px 0; }
+.control-picker__title { margin-bottom: 10px; font: 800 19px/1.2 var(--font-display); }
+.control-picker__row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.control-picker__choice {
+  min-height: 76px; padding: 9px 4px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px;
+  border: 2px solid #668178; border-radius: 15px;
+  background: #233C39; color: #FFF5DD;
+  font: 800 17px/1.2 var(--font-ui);
+  cursor: pointer;
+}
+.control-picker__choice small { font: 700 12px/1.2 var(--font-ui); color: #CFDFD5; }
+.control-picker__choice[aria-pressed="true"] { border-color: #F3B86A; background: #47513D; }
+.control-picker__choice:focus-visible { outline: 3px solid #F3B86A; outline-offset: 3px; }
 
 /* The fast path, kept to a single press however much else is on the screen. */
 .btn--play {

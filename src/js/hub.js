@@ -67,7 +67,8 @@ const GAMES = [
     face: C.flame.base, edge: C.flame.dark,
     href: "src/games/shapes.html",
     levels: async () => (await import("./games/shapes/levels.js"))
-      .LEVELS.map((l) => ({ name: l.name, teaches: l.teaches })),
+      .LEVELS.map((l) => ({ name: l.name,
+        teaches: save.state.band === "tiny" ? (l.tinyTeaches ?? l.teaches) : l.teaches })),
   },
   {
     id: "balance", title: "Balance", icon: "⚖️",
@@ -177,6 +178,7 @@ function render() {
   const opened = games.find((g) => g.id === s.openGame);
   if (opened) { app.append(gameScreen(opened)); return; }
 
+  app.append(shelfIntro(s, games));
   app.append(unitBanner(BANDS[s.band]));
 
   // Two to a row. A single column of full-width cards turned ten games into a
@@ -211,29 +213,38 @@ window.addEventListener("popstate", () => {
 
 function topBar(s) {
   const bar = el("div", "hud");
-  bar.append(
-    el("div", "stat stat--streak", `<span class="stat__icon">🔥</span>${s.streak}`),
-    el("div", "stat stat--gem", `<span class="stat__icon">💎</span>${s.gems}`),
-    el("div", "stat stat--xp", `<span class="stat__icon">⚡</span>${s.xp}`),
-    el("div", "hud__spacer"),
-  );
+  bar.append(el("div", "hud__brand", "Word Quest"), el("div", "hud__spacer"));
   const av = el("button", "avatar-btn");
-  av.title = "Choose your bird";
+  av.title = av.getAttribute("aria-label") || "Choose your bird";
+  av.setAttribute("aria-label", "Choose your bird");
   av.append(birdThumb(s.bird || "chick", 46));
   av.onclick = () => openBirdPicker();
   bar.append(av);
   return bar;
 }
 
+function shelfIntro(s, games) {
+  const featured = games.find((g) => save.unlockedLevel(g.id) > 0) || games[0];
+  const hero = el("section", "shelf-hero");
+  const copy = el("div", "shelf-hero__copy");
+  copy.append(el("h1", "shelf-hero__title", "Where shall we fly?"),
+    el("p", "shelf-hero__sub", "Choose a little adventure. Your bird is ready."));
+  const action = el("button", "shelf-hero__action", `Open ${featured.title}`);
+  action.onclick = () => openGame(featured);
+  copy.append(action);
+  const bird = birdThumb(s.bird || "chick", 116);
+  bird.className = "shelf-hero__bird";
+  hero.append(copy, bird);
+  return hero;
+}
+
 function unitBanner(band) {
   const u = el("div", "unit");
-  u.style.background = C.grape.base;
-  u.style.boxShadow = `0 6px 0 ${C.grape.dark}`;
   u.append(el("div", "unit__text",
-    `<div class="unit__kicker">${band.label} YEARS · ${save.state.wordsLearned.length} WORDS LEARNED</div>
-     <div class="unit__title">${band.name}</div>`));
-  const swap = el("button", "btn btn--sm btn--ghost", "CHANGE");
-  swap.style.color = "#fff";
+    `<div class="unit__title">Games for ages ${band.label}</div>
+     <div class="unit__kicker">${band.name} · ${save.state.wordsLearned.length} words learned</div>`));
+  const swap = el("button", "btn btn--sm btn--ghost unit__change", "Change age");
+  swap.setAttribute("aria-label", "Change the child's age group");
   swap.onclick = () => openBandPicker();
   u.append(swap);
   return u;
@@ -296,6 +307,8 @@ function gameScreen(g) {
        <span class="chip">⭐ ${stars}</span>
      </div>`));
 
+  if (g.id === "say-jump") wrap.append(controlPicker());
+
   // The one big button. Whatever else is on this screen, the fast path stays a
   // single press: play the level you are up to.
   const play = el("button", "btn btn--play", "PLAY");
@@ -306,6 +319,29 @@ function gameScreen(g) {
 
   wrap.append(levelPath(g));
   return wrap;
+}
+
+function controlPicker() {
+  const section = el("div", "control-picker");
+  section.append(el("div", "control-picker__title", "How do you want to play?"));
+  const row = el("div", "control-picker__row");
+  for (const [mode, label, hint] of [
+    ["voice", "Voice", "Say the word"],
+    ["touch", "Touch", "No mic needed"],
+    ["both", "Both", "Your choice"],
+  ]) {
+    const button = el("button", "control-picker__choice");
+    button.setAttribute("aria-pressed", String((save.state.settings.jumpControl || "both") === mode));
+    button.append(el("span", "", label), el("small", "", hint));
+    button.onclick = () => {
+      save.setSetting("jumpControl", mode);
+      row.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === button)));
+      haptics.tap();
+    };
+    row.append(button);
+  }
+  section.append(row);
+  return section;
 }
 
 /**
@@ -383,20 +419,16 @@ function footer() {
 /* -------------------------------------------------------------- welcome */
 
 function welcome() {
-  const w = el("div", "col");
-  w.style.padding = "10px 18px 40px";
-  const hero = el("div", "card");
-  hero.style.textAlign = "center";
-  hero.style.padding = "26px 20px";
-  const cv = birdThumb("chick", 150);
-  cv.style.width = "150px"; cv.style.height = "150px";
-  hero.append(cv);
-  hero.append(el("h1", "", "Word Quest"), el("p", "muted",
-    "Voice and motion games that teach words. Pick an age to begin."));
+  const w = el("div", "col welcome");
+  const hero = el("div", "welcome__hero");
+  const cv = birdThumb("chick", 156);
+  cv.className = "welcome__bird";
+  hero.append(cv, el("h1", "welcome__title", "A little world of big discoveries"),
+    el("p", "welcome__sub", "Ten playful adventures. Pick an age to find a good place to start."));
   w.append(hero);
 
+  w.append(el("h2", "welcome__choose", "Who's playing today?"));
   const grid = el("div", "choice-grid");
-  grid.style.marginTop = "16px";
   const colors = { tiny: C.candy, mid: C.sea, big: C.flame };
   for (const key of ["tiny", "mid", "big"]) {
     const b = BANDS[key];

@@ -56,9 +56,11 @@ export const SHAPES = {
  */
 
 export class ShapesScene {
-  constructor({ levelIndex = 0, bird = "chick", onComplete }) {
+  constructor({ levelIndex = 0, band = "tiny", bird = "chick", onComplete }) {
     this.levelIndex = clamp(levelIndex, 0, LEVELS.length - 1);
     this.def = LEVELS[this.levelIndex];
+    this.band = band;
+    this.teaches = band === "tiny" ? (this.def.tinyTeaches ?? this.def.teaches) : this.def.teaches;
     this.birdId = bird;
     this.onComplete = onComplete;
 
@@ -70,8 +72,13 @@ export class ShapesScene {
     this.misses = 0;
     this.birdMood = "idle";
 
-    this.holes = this.def.keys.map((key, i) => ({ key, i, filled: false, glow: 0 }));
-    this.tiles = shuffle(this.def.keys.map((key, i) => ({
+    // The same path has a different physical task for a two-year-old. Later
+    // boards use three familiar shapes rather than six tiny tiles or nearly
+    // identical square/rectangle distractors. The level count and saved
+    // progress remain unchanged when a parent switches age bands.
+    this.keys = band === "tiny" ? (this.def.tinyKeys ?? this.def.keys) : this.def.keys;
+    this.holes = this.keys.map((key, i) => ({ key, i, filled: false, glow: 0 }));
+    this.tiles = shuffle(this.keys.map((key, i) => ({
       key, i, placed: false, sx: 0, sy: 0, homeX: 0, homeY: 0,
       wobble: rand(0, 6.3), pop: 0, wrong: 0, returning: null, scale: 1,
     })));
@@ -101,7 +108,7 @@ export class ShapesScene {
     const rows = Math.ceil(n / cols);
 
     const boardTop = view.y + 230;
-    const trayH = 230;
+    const trayH = n > 4 ? 330 : 230;
     const boardH = view.h - 230 - trayH - 60;
     const boardW = view.w - 80;
 
@@ -130,12 +137,18 @@ export class ShapesScene {
     });
 
     this.tray = { x: view.x, y: view.y + view.h - trayH, w: view.w, h: trayH };
-    this.tileR = Math.min(this.holeR * 0.92, (view.w / (n + 0.5)) * 0.4);
+    // Six shapes in one row made their fingers smaller than a useful touch
+    // target. Two rows preserve their scale without stealing board space.
+    const trayCols = n > 4 ? 3 : n;
+    this.tileR = Math.min(this.holeR * 0.92, (view.w / (trayCols + 0.3)) * 0.46);
     const loose = this.tiles.filter((t) => !t.placed);
     loose.forEach((t, i) => {
-      const slot = view.w / (loose.length + 0.4);
-      t.homeX = view.x + slot * (i + 0.7);
-      t.homeY = this.tray.y + this.tray.h * 0.48;
+      const cols = n > 4 ? 3 : loose.length;
+      const row = n > 4 ? Math.floor(i / cols) : 0;
+      const col = n > 4 ? i % cols : i;
+      const rowCount = n > 4 ? Math.min(cols, loose.length - row * cols) : loose.length;
+      t.homeX = view.x + view.w / 2 + (col - (rowCount - 1) / 2) * (view.w / (cols + 0.3));
+      t.homeY = this.tray.y + (n > 4 ? 96 + row * 150 : this.tray.h * 0.55);
       if (!t.dragged) { t.sx = t.homeX; t.sy = t.homeY; }
     });
   }
@@ -176,11 +189,12 @@ export class ShapesScene {
     }
   }
 
-  up() {
+  up(_pt, event) {
     const t = this.dragging;
     if (!t) return;
     this.dragging = null;
     for (const h of this.holes) h.hover = false;
+    if (event?.type === "pointercancel") { this.sendHome(t); return; }
 
     // Nearest unfilled hole within a generous radius.
     let best = null, bestD = Infinity;
@@ -442,7 +456,7 @@ export class ShapesScene {
     text(ctx, "✕", view.x + 38, view.y + 44, { size: 30, color: "#5A3214" });
     text(ctx, this.def.name.toUpperCase(), view.x + view.w / 2 + 40, view.y + 74,
       { size: 28, color: "#5E3411" });
-    text(ctx, this.def.teaches, view.x + view.w / 2 + 40, view.y + 112,
+    text(ctx, this.teaches, view.x + view.w / 2 + 40, view.y + 112,
       { size: 17, color: alpha("#5E3411", 0.7) });
     // progress pips
     const n = this.holes.length, size = 18, gap = 10;
@@ -467,7 +481,7 @@ export class ShapesScene {
     text(ctx, "SHAPE SORTER", view.x + view.w / 2, cy - 60, { size: 20, color: C.sun.base });
     text(ctx, this.def.name, view.x + view.w / 2, cy,
       { size: 48 * easeOutBack(k), color: "#FFFFFF" });
-    text(ctx, this.def.teaches, view.x + view.w / 2, cy + 56,
+    text(ctx, this.teaches, view.x + view.w / 2, cy + 56,
       { size: 22, color: alpha("#FFFFFF", 0.85) });
     ctx.restore();
   }

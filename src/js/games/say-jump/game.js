@@ -142,6 +142,15 @@ export class SayJumpScene {
 
     this.voice = new VoiceInput({ sensitivity: save.state.settings.voiceSensitivity });
     this.voiceReady = false;
+    this.controlMode = ["voice", "touch", "both"].includes(save.state.settings.jumpControl)
+      ? save.state.settings.jumpControl : "both";
+    this._voiceGeneration = 0;
+    this._voiceStarting = false;
+    this._voicePendingRefresh = false;
+    this._destroyed = false;
+    this.steer = 0;
+    this.steerPointer = null;
+    this.jumpPointer = null;
     this.holdCharge = 0;        // touch fallback
     this.holding = false;
 
@@ -220,25 +229,9 @@ export class SayJumpScene {
     engine.resize();
     startMusic();
 
-    // Ask for the mic up front; the whole game depends on it, and a child
-    // should meet the permission prompt on the title card, not mid-level.
-    this.voiceReady = await this.voice.start();
-    if (this.voiceReady) {
-      this.voice.onUtterance = (u) => this.onUtterance(u);
-      this.voice.onStart = () => { if (this.state === "prompt") this.setState("charge"); };
-      if (save.state.settings.speechCheck) this.voice.startRecognition();
-    }
-
-    // A native recogniser, if this device has one. SpeechRecognition is a
-    // Chrome feature and does not exist inside an Android WebView, so the
-    // browser API the game was written against never fired once packaged —
-    // the microphone only ever measured loudness and the word itself was
-    // never checked. Shouting "aaaah" worked exactly as well as saying "frog".
-    this.speechOn = await speech.available() && await speech.request();
-    if (this.speechOn) {
-      this.voice.stopRecognition?.();
-      if (this.state === "prompt") this.beginListening();
-    }
+    // Touch mode is a real first-class controller: a phone with no working
+    // mic must not ask for permission merely to make a visible toggle work.
+    if (this.controlMode !== "touch") this.activateVoice();
 
     // Pointer input is routed by the engine; space bar mirrors it, because a
     // laptop with no touchscreen still has to be able to play.
@@ -248,7 +241,80 @@ export class SayJumpScene {
     window.addEventListener("keyup", this._ku);
   }
 
+  async activateVoice() {
+    // A permission prompt may outlive a mode switch. Serialising startup
+    // prevents two getUserMedia calls from racing to own the same mic.
+    if (this._voiceStarting) { this._voicePendingRefresh = true; return; }
+    this._voiceStarting = true;
+    const gen = ++this._voiceGeneration;
+    try {
+      this.voiceReady = await this.voice.start();
+      if (gen !== this._voiceGeneration || this.controlMode === "touch" || this._destroyed) {
+        if (this.controlMode === "touch" || this._destroyed) {
+          this.voice.stop(); this.voiceReady = false;
+        }
+        return;
+      }
+      if (this.voiceReady) {
+        this.voice.onUtterance = (u) => this.onUtterance(u);
+        this.voice.onStart = () => {
+          if (this.controlMode !== "touch" && this.state === "prompt") this.setStateQuiet("charge");
+        };
+        if (save.state.settings.speechCheck) this.voice.startRecognition();
+      }
+
+      // Android's recogniser owns the mic exclusively. Only request it for
+      // a mode that can use speech, and discard superseded permission replies.
+      const available = await speech.available();
+      if (gen !== this._voiceGeneration || this.controlMode === "touch" || this._destroyed) return;
+      const granted = available && await speech.request();
+      if (gen !== this._voiceGeneration || this.controlMode === "touch" || this._destroyed) return;
+      this.speechOn = granted;
+      if (granted) {
+        this.voice.stopRecognition?.();
+        if (this.state === "prompt") this.beginListening();
+      }
+    } catch {
+      this.voiceReady = false;
+    } finally {
+      this._voiceStarting = false;
+      if (this._voicePendingRefresh && this.controlMode !== "touch" && !this._destroyed) {
+        this._voicePendingRefresh = false;
+        this.activateVoice();
+      }
+    }
+  }
+
+  setControlMode(mode) {
+    if (!["voice", "touch", "both"].includes(mode) || mode === this.controlMode) return;
+    this.controlMode = mode;
+    save.setSetting("jumpControl", mode);
+    this.holding = false;
+    this.jumpPointer = this.steerPointer = null;
+    this.steer = 0;
+    this._listenGen++;
+    clearTimeout(this._retryTimer);
+    speech.stop();
+    this.listening = false;
+    this.listenCharge = 0;
+    if (this.state === "charge") this.setStateQuiet("prompt");
+    if (mode === "touch") {
+      this._voiceGeneration++;
+      this._voicePendingRefresh = false;
+      this.voice.stop();
+      this.voiceReady = this.speechOn = false;
+    } else if (!this.voiceReady && !this.speechOn) {
+      this.activateVoice();
+    } else if (this.state === "prompt") {
+      this.beginListening();
+    }
+    haptics.tap();
+  }
+
   destroy() {
+    this._destroyed = true;
+    this._voiceGeneration++;
+    this._listenGen++;
     this.voice.stop();
     speech.stop();
     clearTimeout(this._sylTimer);
@@ -274,7 +340,11 @@ export class SayJumpScene {
       this.misses = 0;       // a new word deserves a fresh set of tries
       this.beginListening();
     }
-    if (s === "air" || s === "done") speech.stop();
+    if (s === "air" || s === "done") {
+      this._listenGen++;
+      this.listening = false;
+      speech.stop();
+    }
   }
 
   /* -------------------------------------------------------------- words */
@@ -480,6 +550,7 @@ export class SayJumpScene {
   }
 
   onUtterance(u) {
+    if (this.controlMode === "touch" || this.holding) return;
     if (this.state !== "charge" && this.state !== "prompt") return;
     const charge = Math.max(u.charge, u.peak * 0.55);
     let bonus = false;
@@ -546,7 +617,7 @@ export class SayJumpScene {
     return clamp(eff, 0, 1);
   }
 
-  launch(charge, correct) {
+  launch(charge, correct, { touch = false } = {}) {
     const eff = this.effectiveCharge(charge, correct);
     this.world.jump(this.body, apexFor(eff), distFor(eff), 1);
     this.body.speedMul = 1.6;
@@ -555,7 +626,7 @@ export class SayJumpScene {
     if (correct) {
       this.wordsRight++;
       this.juice?.hit("light", { freeze: false, punch: 0.4 });
-      this.fx.say(this.body.cx, this.body.y - 30, "PERFECT!", TOKENS.bee, 20);
+      this.fx.say(this.body.cx, this.body.y - 30, touch ? "GREAT JUMP!" : "PERFECT!", TOKENS.bee, 20);
       this.fx.burst(this.body.cx, this.body.cy, [TOKENS.bee, TOKENS.snow, this.theme.accent], 16);
       sfx.correct();
       save.addXp(5);
@@ -565,7 +636,59 @@ export class SayJumpScene {
     this.setState("air");
   }
 
-  down(pt) {
+  controlRects(view = this.engine?.view ?? { x: 0, y: 0, w: 720, h: 1280 }) {
+    const width = Math.min(520, view.w - 180);
+    const modeY = view.y + 90;
+    return {
+      modes: ["voice", "touch", "both"].map((mode, i) => ({
+        mode, x: view.x + (view.w - width) / 2 + i * width / 3,
+        y: modeY, w: width / 3, h: 76,
+      })),
+      pad: { cx: view.x + 116, cy: view.y + view.h - 118, r: 90 },
+      jump: { cx: view.x + view.w - 118, cy: view.y + view.h - 118, r: 92 },
+    };
+  }
+
+  down(pt, event) {
+    const id = event?.pointerId ?? "keyboard";
+    // Space remains a complete fallback on laptops regardless of the last
+    // phone setting; otherwise a saved Touch mode made a keyboard inert.
+    if (!pt && (this.state === "prompt" || this.state === "charge")) {
+      this.jumpPointer = id;
+      this.holding = true;
+      this.holdCharge = 0.12;
+      this.setStateQuiet("charge");
+      return;
+    }
+    if (pt) {
+      const controls = this.controlRects();
+      const selected = controls.modes.find((b) =>
+        pt.x >= b.x && pt.x <= b.x + b.w && pt.y >= b.y && pt.y <= b.y + b.h);
+      if (selected) { this.setControlMode(selected.mode); return; }
+      if (this.controlMode !== "voice") {
+        if (Math.hypot(pt.x - controls.pad.cx, pt.y - controls.pad.cy) <= controls.pad.r + 12) {
+          this.steerPointer = id;
+          this.move(pt, event);
+          return;
+        }
+        if (Math.hypot(pt.x - controls.jump.cx, pt.y - controls.jump.cy) <= controls.jump.r + 12) {
+          if (this.state === "intro") this.setState("walk");
+          if (this.state === "prompt" || this.state === "charge") {
+            this.jumpPointer = id;
+            // The finger now owns this attempt. A native result from the
+            // preceding listen must not launch a second jump after release.
+            this._listenGen++;
+            this.listening = false;
+            speech.stop();
+            this.holding = true;
+            this.holdCharge = 0.12;
+            this.setStateQuiet("charge");
+            haptics.tap();
+          }
+          return;
+        }
+      }
+    }
     if (this.state === "intro") { this.setState("walk"); return; }
     if (this.state === "done") { this.finish(); return; }
     // The pronunciation button comes first: a child pressing it wants to hear
@@ -587,17 +710,40 @@ export class SayJumpScene {
     // silently never started all leave the child holding a game that ignores
     // them completely, with nothing on screen explaining why. Having both is
     // never worse, and the child gets to choose.
-    if (this.state === "prompt" || this.state === "charge") {
+    if (this.controlMode === "voice" && (this.state === "prompt" || this.state === "charge")) {
       this.holding = true;
+      this.jumpPointer = id;
       this.holdCharge = 0;
-      this.setState("charge");
+      this.setStateQuiet("charge");
     }
   }
 
-  up() {
+  move(pt, event) {
+    if (this.steerPointer == null || (event?.pointerId ?? "keyboard") !== this.steerPointer) return;
+    const pad = this.controlRects().pad;
+    const dx = clamp((pt.x - pad.cx) / (pad.r * 0.72), -1, 1);
+    this.steer = Math.abs(dx) < 0.2 ? 0 : dx;
+  }
+
+  up(_pt, event) {
+    const id = event?.pointerId ?? "keyboard";
+    if (id === this.steerPointer) { this.steerPointer = null; this.steer = 0; }
+    if (id !== this.jumpPointer) return;
+    this.jumpPointer = null;
     if (!this.holding) return;
     this.holding = false;
-    if (this.state === "charge") this.launch(this.holdCharge, this.holdCharge > 0.3);
+    // A cancelled Android gesture is not a deliberate jump. The previous
+    // shared pointer route treated pointercancel as a normal finger release.
+    if (event?.type === "pointercancel") {
+      if (this.state === "charge") {
+        this.setStateQuiet("prompt");
+        this.beginListening();
+      }
+      return;
+    }
+    if (this.state === "charge") this.launch(this.holdCharge,
+      this.controlMode !== "voice" || this.holdCharge > 0.3,
+      { touch: this.controlMode !== "voice" });
   }
 
   /**
@@ -610,7 +756,7 @@ export class SayJumpScene {
    * fighting over one microphone.
    */
   async beginListening() {
-    if (!this.speechOn || this.listening) return;
+    if (this.controlMode === "touch" || !this.speechOn || this.listening) return;
     if (this.state !== "prompt" && this.state !== "charge") return;
 
     // WAIT FOR THE PHONE TO STOP TALKING.
@@ -634,7 +780,7 @@ export class SayJumpScene {
     // A second is a long time in this game: the child can have given up and
     // tapped instead, the three misses can have used themselves up, or the
     // level can have moved on entirely.
-    if (!this.speechOn || this.listening) return;
+    if (this.controlMode === "touch" || !this.speechOn || this.listening) return;
     if (this.state !== "prompt" && this.state !== "charge") return;
 
     // Only now does the clock start: `listenCharge` is how long the CHILD
@@ -645,7 +791,7 @@ export class SayJumpScene {
 
     const heard = await speech.listenOnce();
     this.listening = false;
-    if (gen !== this._listenGen) return;                    // abandoned, not a miss
+    if (gen !== this._listenGen || this.controlMode === "touch") return; // abandoned
     if (!want || this.word?.word !== want) return;          // moved on since
     if (this.state !== "prompt" && this.state !== "charge") return;
 
@@ -780,7 +926,7 @@ export class SayJumpScene {
 
     // The meter fills while the recogniser is listening. Roughly 1.7s to the
     // top, which is about as long as a five-year-old will hold a word.
-    if (this.listening) {
+    if (this.listening && this.controlMode !== "touch") {
       this.listenCharge = clamp(this.listenCharge + dt * 0.58, 0, 1);
       if (this.state === "prompt" && this.listenCharge > 0.04) this.setStateQuiet("charge");
     } else {
@@ -802,7 +948,7 @@ export class SayJumpScene {
     this.fx.update(dt);
     this.weather.update(dt);
     this.world.stepPlatforms(dt);
-    if (this.voiceReady) this.voice.update(dt);
+    if (this.voiceReady && this.controlMode !== "touch") this.voice.update(dt);
     for (const p of this.world.platforms) if (p.squish) p.squish = Math.max(0, p.squish - dt * 3);
     for (const h of this.world.hazards) if (h.type === HAZARD.SAW) {
       h.spin = (h.spin ?? 0) + dt * 7;
@@ -881,7 +1027,7 @@ export class SayJumpScene {
           break;
         }
 
-        if (dx > 14) move = 1;
+        if (dx > 14) move = this.steerPointer == null ? 1 : this.steer;
         else {
           this.body.vx *= 0.6;
           if (stop) {
@@ -1304,7 +1450,8 @@ export class SayJumpScene {
     // guarantees would be a lie in the one place a child is looking for the
     // truth. While they are speaking we assume they will get the word right,
     // because that is what the arc is reassuring them about.
-    const correct = this.holding ? this.holdCharge > 0.3 : true;
+    const correct = this.holding
+      ? this.controlMode !== "voice" || this.holdCharge > 0.3 : true;
     const c = this.effectiveCharge(this.currentCharge(), correct);
     const { points, landing } = this.world.predictArc(this.body, apexFor(c), distFor(c), 1, { steps: 90 });
     const good = !!landing;
@@ -1448,6 +1595,36 @@ export class SayJumpScene {
     if (this.state === "intro") this.drawIntro(ctx, view);
     if (this.state === "done") this.drawDone(ctx, view);
     if (this.state === "prompt" || this.state === "charge") this.drawListenState(ctx, view);
+    this.drawControls(ctx, view);
+  }
+
+  drawControls(ctx, view) {
+    const { modes, pad, jump } = this.controlRects(view);
+    ctx.save();
+    fillRound(ctx, modes[0].x - 5, modes[0].y - 5,
+      modes[2].x + modes[2].w - modes[0].x + 10, 86, 24, alpha(TOKENS.inkDeep, 0.88));
+    for (const b of modes) {
+      const selected = this.controlMode === b.mode;
+      if (selected) fillRound(ctx, b.x + 3, b.y + 3, b.w - 6, b.h - 6, 19, C.sun.base);
+      text(ctx, b.mode.toUpperCase(), b.x + b.w / 2, b.y + 40, {
+        size: 25, color: selected ? C.coal.base : TOKENS.snow,
+      });
+    }
+    if (this.controlMode !== "voice") {
+      // These are drawn in the same logical space that pointer routing uses.
+      // A child can switch modes and immediately press the visible target.
+      circle(ctx, pad.cx, pad.cy + 7, pad.r, alpha(TOKENS.inkDeep, 0.62));
+      circle(ctx, pad.cx, pad.cy, pad.r, alpha(TOKENS.inkRaised, 0.94));
+      circle(ctx, pad.cx + this.steer * 31, pad.cy, 39, C.ice.light);
+      text(ctx, "‹", pad.cx - 50, pad.cy + 3, { size: 49, color: TOKENS.snow });
+      text(ctx, "›", pad.cx + 50, pad.cy + 3, { size: 49, color: TOKENS.snow });
+      circle(ctx, jump.cx, jump.cy + 8, jump.r, C.sun.dark);
+      circle(ctx, jump.cx, jump.cy + (this.holding ? 6 : 0), jump.r - 5, C.sun.base);
+      text(ctx, this.holding ? "HOLD" : "JUMP", jump.cx, jump.cy + 5, {
+        size: 31, color: C.coal.base,
+      });
+    }
+    ctx.restore();
   }
 
   drawHeart(ctx, x, y, r, filled) {
@@ -1492,8 +1669,10 @@ export class SayJumpScene {
 
     // amber column — the REAL jump power, matching the arc on screen, so the
     // column clearing the red line means the same thing the green arc does.
-    const c = this.effectiveCharge(this.currentCharge(), this.holding ? this.holdCharge > 0.3 : true);
-    const live = this.voiceReady ? Math.max(c, this.voice.level * 0.5) : c;
+    const c = this.effectiveCharge(this.currentCharge(), this.holding
+      ? this.controlMode !== "voice" || this.holdCharge > 0.3 : true);
+    const live = this.voiceReady && this.controlMode !== "touch"
+      ? Math.max(c, this.voice.level * 0.5) : c;
     const fh = (h - 12) * clamp(live, 0, 1);
     if (fh > 5) {
       const fy = y + h - 6 - fh;
@@ -1551,7 +1730,7 @@ export class SayJumpScene {
 
     // microphone
     const micY = y + h + 40;
-    const speaking = this.voiceReady && this.voice.speaking;
+    const speaking = this.controlMode !== "touch" && this.voiceReady && this.voice.speaking;
     if (speaking) {
       ctx.save();
       ctx.globalAlpha = 0.25 + Math.sin(this.t * 12) * 0.12;
@@ -1560,9 +1739,15 @@ export class SayJumpScene {
     }
     ctx.save();
     ctx.globalAlpha = active ? 1 : 0.42;
-    const micCol = !this.voiceReady ? C.slate.light : speaking ? C.cherry.base : "#FFFFFF";
+    const micCol = this.controlMode === "touch" ? C.sun.light :
+      !this.voiceReady ? C.slate.light : speaking ? C.cherry.base : "#FFFFFF";
     ctx.shadowColor = "rgba(0,0,0,0.5)";
     ctx.shadowBlur = 8;
+    if (this.controlMode === "touch") {
+      text(ctx, "↑", x + w / 2, micY, { size: 46, color: micCol });
+      ctx.restore();
+      return;
+    }
     fillRound(ctx, x + w / 2 - 9, micY - 22, 18, 26, 9, micCol);
     ctx.shadowBlur = 0;
     ctx.lineWidth = 4;
@@ -1588,23 +1773,28 @@ export class SayJumpScene {
    * word "charge" — which means nothing to a four-year-old.
    */
   drawListenState(ctx, view) {
-    const cy = view.y + view.h * 0.70 + 200;
+    const cy = this.controlMode === "voice"
+      ? view.y + view.h * 0.70 + 200 : view.y + view.h * 0.72;
     let label, colour, icon;
 
     if (this.wrongT > 0) {
       label = this.heardWrong ? `I heard "${this.heardWrong}" — try again!` : "I did not catch that — try again!";
       colour = TOKENS.bee;
       icon = "👂";
+    } else if (this.controlMode === "touch") {
+      label = "Hold JUMP, then let go";
+      colour = TOKENS.snow;
+      icon = "👆";
     } else if (this.listening) {
       label = "Listening… say it!";
       colour = C.jade.light;
       icon = "🎤";
     } else if (this.speechOn) {
-      label = "Say the word to jump";
+      label = this.controlMode === "both" ? "Say it or press JUMP" : "Say the word to jump";
       colour = alpha(TOKENS.snow, 0.7);
       icon = "🎤";
     } else {
-      label = "Hold the screen to jump";
+      label = this.controlMode === "both" ? "Hold JUMP, then let go" : "Hold the screen to jump";
       colour = alpha(TOKENS.snow, 0.7);
       icon = "👆";
     }
@@ -1632,7 +1822,7 @@ export class SayJumpScene {
     // the word — the single most important thing on the screen — in the strip
     // a hand covers while holding the phone, and on a device with gesture
     // navigation the hint underneath it was cut off entirely.
-    const y = view.y + view.h * 0.70 - (1 - pop) * 40;
+    const y = view.y + view.h * (this.controlMode === "voice" ? 0.70 : 0.53) - (1 - pop) * 40;
 
     ctx.save();
     ctx.globalAlpha = pop;
@@ -1649,12 +1839,13 @@ export class SayJumpScene {
       ctx.fillText(W.emoji, x + 62, y + h / 2 - 6);
       ctx.restore();
 
-      text(ctx, "SAY IT LOUD!", x + 124, y + 34,
+      text(ctx, this.controlMode === "touch" ? "LOOK & JUMP" :
+        this.controlMode === "both" ? "SAY OR JUMP" : "SAY IT LOUD!", x + 124, y + 34,
         { size: 14, color: this.theme.accent, align: "left" });
       text(ctx, W.word.toUpperCase(), x + 124, y + 74,
         { size: 42, color: TOKENS.snow, align: "left" });
       // the stretched form teaches "hold the vowel to jump further"
-      text(ctx, stretched(W.word).toUpperCase() + " →", x + 124, y + 116,
+      text(ctx, this.controlMode === "touch" ? "HOLD, THEN LET GO →" : stretched(W.word).toUpperCase() + " →", x + 124, y + 116,
         { size: 22, color: alpha(TOKENS.snow, 0.55), align: "left" });
       /**
        * The syllables, promoted when they are the only way in.

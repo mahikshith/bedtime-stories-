@@ -86,7 +86,7 @@ export async function ready() {
   if (sb) {
     try {
       await sb.setStyle({ style: "DARK" });
-      await sb.setBackgroundColor({ color: "#101A1F" });
+      await sb.setBackgroundColor({ color: document.body.classList.contains("hub") ? "#172A29" : "#101A1F" });
       // Overlaid ON PURPOSE, and then inset again in CSS.
       //
       // Asking the plugin not to overlay was the obvious fix and it did not

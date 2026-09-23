@@ -52,7 +52,7 @@ web fallback and the fallback is the path CI runs.
 
 | Game | Ages | Control | What it teaches |
 |---|---|---|---|
-| **Say & Jump** | 2–11 | 🎤 voice | Say the word to jump. Louder and longer = further. |
+| **Say & Jump** | 2–11 | Voice / touch / both | Say the word or hold JUMP; choose your control before play. |
 | **Tilt Maze** | 5–11 | 📱 gyroscope | Collect letters in order to spell the word. |
 | **Word Mob** | 5–11 | 👆 drag | Steer a flock through the right answer gate. |
 | **Echo Pop** | 2–7 | 🎤 voice / 👆 tap | Say or tap the thing you hear. |
@@ -78,6 +78,12 @@ The bird walks itself to each authored jump point and stops. A word card
 appears, the bird reads it aloud, and the child says it back. Loudness sets
 the jump's height, sustain sets its distance, and saying the *right* word adds
 reach on top.
+
+On the game's detail screen, Voice, Touch, and Both are selectable and saved.
+Touch shows a large JUMP button and a directional pad for guiding the bird
+between jump points, and starts without microphone permission. Both accepts
+speech or the same visible controller. A tap of JUMP clears the authored gap;
+holding it varies the landing along the safe perch.
 
 Two decisions carry the design:
 
