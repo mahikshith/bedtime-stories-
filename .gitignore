@@ -1,6 +1,7 @@
 node_modules/
 *.log
 .DS_Store
+.codex-review/
 
 # Build output. `npm run build` regenerates it; nothing in here is edited.
 www/

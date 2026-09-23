@@ -1,5 +1,7 @@
 # Android-first polish roadmap
 
+The current expanded, research-linked sequential checklist is [`PREMIUM-PLAN.md`](PREMIUM-PLAN.md). The current branch/session and verification state are at the top of [`HANDOFF.md`](../HANDOFF.md). This earlier roadmap is retained for the implementation history and per-game notes below.
+
 Small completed steps are recorded here so future sessions resume from evidence instead of restarting a redesign.
 
 ## 0. Read and baseline — complete

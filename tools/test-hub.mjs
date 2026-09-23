@@ -45,6 +45,14 @@ const seed = (extra = {}) => p.evaluate((extra) => localStorage.setItem("wordque
   JSON.stringify({ band: "mid", bird: "chick", ...extra })), extra);
 
 await p.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil:"networkidle" });
+const welcomeBottom = await p.locator(".choice:last-child").evaluate((n) => n.getBoundingClientRect().bottom);
+check("all age choices fit the first 420×880 view", welcomeBottom <= 880,
+  `last choice bottom ${Math.round(welcomeBottom)}px`);
+await p.setViewportSize({ width:360, height:640 });
+const compactBottom = await p.locator(".choice:last-child").evaluate((n) => n.getBoundingClientRect().bottom);
+check("all age choices fit a compact 360×640 view", compactBottom <= 640,
+  `last choice bottom ${Math.round(compactBottom)}px`);
+await p.setViewportSize({ width:420, height:880 });
 await seed();
 loaded = [];
 await p.reload({ waitUntil:"networkidle" });
@@ -84,6 +92,10 @@ check("the path shows the real level names",
   names.length > 0 && names.every((t) => t.includes(" — ")) &&
   !names.some((t) => /^Board \d/.test(t)),
   names[0] ?? "none");
+const collapsed = await p.locator(".path").evaluate((n) => n.hidden);
+await p.click(".path-toggle");
+const expanded = await p.locator(".path").evaluate((n) => !n.hidden);
+check("the level map starts quiet and opens on request", collapsed && expanded);
 
 // 5. the game's screen replaces the grid rather than growing inside it
 const gridGone = await p.$$eval(".games-grid", (n) => n.length);

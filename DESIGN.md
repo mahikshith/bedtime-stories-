@@ -4,11 +4,11 @@ This is the design source for the child-facing shelf and future screens. `docs/D
 
 ## Atmosphere
 
-A small illustrated bookcase in a bird's house, lit by warm lamplight. Cheerful without visual noise. Density 4/10, variance 5/10, motion 4/10. Keep the chosen game's art as the focus. The first screen should offer one obvious next action and no dashboard of currencies.
+A small illustrated activity book on a kitchen table, with a familiar bird inviting play. Cheerful without visual noise. Density 4/10, variance 5/10, motion 4/10. Keep each game's art as the focus. The first screen should show every age choice in the first phone viewport where possible, with no dashboard of currencies.
 
 ## Color and material
 
-Use one warm neutral family for navigation: deep pine `#172A29` for the room; raised pine `#233C39` for surfaces; cream `#FFF5DD` for primary lettering; muted cream `#CFDFD5` for supporting lettering. The shelf's single action accent is apricot `#F3B86A`, with dark ochre `#8F5428` for its pressed edge. Game art may use its existing broad palette to distinguish worlds, but gameplay never relies on color alone. Avoid neon, glass panels, purple glows, and black text over busy artwork.
+Use one warm neutral family for navigation: paper `#FBF5E8` for the page; raised paper `#FFFDF7` for cards; deep pine `#263C35` for primary lettering; muted pine `#4E6258` for supporting lettering. The featured shelf uses deep pine with an apricot `#F3B86A` action and dark ochre `#8F5428` pressed edge. Game art may use its existing broad palette to distinguish worlds, but gameplay never relies on color alone. Avoid neon, glass panels, purple glows, and black text over busy artwork.
 
 ## Type
 
@@ -16,9 +16,9 @@ Keep the self-hosted Baloo 2 display face and Nunito UI face. Small action label
 
 ## Composition
 
-- **Welcome:** bird illustration and a friendly title; a short parent prompt; three age choices with large age numerals, useful names, and descriptions. These choices are visible without hunting.
+- **Welcome:** original layered landscape and bird illustration, compact friendly title, then three age choices with large age numerals, useful names, and descriptions. The choices begin high enough that a parent need not hunt below the fold.
 - **Shelf:** one featured *Continue* action when progress exists, then a two-column gallery of illustrated games. The artwork must read before the words. The saved bird is a personal anchor, not a shopping avatar.
-- **Game detail:** one large play button and a compact path; distinguish completed, current, and locked stages by shape, label, and contrast.
+- **Game detail:** show the real next level name beside one large play button. The full level map is optional and collapsed by default; distinguish completed, current, and locked stages by shape, label, and contrast.
 - **In game:** keep the central action clear. Place control modes at the top where hands do not obscure them; large controller targets at the bottom only when selected. The word or puzzle prompt must remain readable above fingers.
 
 ## Components and motion

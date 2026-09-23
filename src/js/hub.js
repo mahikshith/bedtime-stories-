@@ -311,13 +311,17 @@ function gameScreen(g) {
 
   // The one big button. Whatever else is on this screen, the fast path stays a
   // single press: play the level you are up to.
-  const play = el("button", "btn btn--play", "PLAY");
+  const next = el("div", "next-level", "Finding your next adventure…");
+  next.setAttribute("aria-live", "polite");
+  wrap.append(next);
+
+  const play = el("button", "btn btn--play", "Play now");
   play.style.setProperty("--face", g.face);
   play.style.setProperty("--edge", g.edge);
   play.onclick = () => launch(g, save.unlockedLevel(g.id));
   wrap.append(play);
 
-  wrap.append(levelPath(g));
+  wrap.append(levelPath(g, next));
   return wrap;
 }
 
@@ -353,8 +357,21 @@ function controlPicker() {
  * tall, most of it locked nodes a child had to scroll past to reach the games
  * added most recently.
  */
-function levelPath(g) {
+function levelPath(g, next) {
+  const route = el("section", "level-route");
+  const toggle = el("button", "path-toggle", "See all levels");
+  toggle.setAttribute("aria-expanded", "false");
   const path = el("div", "path");
+  path.id = `level-path-${g.id}`;
+  path.hidden = true;
+  toggle.setAttribute("aria-controls", path.id);
+  toggle.onclick = () => {
+    path.hidden = !path.hidden;
+    const open = !path.hidden;
+    toggle.setAttribute("aria-expanded", String(open));
+    toggle.textContent = open ? "Hide level map" : "See all levels";
+  };
+  route.append(toggle, path);
   path.append(el("div", "path__loading", "…"));
 
   // The load is async, so the fill has to check it is still wanted: a child
@@ -363,6 +380,16 @@ function levelPath(g) {
     if (save.state.openGame !== g.id || !path.isConnected) return;
     path.innerHTML = "";
     const unlocked = save.unlockedLevel(g.id);
+    const current = Math.min(unlocked, levels.length - 1);
+    const level = levels[current];
+    if (level) {
+      next.replaceChildren(
+        el("span", "next-level__eyebrow", levels.length === 1 ? "OPEN PLAY" : `UP NEXT · ${current + 1} OF ${levels.length}`),
+        el("strong", "next-level__name", level.name),
+        el("span", "next-level__hint", level.teaches),
+      );
+    }
+    if (levels.length <= 1) toggle.hidden = true;
 
     levels.forEach((lv, i) => {
       const row = el("div", "path__row");
@@ -393,7 +420,7 @@ function levelPath(g) {
     });
   });
 
-  return path;
+  return route;
 }
 
 function footer() {
@@ -421,10 +448,13 @@ function footer() {
 function welcome() {
   const w = el("div", "col welcome");
   const hero = el("div", "welcome__hero");
-  const cv = birdThumb("chick", 156);
+  const scene = el("div", "welcome__scene");
+  scene.setAttribute("aria-hidden", "true");
+  const cv = birdThumb("chick", 122);
   cv.className = "welcome__bird";
-  hero.append(cv, el("h1", "welcome__title", "A little world of big discoveries"),
-    el("p", "welcome__sub", "Ten playful adventures. Pick an age to find a good place to start."));
+  scene.append(cv);
+  hero.append(scene, el("h1", "welcome__title", "Little games. Big discoveries."),
+    el("p", "welcome__sub", "Pick an age, then explore together."));
   w.append(hero);
 
   w.append(el("h2", "welcome__choose", "Who's playing today?"));

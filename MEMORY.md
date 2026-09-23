@@ -1,5 +1,15 @@
 # What this project has already learned
 
+## Premium-slice decisions (2026-09-24)
+
+- The user's original request is broader than applying the two-commit patch: make a premium, original 2D children-and-parent game, Android first, with researched game design, refreshed assets, level repair, and eventual ethical monetization. Work sequentially and preserve context in `docs/PREMIUM-PLAN.md` and `HANDOFF.md`.
+- Do not migrate this repo to Unity, Phaser, React, or a bundler to satisfy a plugin. The shipping app is plain ES modules + DOM hub + Canvas gameplay + Capacitor. Unity Essentials, Meshy and optional to3D do not fit the first 2D UI slice. Game Development Studio's CLI was unavailable on this machine; no remote asset service was invoked.
+- The first-run age selector was below the fold before this slice. Compacting the bird scene and making age cards horizontal put all three choices within 420×880 and 360×640 in a real Playwright layout check. Keep that regression in `tools/test-hub.mjs` when changing copy or type size.
+- Showing all 15 mostly locked level nodes at once made a game's detail screen unnecessarily long. Keep the current level name and objective visible and the full map optional, while preserving the lazy import of only the opened game's level module. Single-level open-play games hide the map control.
+- The hub's global `html, body { height: 100% }` meant changing only the body background left dark `html` exposed below the first viewport on a long shelf. `body.hub` now uses `height: auto; min-height: 100vh`. Always inspect a **full-page** capture after changing hub surfaces.
+- Physical Android is still the authority for voice, touch, and safe areas. The web-rendered UI benefits from Chromium layout and interaction checks, but those checks do not replace a phone. This session's touch suite was interrupted for handoff, not failed.
+
+
 Decisions, the reasoning behind them, and the things that were tried and did
 not work. `CLAUDE.md` says how to work here and `HANDOFF.md` says what is next;
 this file exists so that neither a person nor a session re-derives what is

@@ -1,5 +1,19 @@
 # Handoff
 
+## Current session — premium Android-first slice (2026-09-24)
+
+**Active branch:** `codex/wordquest-premium-slices`, based on the pushed `codex/wordquest-android-polish` branch. This section supersedes older branch directions below. The user clarified the full goal: keep Word Quest 2D, research and rebuild it as a premium, original, fun children-and-parent app, Android first and iOS later. Work **one small slice at a time**; do not spin up parallel agents or jump to new games before checking the current slice. The user asked to preserve this exact state because session space is low.
+
+**What changed in this slice:** `docs/PREMIUM-PLAN.md` is the sequential product/design/release checklist. `DESIGN.md` now describes a warm paper-and-pine activity-book style. The welcome page has a compact original CSS landscape around the existing code-drawn bird; three age choices fit both 420×880 and 360×640 viewports. The hub uses warm paper surfaces throughout. A game's detail screen shows its actual next level name and objective, with the complete level map collapsed behind a 48px "See all levels" control. No gameplay levels or mechanics changed. `.gitignore` now ignores local screenshot review files. `tools/test-hub.mjs` checks both welcome viewport sizes and map disclosure.
+
+**Checks performed:** `npm test` passed before the final two focused additions (the hub suite was re-run after them and passed 13/13). `npm run verify` passed (Say & Jump 15/15, Robot 10/10, Balance 11/11). `npm run test:app` passed (8/8, including offline play). Fresh Playwright captures showed no page errors and the full-height shelf background was visually corrected. `npm run test:touch` was started and showed passing early games, then deliberately interrupted when the user asked for a handoff; **do not record it as a complete pass**. There is no `adb` or Java executable on this Windows host, so native Android behavior is still unverified. The previous branch's CI Android APK was green, but this new branch needs its own CI result after push.
+
+**Immediate next steps:** (1) Commit/push this branch if not already done and inspect the Android workflow result. (2) Complete `npm run test:touch` and, if desired, `npm run test:voice`; no gameplay/input code changed here. (3) Install the new debug APK on a physical Android phone and record first launch, safe areas, touch, back navigation, voice/TTS, tilt fallback, and performance. (4) Fix any device issues before beginning `docs/PREMIUM-PLAN.md` slice 3, one representative learning loop. Browser Chromium checks remain useful for this Capacitor web-rendered UI, but cannot prove microphone or Android system bar behavior.
+
+**Plugin decisions:** Taste, ShapeUI, StitchDesign, UI UX Designer, and Game Studio informed the design and visual QA. Game Development Studio's `game-dev` CLI was not installed. Unity Essentials is inapplicable because this repository is not a Unity project. Meshy and optional to3D are deferred because shipping art is 2D; existing Canvas art and a simple original CSS scene were the right tools for this slice. Research sources and monetization guardrails are linked in `docs/PREMIUM-PLAN.md`.
+
+---
+
 State of the original handoff as of `d647b0f`, with the current branch update below. Read `CLAUDE.md` for how to work here and
 `MEMORY.md` for what has already been decided and tried. This file is only
 *where things stand and what is next*.
