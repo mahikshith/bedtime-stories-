@@ -7,8 +7,8 @@ State of the original handoff as of `d647b0f`, with the current branch update be
 ## Current branch update — Android-first polish
 
 The user explicitly requested a new branch from `claude/game-feel-studio-polish`.
-`codex/wordquest-android-polish` starts at `7ea4499`; see its latest commit
-for the work below. The earlier instruction to continue on the old branch
+`codex/wordquest-android-polish` starts at `7ea4499`; its first two commits
+contain the work below. The earlier instruction to continue on the old branch
 is superseded for this round.
 
 - Say & Jump now offers a persistent Voice / Touch / Both choice on its game
@@ -27,12 +27,13 @@ is superseded for this round.
   product and visual direction, staged game work, and a parent-facing purchase
   concept. No store billing or purchase UI has been added.
 
-`npm run test:controls`, `npm run test:shape-band`, `npm run test:balance-input`, `npm run verify`,
-`npm run build`, and `npx cap sync android` pass locally. CI now gates
-Android-profile touch and voice checks. The browser suites and screenshot review are
-blocked here: Chromium is absent and the Playwright download was an invalid
-archive. Check CI after push and try the resulting APK on a physical Android
-phone before claiming native touch, TTS, or safe-area success.
+`npm test`, `npm run test:touch`, `npm run test:voice`, `npm run test:app`,
+`npm run verify`, and `npx cap sync android` pass on a Windows clone with
+Playwright Chromium installed. The offline check found and fixed a service
+worker cache miss for game URLs carrying level and age query parameters. CI
+now gates Android-profile touch and voice checks. Check CI after push and try
+the resulting APK on a physical Android phone before claiming native touch,
+TTS, or safe-area success.
 
 Next: run the browser and finger suites in CI, fix anything they find, then
 take one remaining age-band game at a time. Keep the original detailed

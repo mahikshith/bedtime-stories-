@@ -15,7 +15,7 @@ Small completed steps are recorded here so future sessions resume from evidence 
 - Rework the welcome/shelf hierarchy and type for a 360–420 px Android phone while preserving the existing original thumbnails.
 - Check first-run, touch cancellation, repeat play, browser voice fallback, and the built offline bundle. Get a physical APK verdict before treating native speech or safe areas as proven.
 
-Local checks: `npm run test:controls`, `npm run test:shape-band`, `npm run verify`, `node tools/check-styles.mjs`, `npm run build`, and `npx cap sync android`. CI now runs Android-profile touch and voice checks too. This environment has no Chromium executable; the Playwright download endpoint returned an invalid zero-byte archive, so browser screenshots, touch suite, and offline playtest still need CI or a machine with Chromium. Android speech and status-bar checks still need the APK on a phone.
+Checks in the Windows clone: `npm test`, `npm run test:touch`, `npm run test:voice`, `npm run test:app`, `npm run verify`, and `npx cap sync android` pass with Playwright Chromium. The offline game check exposed a service worker cache miss on game URLs with query parameters; it is fixed. Android speech and status-bar checks still need the APK on a phone.
 
 ## 2. Make the age choice real in every game — Shape Sorter done, six remaining
 

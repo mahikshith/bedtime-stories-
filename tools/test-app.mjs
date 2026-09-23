@@ -68,6 +68,12 @@ const p = await c.newPage();
 const errs = [];
 p.on("pageerror", (e) => errs.push(e.message));
 p.on("console", (m) => { if (m.type() === "error" && !/favicon/.test(m.text())) errs.push(m.text()); });
+p.on("response", (r) => {
+  if (r.request().resourceType() === "script" &&
+      r.headers()["content-type"]?.includes("text/html")) {
+    errs.push(`module served as HTML: ${r.url()}`);
+  }
+});
 
 await p.goto(`http://127.0.0.1:${port}/index.html`, { waitUntil: "networkidle" });
 await dismissCoach(p);

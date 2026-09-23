@@ -70,9 +70,12 @@ await dismissCoach(page);
   const res = await page.evaluate(async (ms) => {
     const s = window.__scene;
     const wait = (t) => new Promise((r) => setTimeout(r, t));
-    // walk to the first prompt
-    for (let i = 0; i < 400 && s.state !== "prompt"; i++) await wait(16);
-    if (s.state !== "prompt") return { error: `never reached prompt (state=${s.state})` };
+    // The recogniser may start filling the meter before this harness samples
+    // the prompt. Both states belong to the same word interaction.
+    for (let i = 0; i < 400 && s.state !== "prompt" && s.state !== "charge"; i++) await wait(16);
+    if (s.state !== "prompt" && s.state !== "charge") {
+      return { error: `never reached prompt (state=${s.state})` };
+    }
 
     const want = s.word.word;
     const x0 = s.body.x;

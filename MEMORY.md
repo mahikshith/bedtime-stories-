@@ -194,6 +194,12 @@ zone of `cell * 0.18` around the block's centre.
 
 ## Platform facts, established the hard way
 
+- **Offline game URLs include query parameters.** The service worker precaches
+  `/src/games/balance.html`, while play links request that page with `?level=0`
+  and sometimes an age band. A cache lookup that includes the query misses,
+  and an offline fallback to `/index.html` can make a game page try to import
+  `/src/games/src/js/hub.js`. Match precached static files with `ignoreSearch`
+  and run `npm run test:app` with the network cut before shipping.
 - **Android's speech recogniser takes the microphone exclusively.** While it
   listens there is no loudness signal at all, so anything keyed off
   `voice.speaking` is dead. Say & Jump drives reach from *how long the child

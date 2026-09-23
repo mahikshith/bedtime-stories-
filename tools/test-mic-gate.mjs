@@ -239,8 +239,11 @@ const recog = await page.evaluate(async () => {
   const wait = (t) => new Promise((r) => setTimeout(r, t));
   const s = window.__scene;
 
-  for (let i = 0; i < 400 && s.state !== "prompt"; i++) await wait(16);
-  if (s.state !== "prompt") return { error: `never reached prompt (state=${s.state})` };
+  // A live recogniser can advance from prompt to charge between samples.
+  for (let i = 0; i < 400 && s.state !== "prompt" && s.state !== "charge"; i++) await wait(16);
+  if (s.state !== "prompt" && s.state !== "charge") {
+    return { error: `never reached prompt (state=${s.state})` };
+  }
 
   const opens = [];
   let listeningWhileTalking = false;

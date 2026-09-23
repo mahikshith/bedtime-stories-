@@ -100,7 +100,11 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   e.respondWith(
-    caches.match(e.request).then((hit) => hit || fetch(e.request).catch(() => caches.match("/index.html")))
+    // Game URLs carry level and age settings in the query, but their HTML is
+    // the same precached file. Match that file while the device is offline.
+    caches.match(e.request, { ignoreSearch: true }).then((hit) => hit ||
+      fetch(e.request).catch(() => e.request.mode === "navigate"
+        ? caches.match("/index.html") : Response.error()))
   );
 });
 `);
